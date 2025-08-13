@@ -1,0 +1,21 @@
+[gd_resource type="TileSet" load_steps=3 format=3 uid="uid://dnn0uacxq48mh"]
+
+[ext_resource type="Texture2D" uid="uid://bhoa5chu1hf7g" path="res://tilesets/ChatGPT Image 2025년 8월 13일 오후 07_29_15 (1) (1) (1).png" id="1_40h4r"]
+
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_e078v"]
+texture = ExtResource("1_40h4r")
+texture_region_size = Vector2i(32, 32)
+0:0/0 = 0
+1:0/0 = 0
+1:0/0/physics_layer_0/polygon_0/points = PackedVector2Array(-16, -16, 16, -16, 16, 16, -16, 16)
+2:0/0 = 0
+3:0/0 = 0
+0:1/0 = 0
+1:1/0 = 0
+2:1/0 = 0
+3:1/0 = 0
+
+[resource]
+tile_size = Vector2i(32, 32)
+physics_layer_0/collision_layer = 1
+sources/3 = SubResource("TileSetAtlasSource_e078v")

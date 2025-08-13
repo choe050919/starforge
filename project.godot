@@ -1,0 +1,17 @@
+; Engine configuration file.
+; It's best edited using the editor UI and not directly,
+; since the parameters that go here are not all obvious.
+;
+; Format:
+;   [section] ; section goes between []
+;   param=value ; assign values to parameters
+
+config_version=5
+
+[application]
+
+config/name="StarForge"
+config/version="0.0.0.0"
+run/main_scene="uid://c5gv3n6byiin7"
+config/features=PackedStringArray("4.4", "Forward Plus")
+config/icon="res://icon.svg"
