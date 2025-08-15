@@ -42,3 +42,4 @@ script = ExtResource("5_qfnet")
 
 [node name="Camera2D" type="Camera2D" parent="."]
 script = ExtResource("2_tlwt5")
+pan_speed = 1.5

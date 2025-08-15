@@ -14,7 +14,7 @@ func _ready() -> void:
 	sprite.centered = false
 	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	z_index = 1000
-
+	
 	# 🔒 Ground와 동일한 원점 사용: 부모(Terrain) 기준 (Terrain 아래에 두면 (0,0) 공유)
 	position = Vector2.ZERO
 	rotation = 0.0
