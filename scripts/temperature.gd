@@ -1,4 +1,3 @@
-# res://scripts/systems/Temperature.gd
 extends Node
 class_name Temperature
 
@@ -30,6 +29,7 @@ var size: Vector2i
 var T: PackedFloat32Array        # 현재 온도
 var alpha: PackedFloat32Array    # 확산계수 α = k/(c) (ρ는 상대값에 흡수)
 var solid_mask: PackedByteArray  # 1=고체(전달), 0=빈칸(현재는 전달 안 함)
+var _last_delta: PackedFloat32Array
 
 # 타일 ID
 const TILE_AIR := 0
@@ -43,6 +43,7 @@ func setup_from_tiles(tile_types: PackedInt32Array, grid_size: Vector2i) -> void
 	T = PackedFloat32Array(); T.resize(total)
 	alpha = PackedFloat32Array(); alpha.resize(total)
 	solid_mask = PackedByteArray(); solid_mask.resize(total)
+	_last_delta = PackedFloat32Array(); _last_delta.resize(total)
 
 	for y in size.y:
 		for x in size.x:
@@ -138,6 +139,13 @@ func on_tick(dt: float) -> void:
 			if uidx >= 0 and uidx < Tnew.size() and solid_mask[uidx] == 1:
 				Tnew[uidx] += delta_t
 	
+	for i in T.size():
+		if solid_mask[i] == 1:
+			_last_delta[i] = Tnew[i] - T[i]
+		else:
+			_last_delta[i] = 0.0
+
+	
 	T = Tnew
 	emit_signal("temperature_updated")
 
@@ -150,3 +158,69 @@ func get_visual_range() -> Vector2:
 
 func get_solid_mask() -> PackedByteArray:
 	return solid_mask
+
+func _cell_to_index(cell: Vector2i) -> int:
+	return cell.y * size.x + cell.x
+
+# 타일 '파괴' 시 호출: from_tile이 우라늄이면 열원 제거
+func on_tile_destroyed(cell: Vector2i, from_tile: int, reason: StringName) -> void:
+	if size == Vector2i.ZERO:
+		return
+	var idx: int = _cell_to_index(cell)
+	if idx < 0 or idx >= T.size():
+		return
+
+	# AIR로 정리
+	solid_mask[idx] = 0
+	alpha[idx] = 0.0
+	T[idx] = 0.0
+
+	# 우라늄 열원 제거
+	if from_tile == TILE_URANIUM:
+		var p: int = _uranium_cells.find(idx)
+		if p != -1:
+			_uranium_cells.remove_at(p)
+
+	emit_signal("temperature_updated")
+
+# 타일 '교체' 시 호출: from_tile이 우라늄이면 열원 제거
+func on_tile_replaced(cell: Vector2i, from_tile: int, to_tile: int, reason: StringName) -> void:
+	if size == Vector2i.ZERO:
+		return
+	var idx: int = _cell_to_index(cell)
+	if idx < 0 or idx >= T.size():
+		return
+
+	# from이 우라늄이면 열원 제거
+	if from_tile == TILE_URANIUM:
+		var p: int = _uranium_cells.find(idx)
+		if p != -1:
+			_uranium_cells.remove_at(p)
+
+	match to_tile:
+		TILE_AIR:
+			solid_mask[idx] = 0
+			alpha[idx] = 0.0
+			T[idx] = 0.0
+		TILE_GROUND:
+			solid_mask[idx] = 1
+			alpha[idx] = k_ground / max(0.0001, c_ground)
+			if T[idx] == 0.0:
+				T[idx] = t_ground_init
+		TILE_ICE:
+			solid_mask[idx] = 1
+			alpha[idx] = k_ice / max(0.0001, c_ice)
+			if T[idx] == 0.0:
+				T[idx] = t_ice_init
+		TILE_URANIUM:
+			solid_mask[idx] = 1
+			alpha[idx] = k_uranium / max(0.0001, c_uranium)
+			if T[idx] == 0.0:
+				T[idx] = t_uranium_init
+			if _uranium_cells.find(idx) == -1:
+				_uranium_cells.append(idx)
+
+	emit_signal("temperature_updated")
+
+func get_last_delta() -> PackedFloat32Array:
+	return _last_delta

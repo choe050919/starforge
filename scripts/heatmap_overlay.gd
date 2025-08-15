@@ -3,19 +3,17 @@ class_name HeatmapOverlay
 
 @onready var sprite: Sprite2D = get_node("Map")
 
-@export var opacity: float = 0.90       # 오버레이 투명도
-@export var start_visible: bool = false
+@export var opacity: float = 0.9        # 오버레이 투명도
 
 var grid_size: Vector2i
 var tile_px: Vector2i = Vector2i(32, 32)  # 타일 픽셀(런타임에 World가 세팅해줌)
 
 func _ready() -> void:
-	visible = start_visible
 	sprite.centered = false
 	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	z_index = 1000
 	
-	# 🔒 Ground와 동일한 원점 사용: 부모(Terrain) 기준 (Terrain 아래에 두면 (0,0) 공유)
+	# Ground와 동일한 원점 사용: 부모(Terrain) 기준 (Terrain 아래에 두면 (0,0) 공유)
 	position = Vector2.ZERO
 	rotation = 0.0
 	scale = Vector2.ONE   # 노드 자체 스케일은 1로, 스프라이트로만 스케일링
@@ -31,7 +29,7 @@ func render_full_with_mask(T: PackedFloat32Array, mask: PackedByteArray, t_min: 
 	if grid_size.x * grid_size.y != T.size() or mask.size() != T.size():
 		push_error("[HeatmapOverlay] Size mismatch with mask."); 
 		return
-
+	
 	var img: Image = Image.create(grid_size.x, grid_size.y, false, Image.FORMAT_RGBA8)
 	var denom: float = max(0.0001, (t_max - t_min))
 	var inv: float = 1.0 / denom

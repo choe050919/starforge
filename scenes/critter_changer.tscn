@@ -1,0 +1,10 @@
+[gd_scene load_steps=3 format=3 uid="uid://b1m6vvsvkdw6"]
+
+[ext_resource type="Script" uid="uid://b6xvyoddje0v7" path="res://scripts/critter_changer.gd" id="1_3wu2j"]
+[ext_resource type="Texture2D" uid="uid://drcw3d5sjondu" path="res://icon.svg" id="2_tveg8"]
+
+[node name="CritterChanger" type="Node2D"]
+script = ExtResource("1_3wu2j")
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+texture = ExtResource("2_tveg8")

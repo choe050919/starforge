@@ -1,4 +1,4 @@
-[gd_scene load_steps=9 format=3 uid="uid://c5gv3n6byiin7"]
+[gd_scene load_steps=13 format=3 uid="uid://c5gv3n6byiin7"]
 
 [ext_resource type="Script" uid="uid://dgppaejvd18y0" path="res://scripts/world.gd" id="1_f3sb7"]
 [ext_resource type="Script" uid="uid://dsrbjd0kmv17k" path="res://scripts/terrain.gd" id="2_71j4m"]
@@ -6,8 +6,12 @@
 [ext_resource type="Script" uid="uid://cqchm53g3n0d1" path="res://scripts/pan_zoom.gd" id="2_tlwt5"]
 [ext_resource type="Script" uid="uid://dfoy07ausxoqo" path="res://scripts/world_gen.gd" id="4_qfnet"]
 [ext_resource type="Script" uid="uid://bxaqs1pu0ncum" path="res://scripts/temperature.gd" id="5_i7141"]
+[ext_resource type="Script" uid="uid://bbb78kl6w5u70" path="res://scripts/heat_source_overlay.gd" id="5_q5onr"]
 [ext_resource type="Script" uid="uid://dtjuedvsbwjng" path="res://scripts/sim_clock.gd" id="5_qfnet"]
 [ext_resource type="Script" uid="uid://cheovfjbqki2h" path="res://scripts/heatmap_overlay.gd" id="7_4mrxx"]
+[ext_resource type="Script" uid="uid://dl4jofyiuxsbc" path="res://scripts/tile_change.gd" id="8_7r4gi"]
+[ext_resource type="PackedScene" uid="uid://b1m6vvsvkdw6" path="res://scenes/critter_changer.tscn" id="10_e3hyu"]
+[ext_resource type="Script" uid="uid://b2776qmf4l0o" path="res://scripts/critter_spawner.gd" id="11_q5onr"]
 
 [node name="World" type="Node2D"]
 script = ExtResource("1_f3sb7")
@@ -19,9 +23,16 @@ script = ExtResource("2_71j4m")
 tile_set = ExtResource("2_fj7yv")
 
 [node name="HeatmapOverlay" type="Node2D" parent="Terrain"]
+visible = false
 script = ExtResource("7_4mrxx")
 
 [node name="Map" type="Sprite2D" parent="Terrain/HeatmapOverlay"]
+
+[node name="HeatSourceOverlay" type="Node2D" parent="Terrain"]
+visible = false
+script = ExtResource("5_q5onr")
+
+[node name="Map" type="Sprite2D" parent="Terrain/HeatSourceOverlay"]
 
 [node name="Systems" type="Node" parent="."]
 
@@ -34,7 +45,17 @@ script = ExtResource("5_i7141")
 [node name="SimClock" type="Node" parent="Systems"]
 script = ExtResource("5_qfnet")
 
-[node name="Overlays" type="Node2D" parent="."]
+[node name="TileChange" type="Node" parent="Systems"]
+script = ExtResource("8_7r4gi")
+terrain_node_path = NodePath("../../Terrain")
+
+[node name="Actors" type="Node2D" parent="."]
+
+[node name="Spawner" type="Node2D" parent="Actors"]
+script = ExtResource("11_q5onr")
+critter_scene = ExtResource("10_e3hyu")
+ground_path = NodePath("../../Terrain/Ground")
+tile_change_path = NodePath("../../Systems/TileChange")
 
 [node name="Managers" type="Node" parent="."]
 

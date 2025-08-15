@@ -38,3 +38,17 @@ func apply_tiles(tile_types: PackedInt32Array, size: Vector2i) -> void:
 				ground.set_cell(Vector2i(x, y), sid, atlas_uranium, alt_uranium)
 			else:
 				pass # 공기는 비워두기
+
+func apply_cell_change(cell: Vector2i, tile_type: int) -> void:
+	if ground == null:
+		return
+	match tile_type:
+		TILE_GROUND:
+			ground.set_cell(cell, sid, atlas_ground, alt_ground)
+		TILE_ICE:
+			ground.set_cell(cell, sid, atlas_ice, alt_ice)
+		TILE_URANIUM:
+			ground.set_cell(cell, sid, atlas_uranium, alt_uranium)
+		_:
+			# AIR 또는 미정의 → 지우기
+			ground.erase_cell(cell)
