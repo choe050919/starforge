@@ -1,0 +1,36 @@
+[gd_scene load_steps=6 format=3 uid="uid://c5gv3n6byiin7"]
+
+[ext_resource type="Script" uid="uid://dgppaejvd18y0" path="res://scripts/world.gd" id="1_f3sb7"]
+[ext_resource type="Script" uid="uid://dsrbjd0kmv17k" path="res://scenes/terrain.gd" id="2_71j4m"]
+[ext_resource type="TileSet" uid="uid://dnn0uacxq48mh" path="res://tilesets/world.tres" id="2_fj7yv"]
+[ext_resource type="Script" uid="uid://cqchm53g3n0d1" path="res://scripts/pan_zoom.gd" id="2_tlwt5"]
+[ext_resource type="Script" uid="uid://dfoy07ausxoqo" path="res://scenes/world_gen.gd" id="4_qfnet"]
+
+[node name="World" type="Node2D"]
+script = ExtResource("1_f3sb7")
+
+[node name="Terrain" type="Node2D" parent="."]
+script = ExtResource("2_71j4m")
+
+[node name="Ground" type="TileMapLayer" parent="Terrain"]
+tile_set = ExtResource("2_fj7yv")
+
+[node name="Systems" type="Node" parent="."]
+
+[node name="SimClock" type="Node" parent="Systems"]
+
+[node name="WorldGen" type="Node" parent="Systems"]
+script = ExtResource("4_qfnet")
+
+[node name="Temperature" type="Node" parent="Systems"]
+
+[node name="Overlays" type="Node2D" parent="."]
+
+[node name="HeatmapOverlay" type="Node2D" parent="Overlays"]
+
+[node name="Managers" type="Node" parent="."]
+
+[node name="ChunkManager" type="Node" parent="Managers"]
+
+[node name="Camera2D" type="Camera2D" parent="."]
+script = ExtResource("2_tlwt5")
