@@ -51,6 +51,7 @@ script = ExtResource("9_d1vx7")
 
 [node name="Temperature" type="Node" parent="Systems"]
 script = ExtResource("5_i7141")
+uranium_power_per_sec = 300.0
 
 [node name="SimClock" type="Node" parent="Systems"]
 script = ExtResource("5_qfnet")

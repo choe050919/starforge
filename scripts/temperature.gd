@@ -37,6 +37,9 @@ const TILE_ICE := 1
 const TILE_GROUND := 2
 const TILE_URANIUM := 3
 
+# 이웃 방향(상하좌우)
+const DIRECTIONS := [Vector2i(0, -1), Vector2i(0, 1), Vector2i(-1, 0), Vector2i(1, 0)]
+
 func setup_from_tiles(tile_types: PackedInt32Array, grid_size: Vector2i) -> void:
 	size = grid_size
 	var total := size.x * size.y
@@ -103,26 +106,13 @@ func _diffuse(dt: float) -> PackedFloat32Array:
 			var sum_n: float = 0.0
 			var n: int = 0
 
-			# 위
-			var yy: int = max(0, y - 1)
-			var idx_n: int = yy * w + x
-			if solid_mask[idx_n] == 1:
-				sum_n += T[idx_n]; n += 1
-			# 아래
-			yy = min(h - 1, y + 1)
-			idx_n = yy * w + x
-			if solid_mask[idx_n] == 1:
-				sum_n += T[idx_n]; n += 1
-			# 왼쪽
-			var xx: int = max(0, x - 1)
-			idx_n = y * w + xx
-			if solid_mask[idx_n] == 1:
-				sum_n += T[idx_n]; n += 1
-			# 오른쪽
-			xx = min(w - 1, x + 1)
-			idx_n = y * w + xx
-			if solid_mask[idx_n] == 1:
-				sum_n += T[idx_n]; n += 1
+			for dir in DIRECTIONS:
+				var nx: int = clamp(x + dir.x, 0, w - 1)
+				var ny: int = clamp(y + dir.y, 0, h - 1)
+				var idx_n: int = ny * w + nx
+				if solid_mask[idx_n] == 1:
+					sum_n += T[idx_n]
+					n += 1
 
 			if n == 0:
 				# 완전히 고립된 셀(주변이 전부 공기)이면 변화 없음
