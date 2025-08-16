@@ -60,6 +60,12 @@ script = ExtResource("5_qfnet")
 script = ExtResource("8_7r4gi")
 terrain_node_path = NodePath("../../Terrain")
 
+[node name="Fluid" type="Node" parent="Systems"]
+
+[node name="Gas" type="Node" parent="Systems"]
+
+[node name="PhaseChange" type="Node" parent="Systems"]
+
 [node name="Actors" type="Node2D" parent="."]
 
 [node name="Spawner" type="Node2D" parent="Actors"]
