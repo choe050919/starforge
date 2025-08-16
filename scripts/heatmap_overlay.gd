@@ -45,7 +45,6 @@ func render_full_with_mask(T: PackedFloat32Array, mask: PackedByteArray, t_min: 
 			var col: Color = _color_map(t)
 			img.set_pixel(x, y, col)
 
-	# flip_y() 제거!
 	var tex: ImageTexture = ImageTexture.create_from_image(img)
 	sprite.texture = tex
 

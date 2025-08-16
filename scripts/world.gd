@@ -1,17 +1,20 @@
 extends Node2D
 
 @onready var terrain: Terrain = get_node("Terrain")
+@onready var ground_layer: TileMapLayer = get_node("Terrain/Ground")
+@onready var liquid_overlay: LiquidOverlay = get_node("Terrain/LiquidOverlay")
+@onready var crack_overlay: CrackOverlay = get_node("Terrain/CrackOverlay")
+
 @onready var worldgen: WorldGen = get_node("Systems/WorldGen")
+@onready var durability: Durability = get_node("Systems/Durability")
 @onready var temp: Temperature = get_node("Systems/Temperature")
 @onready var clock: SimClock = get_node("Systems/SimClock")
-@onready var heatmap: HeatmapOverlay = get_node("Terrain/HeatmapOverlay")
-@onready var ground_layer: TileMapLayer = get_node("Terrain/Ground")
 @onready var tchange: TileChange = get_node("Systems/TileChange")
 @onready var liquid: Liquid = get_node("Systems/Liquid")
-@onready var liquid_overlay: LiquidOverlay = get_node("Terrain/LiquidOverlay")
-@onready var heat_src: HeatSourceOverlay = get_node("Terrain/HeatSourceOverlay")
-@onready var durability: Durability = get_node("Systems/Durability")
-@onready var crack_overlay: CrackOverlay = get_node("Terrain/CrackOverlay")
+
+@onready var grayscale_overlay: ColorRect = $UIFXLayer/RootControl/GrayscaleOverlay
+@onready var heatmap: HeatmapOverlay = $OverlaysLayer/HeatmapOverlay
+@onready var heat_src: HeatSourceOverlay = $OverlaysLayer/HeatSourceOverlay
 
 enum OverlayMode { NONE, HEATMAP, HEAT_SOURCE }
 
@@ -19,8 +22,8 @@ var current_overlay: int = OverlayMode.NONE
 
 # 오버레이 경로 테이블 (존재하는 것만 등록)
 var overlay_paths := {
-	OverlayMode.HEATMAP:     NodePath("Terrain/HeatmapOverlay"),
-	OverlayMode.HEAT_SOURCE: NodePath("Terrain/HeatSourceOverlay"),
+	OverlayMode.HEATMAP:     NodePath("OverlaysLayer/HeatmapOverlay"),
+	OverlayMode.HEAT_SOURCE: NodePath("OverlaysLayer/HeatSourceOverlay"),
 }
 
 func _ready() -> void:
@@ -144,11 +147,16 @@ func _apply_overlay_state() -> void:
 		var overlay_node := _get_overlay(m)
 		if overlay_node != null:
 			overlay_node.visible = false
-	# 2) 현재 모드 켜기 (NONE이면 생략)
+	# 2) 흑백화 해제
+	if grayscale_overlay != null:
+		grayscale_overlay.visible = false
+	# 3) 현재 모드 켜기 (NONE이면 생략)
 	if current_overlay != OverlayMode.NONE:
 		var target_overlay := _get_overlay(current_overlay)
 		if target_overlay != null:
 			target_overlay.visible = true
+		if grayscale_overlay != null:
+			grayscale_overlay.visible = true
 
 func set_overlay(mode: int) -> void:
 	if mode == current_overlay:
