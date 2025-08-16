@@ -1,12 +1,12 @@
 extends Node2D
 class_name CritterBreaker
 
-@export_node_path("Node") var durability_path: NodePath	 # Durability
-@export_node_path("TileMapLayer") var ground_layer_path: NodePath  # Terrain/Ground
+@export_node_path("Node") var durability_path: NodePath # Durability
+@export_node_path("TileMapLayer") var ground_layer_path: NodePath # Terrain/Ground
 
-@export var scan_radius: int = 6		  # 주변 몇 칸에서 찾을지
-@export var think_interval: float = 0.6	  # 몇 초마다 한 번 타겟 갱신
-@export var break_power: float = 5.0	  # 초당 피해량
+@export var scan_radius: int = 6          # 주변 몇 칸에서 찾을지
+@export var think_interval: float = 0.6   # 몇 초마다 한 번 타겟 갱신
+@export var break_power: float = 5.0      # 초당 피해량
 
 var _t: float = 0.0
 var _durability: Durability

@@ -26,7 +26,7 @@ func _ready() -> void:
 		push_error("[World] Systems/WorldGen 노드를 찾지 못했습니다."); return
 	if terrain == null:
 		push_error("[World] Terrain 노드를 찾지 못했습니다."); return
-	
+
 	# signal connect
 	worldgen.generated.connect(_on_world_generated)
 	temp.temperature_updated.connect(_on_temperature_updated)
@@ -59,27 +59,27 @@ func _on_world_generated(tiles: PackedInt32Array, size: Vector2i) -> void:
 		# 히트맵 레이아웃도 타일 크기에 맞춰 설정
 		heatmap.set_layout(size, ts.tile_size)
 		if heat_src != null:
-			heat_src.set_layout(size, ts.tile_size)   # 오버레이 레이아웃 세팅
+			heat_src.set_layout(size, ts.tile_size) # 오버레이 레이아웃 세팅
 		if crack_overlay != null:
 			crack_overlay.set_layout(size)
 
 	# 온도 초기화 + 초기 렌더
 	temp.setup_from_tiles(tiles, size)
-	_on_temperature_updated()  # 첫 프레임 그리기
+	_on_temperature_updated() # 첫 프레임 그리기
 
 	if durability:
 		durability.setup_from_tiles(tiles, size)
 
 	if tchange:
-		tchange.setup(tiles, size)  # 타일 변경 시스템에 현재 맵 전달
+		tchange.setup(tiles, size) # 타일 변경 시스템에 현재 맵 전달
 
 func _on_temperature_updated() -> void:
 	var T := temp.get_temperature_buffer()
 	var mask := temp.get_solid_mask()
-	var vr := temp.get_visual_range()  # Vector2(min, max)
+	var vr := temp.get_visual_range() # Vector2(min, max)
 	heatmap.render_full_with_mask(T, mask, vr.x, vr.y)
 	
-	#  ΔT 기반 열원 오버레이 렌더
+	# ΔT 기반 열원 오버레이 렌더
 	if heat_src != null:
 		var dT := temp.get_last_delta()
 		heat_src.render_heat_sources(dT)
@@ -88,7 +88,7 @@ func _on_tick_sim(dt: float) -> void:
 	if temp:
 		temp.on_tick(dt)
 	if tchange:
-		tchange.commit()           # 큐에 쌓인 변경을 일괄 적용
+		tchange.commit() # 큐에 쌓인 변경을 일괄 적용
 
 func _on_tile_destroyed(cell: Vector2i, from_tile: int, reason: StringName) -> void:
 	if temp != null:
@@ -137,7 +137,7 @@ func set_overlay(mode: int) -> void:
 		return
 	current_overlay = mode
 	_apply_overlay_state()
-	
+
 	var name_str: String = "NONE"
 	if mode == OverlayMode.HEATMAP:
 		name_str = "HEATMAP"

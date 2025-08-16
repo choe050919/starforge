@@ -1,8 +1,8 @@
 extends Node2D
 class_name CritterChanger
 
-@export_node_path("Node") var tile_change_path: NodePath  # TileChange
-@export_node_path("TileMapLayer") var ground_layer_path: NodePath  # Terrain/Ground
+@export_node_path("Node") var tile_change_path: NodePath # TileChange
+@export_node_path("TileMapLayer") var ground_layer_path: NodePath # Terrain/Ground
 
 @export var scan_radius: int = 6          # 주변 몇 칸에서 찾을지
 @export var think_interval: float = 0.6   # 몇 초마다 한 번 시도할지
@@ -54,7 +54,7 @@ func _try_change_random_cell() -> void:
 
 		var current: int = tiles[idx]
 		if current == TILE_AIR:
-			continue  # 공기는 패스(이미 비어 있음)
+			continue # 공기는 패스(이미 비어 있음)
 
 		# 지금은 단순 파괴만 시행(AIR로)
 		_sys.queue_destroy(cell, &"critter")

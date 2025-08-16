@@ -27,9 +27,9 @@ func set_layout(size: Vector2i, tile_size: Vector2i) -> void:
 
 func render_heat_sources(delta_t_list: PackedFloat32Array) -> void:
 	if grid_size.x * grid_size.y != delta_t_list.size():
-		push_error("[HeatSourceOverlay] Size mismatch."); 
+		push_error("[HeatSourceOverlay] Size mismatch.");
 		return
-	
+
 	var img: Image = Image.create(grid_size.x, grid_size.y, false, Image.FORMAT_RGBA8)
 
 	for y in grid_size.y:
@@ -40,7 +40,7 @@ func render_heat_sources(delta_t_list: PackedFloat32Array) -> void:
 			if absf(dt) < 0.001:
 				img.set_pixel(x, y, Color(0,0,0,0)) # 변화 거의 없음 → 투명
 				continue
-			
+
 			var intensity: float = clamp(absf(dt) / max_abs_deltaT, 0.0, 1.0)
 			var col: Color
 			if dt > 0:

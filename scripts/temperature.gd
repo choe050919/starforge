@@ -2,7 +2,7 @@ extends Node
 class_name Temperature
 
 signal initialized(size: Vector2i)
-signal temperature_updated()  # MVP: 전체 갱신(부분 갱신은 이후)
+signal temperature_updated() # MVP: 전체 갱신(부분 갱신은 이후)
 
 # ---- 설정값(필요 시 인스펙터에서 조절) ----
 @export var k_ground: float = 0.9      # 열전도(상대값)
@@ -65,7 +65,7 @@ func setup_from_tiles(tile_types: PackedInt32Array, grid_size: Vector2i) -> void
 					T[idx] = t_uranium_init
 					alpha[idx] = k_uranium / max(0.0001, c_uranium)
 					solid_mask[idx] = 1
-					_uranium_cells.append(idx)              # ← 우라늄 셀 기록
+					_uranium_cells.append(idx) # ← 우라늄 셀 기록
 				_:
 					# AIR: 계산 제외(마스크 0), 온도는 보조값이나 0으로 둠
 					T[idx] = 0.0

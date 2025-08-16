@@ -3,16 +3,16 @@ class_name TileChange
 
 signal tile_replaced(cell: Vector2i, from_tile: int, to_tile: int, reason: StringName)
 signal tile_destroyed(cell: Vector2i, from_tile: int, reason: StringName)
-signal cells_changed()  # 필요 시 AABB/리스트로 확장
+signal cells_changed() # 필요 시 AABB/리스트로 확장
 
 # 외부 참조
-@export_node_path("Node") var terrain_node_path: NodePath     # Terrain 노드
+@export_node_path("Node") var terrain_node_path: NodePath # Terrain 노드
 var _terrain: Terrain
 
 # 내부 상태
 var size: Vector2i
-var _tiles: PackedInt32Array = PackedInt32Array()  # 권한 보유: 현재 월드의 tile_types
-var _ops: Array = []  # [{cell:Vector2i, to:int, reason:StringName}]
+var _tiles: PackedInt32Array = PackedInt32Array() # 권한 보유: 현재 월드의 tile_types
+var _ops: Array = [] # [{cell:Vector2i, to:int, reason:StringName}]
 
 # 타일 ID (월드와 일치해야 함)
 const TILE_AIR: int = 0
@@ -26,7 +26,7 @@ func _ready() -> void:
 
 func setup(initial_tiles: PackedInt32Array, grid_size: Vector2i) -> void:
 	size = grid_size
-	_tiles = PackedInt32Array(initial_tiles)  # 사본 보관
+	_tiles = PackedInt32Array(initial_tiles) # 사본 보관
 	_ops.clear()
 
 func get_tiles() -> PackedInt32Array:

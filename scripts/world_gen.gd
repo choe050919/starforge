@@ -84,13 +84,13 @@ func place_uranium(tiles: PackedInt32Array, hmap: PackedInt32Array) -> void:
 	n_u.frequency = uranium_freq
 
 	var rng := RandomNumberGenerator.new()
-	rng.seed = int(uranium_seed)  # 재현성
+	rng.seed = int(uranium_seed) # 재현성
 
 	for y in size.y:
 		for x in size.x:
 			var idx2: int = y * size.x + x
 			if tiles[idx2] != TILE_GROUND:
-				continue  # 얼음/공기는 제외(원하면 얼음에도 드물게 허용 가능)
+				continue # 얼음/공기는 제외(원하면 얼음에도 드물게 허용 가능)
 
 			var depth2: int = y - hmap[x]
 			if depth2 < uranium_depth_min or depth2 > uranium_depth_max:
