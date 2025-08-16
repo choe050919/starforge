@@ -77,7 +77,10 @@ func _on_world_generated(tiles: PackedInt32Array, size: Vector2i, liquid_amount:
 	if tchange:
 		tchange.setup(tiles, size) # 타일 변경 시스템에 현재 맵 전달
 	if liquid:
-		liquid.setup(liquid_amount, springs, size)
+		var solid := PackedByteArray()
+		if temp:
+			solid = temp.get_solid_mask()
+		liquid.setup(liquid_amount, springs, size, solid)
 	if liquid_overlay != null:
 		liquid_overlay.render(liquid_amount)
 
@@ -95,16 +98,24 @@ func _on_temperature_updated() -> void:
 func _on_tick_sim(dt: float) -> void:
 	if temp:
 		temp.on_tick(dt)
+	if liquid:
+		liquid.tick_liquid(dt)
+		if liquid_overlay != null:
+			liquid_overlay.render(liquid.get_amounts())
 	if tchange:
 		tchange.commit() # 큐에 쌓인 변경을 일괄 적용
 
 func _on_tile_destroyed(cell: Vector2i, from_tile: int, reason: StringName) -> void:
 	if temp != null:
 		temp.on_tile_destroyed(cell, from_tile, reason)
+	if liquid != null:
+		liquid.on_tile_destroyed(cell, from_tile, reason)
 
 func _on_tile_replaced(cell: Vector2i, from_tile: int, to_tile: int, reason: StringName) -> void:
 	if temp != null:
 		temp.on_tile_replaced(cell, from_tile, to_tile, reason)
+	if liquid != null:
+		liquid.on_tile_replaced(cell, from_tile, to_tile, reason)
 	if durability != null:
 		durability.on_tile_replaced(cell, from_tile, to_tile, reason)
 
