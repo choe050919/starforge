@@ -1,13 +1,15 @@
 extends Node
 class_name CritterSpawner
 
-@export var critter_scene: PackedScene              # ← Critter 프리팹 씬 (CritterChanger 붙어있어야 함)
+@export var critter_scene: PackedScene		    # ← Critter 프리팹 씬
 @export_node_path("TileMapLayer") var ground_path   # ← Terrain/Ground를 지정
-@export_node_path("Node") var tile_change_path      # ← Systems/TileChange를 지정
-@export var only_inside_world: bool = true          # 월드 범위 바깥 클릭 무시
+@export_node_path("Node") var tile_change_path	    # ← Systems/TileChange를 지정
+@export_node_path("Node") var durability_path	    # ← Systems/Durability를 지정
+@export var only_inside_world: bool = true	    # 월드 범위 바깥 클릭 무시
 
 var _ground: TileMapLayer
 var _sys: TileChange
+var _dur: Durability
 var _rng := RandomNumberGenerator.new()
 
 func _ready() -> void:
@@ -15,6 +17,8 @@ func _ready() -> void:
 		_ground = get_node(ground_path) as TileMapLayer
 	if tile_change_path != NodePath():
 		_sys = get_node(tile_change_path) as TileChange
+	if durability_path != NodePath():
+		_dur = get_node(durability_path) as Durability
 	_rng.randomize()
 
 func _unhandled_input(e: InputEvent) -> void:
@@ -40,13 +44,15 @@ func _spawn_at_mouse() -> void:
 			return
 
 	# 인스턴스 생성 → 의존성 주입 → 셀 중심으로 워프
-	var critter := critter_scene.instantiate() as CritterChanger
-	if critter == null:
-		push_error("[Spawner] critter_scene must be a CritterChanger scene.")
+	var critter := critter_scene.instantiate()
+	if critter == null or not (critter is Node2D):
+		push_error("[Spawner] critter_scene must be a Node2D scene.")
 		return
-
 	# 보통은 Spawner와 같은 상위(Actors)에 붙임
 	add_child(critter)
-	if _sys != null:
+	if critter is CritterChanger and _sys != null:
 		critter.set_dependencies(_sys, _ground)
-	critter.warp_to_cell(cell)
+	elif critter is CritterBreaker and _dur != null:
+		critter.set_dependencies(_dur, _ground)
+	if critter.has_method("warp_to_cell"):
+		critter.warp_to_cell(cell)
