@@ -1,10 +1,9 @@
-# res://scripts/actors/CritterSpawner.gd
 extends Node
 class_name CritterSpawner
 
 @export var critter_scene: PackedScene              # ← Critter 프리팹 씬 (CritterChanger 붙어있어야 함)
 @export_node_path("TileMapLayer") var ground_path   # ← Terrain/Ground를 지정
-@export_node_path("Node") var tile_change_path      # ← Systems/TileChangeSystem를 지정
+@export_node_path("Node") var tile_change_path      # ← Systems/TileChange를 지정
 @export var only_inside_world: bool = true          # 월드 범위 바깥 클릭 무시
 
 var _ground: TileMapLayer

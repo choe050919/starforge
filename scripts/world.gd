@@ -24,10 +24,10 @@ func _ready() -> void:
 		push_error("[World] Systems/WorldGen 노드를 찾지 못했습니다."); return
 	if terrain == null:
 		push_error("[World] Terrain 노드를 찾지 못했습니다."); return
-
+	
+	# signal connect
 	worldgen.generated.connect(_on_world_generated)
 	temp.temperature_updated.connect(_on_temperature_updated)
-	clock.tick_sim.connect(temp.on_tick)
 	
 	worldgen.generate()
 	
