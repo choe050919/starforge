@@ -8,6 +8,7 @@ extends Node2D
 @onready var ground_layer: TileMapLayer = get_node("Terrain/Ground")
 @onready var tchange: TileChange = get_node("Systems/TileChange")
 @onready var heat_src: HeatSourceOverlay = get_node("Terrain/HeatSourceOverlay")
+@onready var durability: Durability = get_node("Systems/Durability")
 
 enum OverlayMode { NONE, HEATMAP, HEAT_SOURCE }
 
@@ -27,16 +28,18 @@ func _ready() -> void:
 	
 	# signal connect
 	worldgen.generated.connect(_on_world_generated)
-	temp.temperature_updated.connect(_on_temperature_updated)
-	
-	worldgen.generate()
-	
-	if clock:
-		clock.tick_sim.connect(_on_tick_sim)
-		
-	if tchange != null and temp != null:
-		tchange.tile_destroyed.connect(_on_tile_destroyed)
-		tchange.tile_replaced.connect(_on_tile_replaced)
+        temp.temperature_updated.connect(_on_temperature_updated)
+
+        worldgen.generate()
+
+        if clock:
+                clock.tick_sim.connect(_on_tick_sim)
+
+        if tchange != null:
+                tchange.tile_destroyed.connect(_on_tile_destroyed)
+                tchange.tile_replaced.connect(_on_tile_replaced)
+        if durability != null and tchange != null:
+                durability.break_requested.connect(func(cell: Vector2i): tchange.queue_destroy(cell, &"durability"))
 	
 	_apply_overlay_state() # 생략 가능
 
@@ -56,11 +59,14 @@ func _on_world_generated(tiles: PackedInt32Array, size: Vector2i) -> void:
 
 
 	# 온도 초기화 + 초기 렌더
-	temp.setup_from_tiles(tiles, size)
-	_on_temperature_updated()  # 첫 프레임 그리기
-	
-	if tchange:
-		tchange.setup(tiles, size)  # 타일 변경 시스템에 현재 맵 전달
+        temp.setup_from_tiles(tiles, size)
+        _on_temperature_updated()  # 첫 프레임 그리기
+
+        if durability:
+                durability.setup_from_tiles(tiles, size)
+
+        if tchange:
+                tchange.setup(tiles, size)  # 타일 변경 시스템에 현재 맵 전달
 
 func _on_temperature_updated() -> void:
 	var T := temp.get_temperature_buffer()
@@ -85,8 +91,10 @@ func _on_tile_destroyed(cell: Vector2i, from_tile: int, reason: StringName) -> v
 		temp.on_tile_destroyed(cell, from_tile, reason)
 
 func _on_tile_replaced(cell: Vector2i, from_tile: int, to_tile: int, reason: StringName) -> void:
-	if temp != null:
-		temp.on_tile_replaced(cell, from_tile, to_tile, reason)
+        if temp != null:
+                temp.on_tile_replaced(cell, from_tile, to_tile, reason)
+        if durability != null:
+                durability.on_tile_replaced(cell, from_tile, to_tile, reason)
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey:
