@@ -76,27 +76,33 @@ func on_tick(dt: float) -> void:
 	if T.is_empty():
 		return
 
+	var Tnew := _diffuse(dt)
+	_apply_uranium_heating(dt, Tnew)
+	_compute_delta(Tnew)
+	T = Tnew
+	emit_signal("temperature_updated")
+
+func _diffuse(dt: float) -> PackedFloat32Array:
 	var w: int = size.x
 	var h: int = size.y
-
 	var Tnew: PackedFloat32Array = PackedFloat32Array()
 	Tnew.resize(T.size())
 
 	for y in h:
 		for x in w:
 			var idx: int = y * w + x
-			
+
 			# 공기는 그대로 둠
 			if solid_mask[idx] == 0:
 				Tnew[idx] = T[idx]
 				continue
-			
+
 			var t_center: float = T[idx]
-			
+
 			# --- 이웃 평균 기반 업데이트 (최댓값 원리 보장) ---
 			var sum_n: float = 0.0
 			var n: int = 0
-			
+
 			# 위
 			var yy: int = max(0, y - 1)
 			var idx_n: int = yy * w + x
@@ -117,38 +123,39 @@ func on_tick(dt: float) -> void:
 			idx_n = y * w + xx
 			if solid_mask[idx_n] == 1:
 				sum_n += T[idx_n]; n += 1
-			
+
 			if n == 0:
 				# 완전히 고립된 셀(주변이 전부 공기)이면 변화 없음
 				Tnew[idx] = t_center
 				continue
-			
+
 			var avg_n: float = sum_n / float(n)
-			
+
 			# α(=k/c) * dt * n 을 블렌드 팩터로 사용하되 [0,1]로 클램프
 			var a: float = alpha[idx]
 			var blend: float = clamp(dt * a * float(n), 0.0, 1.0)
-			
+
 			# 평균으로 blend 만큼만 이동 → 항상 기존 [min,max] 안에 머무름
 			Tnew[idx] = lerp(t_center, avg_n, blend)
-	
-	if _uranium_cells.size() > 0 and uranium_power_per_sec != 0.0:
-		var delta_t: float = uranium_power_per_sec * dt
-		for i in _uranium_cells.size():
-			var uidx: int = _uranium_cells[i]
-			if uidx >= 0 and uidx < Tnew.size() and solid_mask[uidx] == 1:
-				Tnew[uidx] += delta_t
-	
+
+	return Tnew
+
+func _apply_uranium_heating(dt: float, Tnew: PackedFloat32Array) -> void:
+	if _uranium_cells.size() == 0 or uranium_power_per_sec == 0.0:
+		return
+
+	var delta_t: float = uranium_power_per_sec * dt
+	for i in _uranium_cells.size():
+		var uidx: int = _uranium_cells[i]
+		if uidx >= 0 and uidx < Tnew.size() and solid_mask[uidx] == 1:
+			Tnew[uidx] += delta_t
+
+func _compute_delta(Tnew: PackedFloat32Array) -> void:
 	for i in T.size():
 		if solid_mask[i] == 1:
 			_last_delta[i] = Tnew[i] - T[i]
 		else:
 			_last_delta[i] = 0.0
-
-	
-	T = Tnew
-	emit_signal("temperature_updated")
-
 
 func get_temperature_buffer() -> PackedFloat32Array:
 	return T
