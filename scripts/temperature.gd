@@ -2,7 +2,7 @@ extends Node
 class_name Temperature
 
 signal initialized(size: Vector2i)
-signal temperature_updated() # MVP: 전체 갱신(부분 갱신은 이후)
+signal temperature_updated() # fired when the entire temperature buffer updates
 
 # ---- 설정값(필요 시 인스펙터에서 조절) ----
 @export var k_ground: float = 0.9      # 열전도(상대값)
@@ -28,7 +28,7 @@ var _uranium_cells: PackedInt32Array = PackedInt32Array()
 var size: Vector2i
 var T: PackedFloat32Array        # 현재 온도
 var alpha: PackedFloat32Array    # 확산계수 α = k/(c) (ρ는 상대값에 흡수)
-var solid_mask: PackedByteArray  # 1=고체(전달), 0=빈칸(현재는 전달 안 함)
+var solid_mask: PackedByteArray  # 1=고체(전달), 0=빈칸
 var _last_delta: PackedFloat32Array
 
 # 타일 ID
@@ -65,9 +65,9 @@ func setup_from_tiles(tile_types: PackedInt32Array, grid_size: Vector2i) -> void
 					T[idx] = t_uranium_init
 					alpha[idx] = k_uranium / max(0.0001, c_uranium)
 					solid_mask[idx] = 1
-					_uranium_cells.append(idx) # ← 우라늄 셀 기록
+					_uranium_cells.append(idx) # 우라늄 셀 기록
 				_:
-					# AIR: 계산 제외(마스크 0), 온도는 보조값이나 0으로 둠
+					# Non-solid: excluded from simulation, temperature left at 0
 					T[idx] = 0.0
 					alpha[idx] = 0.0
 					solid_mask[idx] = 0
@@ -75,6 +75,7 @@ func setup_from_tiles(tile_types: PackedInt32Array, grid_size: Vector2i) -> void
 	emit_signal("initialized", size)
 	emit_signal("temperature_updated")
 
+# Advance the temperature simulation by dt seconds
 func on_tick(dt: float) -> void:
 	if T.is_empty():
 		return
@@ -85,6 +86,7 @@ func on_tick(dt: float) -> void:
 	T = Tnew
 	emit_signal("temperature_updated")
 
+# Perform diffusion based on neighbor averaging
 func _diffuse(dt: float) -> PackedFloat32Array:
 	var w: int = size.x
 	var h: int = size.y
@@ -95,14 +97,14 @@ func _diffuse(dt: float) -> PackedFloat32Array:
 		for x in w:
 			var idx: int = y * w + x
 
-			# 공기는 그대로 둠
+			# Skip non-solid cells
 			if solid_mask[idx] == 0:
 				Tnew[idx] = T[idx]
 				continue
 
 			var t_center: float = T[idx]
 
-			# --- 이웃 평균 기반 업데이트 (최댓값 원리 보장) ---
+			# --- 이웃 평균 기반 업데이트 ---
 			var sum_n: float = 0.0
 			var n: int = 0
 

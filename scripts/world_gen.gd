@@ -33,6 +33,7 @@ func generate() -> void:
 	place_uranium(tiles, hmap)
 	emit_signal("generated", tiles, size)
 
+# Build a 1D heightmap representing surface level per column
 func generate_heightmap() -> PackedInt32Array:
 	var hmap: PackedInt32Array = PackedInt32Array()
 	hmap.resize(size.x)
@@ -50,6 +51,7 @@ func generate_heightmap() -> PackedInt32Array:
 	return hmap
 
 func classify_tiles(hmap: PackedInt32Array) -> PackedInt32Array:
+	# Assign AIR/ICE/GROUND based on height and ice noise
 	var n_ice := FastNoiseLite.new()
 	n_ice.seed = seed_ice
 	n_ice.noise_type = FastNoiseLite.TYPE_SIMPLEX
@@ -78,6 +80,7 @@ func classify_tiles(hmap: PackedInt32Array) -> PackedInt32Array:
 	return tiles
 
 func place_uranium(tiles: PackedInt32Array, hmap: PackedInt32Array) -> void:
+	# Scatter uranium veins using noise with a small random chance
 	var n_u := FastNoiseLite.new()
 	n_u.seed = uranium_seed
 	n_u.noise_type = FastNoiseLite.TYPE_SIMPLEX
@@ -90,7 +93,7 @@ func place_uranium(tiles: PackedInt32Array, hmap: PackedInt32Array) -> void:
 		for x in size.x:
 			var idx2: int = y * size.x + x
 			if tiles[idx2] != TILE_GROUND:
-				continue # 얼음/공기는 제외(원하면 얼음에도 드물게 허용 가능)
+				continue # skip non-ground tiles
 
 			var depth2: int = y - hmap[x]
 			if depth2 < uranium_depth_min or depth2 > uranium_depth_max:
