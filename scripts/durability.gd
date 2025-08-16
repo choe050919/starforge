@@ -94,3 +94,5 @@ func on_tile_replaced(cell: Vector2i, from_tile: int, to_tile: int, reason: Stri
 		if m <= 0.0:
 				hp[idx] = 0.0
 		emit_signal("hp_changed", cell, hp[idx], max_hp[idx])
+
+ 

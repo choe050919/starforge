@@ -28,6 +28,7 @@ func _ready() -> void:
 	
 	# signal connect
 	worldgen.generated.connect(_on_world_generated)
+
 	temp.temperature_updated.connect(_on_temperature_updated)
 
 	worldgen.generate()
@@ -68,6 +69,7 @@ func _on_world_generated(tiles: PackedInt32Array, size: Vector2i) -> void:
 	if tchange:
 		tchange.setup(tiles, size)  # 타일 변경 시스템에 현재 맵 전달
 
+
 func _on_temperature_updated() -> void:
 	var T := temp.get_temperature_buffer()
 	var mask := temp.get_solid_mask()
@@ -91,6 +93,7 @@ func _on_tile_destroyed(cell: Vector2i, from_tile: int, reason: StringName) -> v
 		temp.on_tile_destroyed(cell, from_tile, reason)
 
 func _on_tile_replaced(cell: Vector2i, from_tile: int, to_tile: int, reason: StringName) -> void:
+
 	if temp != null:
 		temp.on_tile_replaced(cell, from_tile, to_tile, reason)
 	if durability != null:
