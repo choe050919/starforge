@@ -48,7 +48,6 @@ func _ready() -> void:
 
 	_apply_overlay_state() # 생략 가능
 
-
 func _on_world_generated(tiles: PackedInt32Array, size: Vector2i) -> void:
 	terrain.apply_tiles(tiles, size)
 
@@ -74,7 +73,6 @@ func _on_world_generated(tiles: PackedInt32Array, size: Vector2i) -> void:
 	if tchange:
 		tchange.setup(tiles, size)  # 타일 변경 시스템에 현재 맵 전달
 
-
 func _on_temperature_updated() -> void:
 	var T := temp.get_temperature_buffer()
 	var mask := temp.get_solid_mask()
@@ -85,7 +83,6 @@ func _on_temperature_updated() -> void:
 	if heat_src != null:
 		var dT := temp.get_last_delta()
 		heat_src.render_heat_sources(dT)
-
 
 func _on_tick_sim(dt: float) -> void:
 	if temp:
@@ -117,22 +114,22 @@ func _get_overlay(mode: int) -> CanvasItem:
 		return null
 	if not overlay_paths.has(mode):
 		return null
-	var p: NodePath = overlay_paths[mode]
-	if not has_node(p):
+	var path: NodePath = overlay_paths[mode]
+	if not has_node(path):
 		return null
-	return get_node(p) as CanvasItem
+	return get_node(path) as CanvasItem
 
 func _apply_overlay_state() -> void:
 	# 1) 모든 오버레이 끄기
 	for m in overlay_paths.keys():
-		var n := _get_overlay(m)
-		if n != null:
-			n.visible = false
+		var overlay_node := _get_overlay(m)
+		if overlay_node != null:
+			overlay_node.visible = false
 	# 2) 현재 모드 켜기 (NONE이면 생략)
 	if current_overlay != OverlayMode.NONE:
-		var t := _get_overlay(current_overlay)
-		if t != null:
-			t.visible = true
+		var target_overlay := _get_overlay(current_overlay)
+		if target_overlay != null:
+			target_overlay.visible = true
 
 func set_overlay(mode: int) -> void:
 	if mode == current_overlay:
