@@ -9,6 +9,7 @@ extends Node2D
 @onready var tchange: TileChange = get_node("Systems/TileChange")
 @onready var heat_src: HeatSourceOverlay = get_node("Terrain/HeatSourceOverlay")
 @onready var durability: Durability = get_node("Systems/Durability")
+@onready var crack_overlay: CrackOverlay = get_node("Terrain/CrackOverlay")
 
 enum OverlayMode { NONE, HEATMAP, HEAT_SOURCE }
 
@@ -28,7 +29,6 @@ func _ready() -> void:
 	
 	# signal connect
 	worldgen.generated.connect(_on_world_generated)
-
 	temp.temperature_updated.connect(_on_temperature_updated)
 
 	worldgen.generate()
@@ -41,6 +41,10 @@ func _ready() -> void:
 		tchange.tile_replaced.connect(_on_tile_replaced)
 	if durability != null and tchange != null:
 		durability.break_requested.connect(func(cell: Vector2i): tchange.queue_destroy(cell, &"durability"))
+
+	if durability != null and crack_overlay != null:
+		durability.hp_changed.connect(crack_overlay.on_hp_changed)
+		durability.break_requested.connect(crack_overlay.on_break_requested)
 
 	_apply_overlay_state() # 생략 가능
 
@@ -57,7 +61,8 @@ func _on_world_generated(tiles: PackedInt32Array, size: Vector2i) -> void:
 		heatmap.set_layout(size, ts.tile_size)
 		if heat_src != null:
 			heat_src.set_layout(size, ts.tile_size)   # 오버레이 레이아웃 세팅
-
+		if crack_overlay != null:
+			crack_overlay.set_layout(size)
 
 	# 온도 초기화 + 초기 렌더
 	temp.setup_from_tiles(tiles, size)
@@ -93,7 +98,6 @@ func _on_tile_destroyed(cell: Vector2i, from_tile: int, reason: StringName) -> v
 		temp.on_tile_destroyed(cell, from_tile, reason)
 
 func _on_tile_replaced(cell: Vector2i, from_tile: int, to_tile: int, reason: StringName) -> void:
-
 	if temp != null:
 		temp.on_tile_replaced(cell, from_tile, to_tile, reason)
 	if durability != null:

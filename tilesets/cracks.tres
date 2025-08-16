@@ -1,0 +1,14 @@
+[gd_resource type="TileSet" load_steps=3 format=3 uid="uid://dyepojxtr2r7l"]
+
+[ext_resource type="Texture2D" uid="uid://ch4rb0o4j4o5o" path="res://tilesets/ImageToStl.com_merged-document (1).jpg" id="1_e2tmy"]
+
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_upkdw"]
+texture = ExtResource("1_e2tmy")
+texture_region_size = Vector2i(32, 32)
+0:0/0 = 0
+1:0/0 = 0
+2:0/0 = 0
+
+[resource]
+tile_size = Vector2i(32, 32)
+sources/0 = SubResource("TileSetAtlasSource_upkdw")
