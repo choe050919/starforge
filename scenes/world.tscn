@@ -1,4 +1,4 @@
-[gd_scene load_steps=13 format=3 uid="uid://c5gv3n6byiin7"]
+[gd_scene load_steps=14 format=3 uid="uid://c5gv3n6byiin7"]
 
 [ext_resource type="Script" uid="uid://dgppaejvd18y0" path="res://scripts/world.gd" id="1_f3sb7"]
 [ext_resource type="Script" uid="uid://dsrbjd0kmv17k" path="res://scripts/terrain.gd" id="2_71j4m"]
@@ -10,6 +10,7 @@
 [ext_resource type="Script" uid="uid://dtjuedvsbwjng" path="res://scripts/sim_clock.gd" id="5_qfnet"]
 [ext_resource type="Script" uid="uid://cheovfjbqki2h" path="res://scripts/heatmap_overlay.gd" id="7_4mrxx"]
 [ext_resource type="Script" uid="uid://dl4jofyiuxsbc" path="res://scripts/tile_change.gd" id="8_7r4gi"]
+[ext_resource type="Script" uid="uid://d1vx7d5u9nhpq" path="res://scripts/durability.gd" id="9_d1vx7"]
 [ext_resource type="PackedScene" uid="uid://b1m6vvsvkdw6" path="res://scenes/critter_changer.tscn" id="10_e3hyu"]
 [ext_resource type="Script" uid="uid://b2776qmf4l0o" path="res://scripts/critter_spawner.gd" id="11_q5onr"]
 
@@ -38,6 +39,9 @@ script = ExtResource("5_q5onr")
 
 [node name="WorldGen" type="Node" parent="Systems"]
 script = ExtResource("4_qfnet")
+
+[node name="Durability" type="Node" parent="Systems"]
+script = ExtResource("9_d1vx7")
 
 [node name="Temperature" type="Node" parent="Systems"]
 script = ExtResource("5_i7141")
