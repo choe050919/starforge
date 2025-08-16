@@ -1,4 +1,4 @@
-[gd_scene load_steps=16 format=3 uid="uid://c5gv3n6byiin7"]
+[gd_scene load_steps=19 format=3 uid="uid://c5gv3n6byiin7"]
 
 [ext_resource type="Script" uid="uid://dgppaejvd18y0" path="res://scripts/world.gd" id="1_f3sb7"]
 [ext_resource type="Script" uid="uid://dsrbjd0kmv17k" path="res://scripts/terrain.gd" id="2_71j4m"]
@@ -15,6 +15,9 @@
 [ext_resource type="Script" uid="uid://d1vx7d5vanhpq" path="res://scripts/durability.gd" id="9_d1vx7"]
 [ext_resource type="PackedScene" uid="uid://dvfaso5evvyd" path="res://scenes/critter_breaker.tscn" id="10_bkrkr"]
 [ext_resource type="Script" uid="uid://b2776qmf4l0o" path="res://scripts/critter_spawner.gd" id="11_q5onr"]
+[ext_resource type="Script" uid="uid://db07wrr6kyq4v" path="res://scripts/fluid.gd" id="13_lakw3"]
+[ext_resource type="Script" uid="uid://by6y82yoenlkc" path="res://scripts/gas.gd" id="14_pm21f"]
+[ext_resource type="Script" uid="uid://n7d0orcaljj3" path="res://scripts/phase_change.gd" id="15_2lf6f"]
 
 [node name="World" type="Node2D"]
 script = ExtResource("1_f3sb7")
@@ -51,7 +54,6 @@ script = ExtResource("9_d1vx7")
 
 [node name="Temperature" type="Node" parent="Systems"]
 script = ExtResource("5_i7141")
-uranium_power_per_sec = 300.0
 
 [node name="SimClock" type="Node" parent="Systems"]
 script = ExtResource("5_qfnet")
@@ -61,10 +63,13 @@ script = ExtResource("8_7r4gi")
 terrain_node_path = NodePath("../../Terrain")
 
 [node name="Fluid" type="Node" parent="Systems"]
+script = ExtResource("13_lakw3")
 
 [node name="Gas" type="Node" parent="Systems"]
+script = ExtResource("14_pm21f")
 
 [node name="PhaseChange" type="Node" parent="Systems"]
+script = ExtResource("15_2lf6f")
 
 [node name="Actors" type="Node2D" parent="."]
 

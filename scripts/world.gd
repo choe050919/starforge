@@ -7,6 +7,7 @@ extends Node2D
 @onready var heatmap: HeatmapOverlay = get_node("Terrain/HeatmapOverlay")
 @onready var ground_layer: TileMapLayer = get_node("Terrain/Ground")
 @onready var tchange: TileChange = get_node("Systems/TileChange")
+@onready var fluid: Fluid = get_node("Systems/Fluid")
 @onready var heat_src: HeatSourceOverlay = get_node("Terrain/HeatSourceOverlay")
 @onready var durability: Durability = get_node("Systems/Durability")
 @onready var crack_overlay: CrackOverlay = get_node("Terrain/CrackOverlay")
@@ -48,7 +49,7 @@ func _ready() -> void:
 
 	_apply_overlay_state() # 생략 가능
 
-func _on_world_generated(tiles: PackedInt32Array, size: Vector2i) -> void:
+func _on_world_generated(tiles: PackedInt32Array, size: Vector2i, liquid: PackedFloat32Array, springs: PackedVector2Array) -> void:
 	terrain.apply_tiles(tiles, size)
 
 	# center camera on the map
@@ -69,6 +70,9 @@ func _on_world_generated(tiles: PackedInt32Array, size: Vector2i) -> void:
 
 	if durability:
 		durability.setup_from_tiles(tiles, size)
+
+	if fluid:
+		fluid.setup(liquid, springs, size)
 
 	if tchange:
 		tchange.setup(tiles, size) # 타일 변경 시스템에 현재 맵 전달
