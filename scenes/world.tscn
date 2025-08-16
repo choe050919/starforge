@@ -1,9 +1,10 @@
-[gd_scene load_steps=19 format=3 uid="uid://c5gv3n6byiin7"]
+[gd_scene load_steps=20 format=3 uid="uid://c5gv3n6byiin7"]
 
 [ext_resource type="Script" uid="uid://dgppaejvd18y0" path="res://scripts/world.gd" id="1_f3sb7"]
 [ext_resource type="Script" uid="uid://dsrbjd0kmv17k" path="res://scripts/terrain.gd" id="2_71j4m"]
 [ext_resource type="TileSet" uid="uid://dnn0uacxq48mh" path="res://tilesets/world.tres" id="2_fj7yv"]
 [ext_resource type="Script" uid="uid://cqchm53g3n0d1" path="res://scripts/pan_zoom.gd" id="2_tlwt5"]
+[ext_resource type="Script" uid="uid://da160trn2ljp2" path="res://scripts/liquid_overlay.gd" id="4_pm21f"]
 [ext_resource type="Script" uid="uid://dfoy07ausxoqo" path="res://scripts/world_gen.gd" id="4_qfnet"]
 [ext_resource type="Script" uid="uid://bxaqs1pu0ncum" path="res://scripts/temperature.gd" id="5_i7141"]
 [ext_resource type="Script" uid="uid://bbb78kl6w5u70" path="res://scripts/heat_source_overlay.gd" id="5_q5onr"]
@@ -15,7 +16,7 @@
 [ext_resource type="Script" uid="uid://d1vx7d5vanhpq" path="res://scripts/durability.gd" id="9_d1vx7"]
 [ext_resource type="PackedScene" uid="uid://dvfaso5evvyd" path="res://scenes/critter_breaker.tscn" id="10_bkrkr"]
 [ext_resource type="Script" uid="uid://b2776qmf4l0o" path="res://scripts/critter_spawner.gd" id="11_q5onr"]
-[ext_resource type="Script" uid="uid://db07wrr6kyq4v" path="res://scripts/fluid.gd" id="13_lakw3"]
+[ext_resource type="Script" uid="uid://db07wrr6kyq4v" path="res://scripts/liquid.gd" id="13_lakw3"]
 [ext_resource type="Script" uid="uid://by6y82yoenlkc" path="res://scripts/gas.gd" id="14_pm21f"]
 [ext_resource type="Script" uid="uid://n7d0orcaljj3" path="res://scripts/phase_change.gd" id="15_2lf6f"]
 
@@ -27,6 +28,11 @@ script = ExtResource("2_71j4m")
 
 [node name="Ground" type="TileMapLayer" parent="Terrain"]
 tile_set = ExtResource("2_fj7yv")
+
+[node name="LiquidOverlay" type="Node2D" parent="Terrain"]
+script = ExtResource("4_pm21f")
+
+[node name="Map" type="Sprite2D" parent="Terrain/LiquidOverlay"]
 
 [node name="HeatmapOverlay" type="Node2D" parent="Terrain"]
 visible = false
@@ -62,7 +68,7 @@ script = ExtResource("5_qfnet")
 script = ExtResource("8_7r4gi")
 terrain_node_path = NodePath("../../Terrain")
 
-[node name="Fluid" type="Node" parent="Systems"]
+[node name="Liquid" type="Node" parent="Systems"]
 script = ExtResource("13_lakw3")
 
 [node name="Gas" type="Node" parent="Systems"]

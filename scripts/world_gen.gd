@@ -2,6 +2,7 @@ extends Node
 class_name WorldGen
 
 signal generated(tile_types: PackedInt32Array, size: Vector2i, liquid_amount: PackedFloat32Array, springs: PackedVector2Array)
+
 @export var size: Vector2i = Vector2i(256, 128)
 
 # 노이즈/분포 파라미터

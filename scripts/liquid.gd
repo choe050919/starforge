@@ -1,5 +1,5 @@
 extends Node
-class_name Fluid
+class_name Liquid
 
 # Holds initial liquid amount and spring markers. No simulation yet.
 

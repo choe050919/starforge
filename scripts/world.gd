@@ -7,7 +7,8 @@ extends Node2D
 @onready var heatmap: HeatmapOverlay = get_node("Terrain/HeatmapOverlay")
 @onready var ground_layer: TileMapLayer = get_node("Terrain/Ground")
 @onready var tchange: TileChange = get_node("Systems/TileChange")
-@onready var fluid: Fluid = get_node("Systems/Fluid")
+@onready var liquid: Liquid = get_node("Systems/Liquid")
+@onready var liquid_overlay: LiquidOverlay = get_node("Terrain/LiquidOverlay")
 @onready var heat_src: HeatSourceOverlay = get_node("Terrain/HeatSourceOverlay")
 @onready var durability: Durability = get_node("Systems/Durability")
 @onready var crack_overlay: CrackOverlay = get_node("Terrain/CrackOverlay")
@@ -49,9 +50,8 @@ func _ready() -> void:
 
 	_apply_overlay_state() # 생략 가능
 
-func _on_world_generated(tiles: PackedInt32Array, size: Vector2i, liquid: PackedFloat32Array, springs: PackedVector2Array) -> void:
+func _on_world_generated(tiles: PackedInt32Array, size: Vector2i, liquid_amount: PackedFloat32Array, springs: PackedVector2Array) -> void:
 	terrain.apply_tiles(tiles, size)
-
 	# center camera on the map
 	if has_node("Camera2D") and terrain.ground != null and terrain.ground.tile_set != null:
 		var ts: TileSet = terrain.ground.tile_set
@@ -63,6 +63,9 @@ func _on_world_generated(tiles: PackedInt32Array, size: Vector2i, liquid: Packed
 			heat_src.set_layout(size, ts.tile_size)
 		if crack_overlay != null:
 			crack_overlay.set_layout(size)
+		if liquid_overlay != null:
+			liquid_overlay.set_layout(size, ts.tile_size)
+
 
 	# initialize temperature and first render
 	temp.setup_from_tiles(tiles, size)
@@ -71,11 +74,12 @@ func _on_world_generated(tiles: PackedInt32Array, size: Vector2i, liquid: Packed
 	if durability:
 		durability.setup_from_tiles(tiles, size)
 
-	if fluid:
-		fluid.setup(liquid, springs, size)
-
 	if tchange:
 		tchange.setup(tiles, size) # 타일 변경 시스템에 현재 맵 전달
+	if liquid:
+		liquid.setup(liquid_amount, springs, size)
+	if liquid_overlay != null:
+		liquid_overlay.render(liquid_amount)
 
 func _on_temperature_updated() -> void:
 	var T := temp.get_temperature_buffer()
