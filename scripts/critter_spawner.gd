@@ -2,6 +2,7 @@ extends Node
 class_name CritterSpawner
 
 @export var critter_scene: PackedScene              # ← Critter 프리팹 씬
+@export var builder_scene: PackedScene              # ← Builder 프리팹 씬
 @export_node_path("TileMapLayer") var ground_path   # ← Terrain/Ground를 지정
 @export_node_path("Node") var tile_change_path      # ← Systems/TileChange를 지정
 @export_node_path("Node") var durability_path       # ← Systems/Durability를 지정
@@ -25,10 +26,14 @@ func _unhandled_input(e: InputEvent) -> void:
 	if e is InputEventMouseButton:
 		var mb := e as InputEventMouseButton
 		if mb.button_index == MOUSE_BUTTON_LEFT and mb.pressed:
-			_spawn_at_mouse()
+			_spawn_at_mouse(critter_scene)
+	elif e is InputEventKey:
+		var kb := e as InputEventKey
+		if kb.pressed and kb.keycode == KEY_Q:
+			_spawn_at_mouse(builder_scene)
 
-func _spawn_at_mouse() -> void:
-	if critter_scene == null or _ground == null:
+func _spawn_at_mouse(scene: PackedScene) -> void:
+	if scene == null or _ground == null:
 		push_warning("[Spawner] Missing critter_scene or ground reference.")
 		return
 	# 마우스 → 셀
@@ -44,13 +49,13 @@ func _spawn_at_mouse() -> void:
 			return
 
 	# 인스턴스 생성 → 의존성 주입 → 셀 중심으로 워프
-	var critter := critter_scene.instantiate()
+	var critter := scene.instantiate()
 	if critter == null or not (critter is Node2D):
 		push_error("[Spawner] critter_scene must be a Node2D scene.")
 		return
 	# 보통은 Spawner와 같은 상위(Actors)에 붙임
 	add_child(critter)
-	if critter is CritterChanger and _sys != null:
+	if (critter is CritterChanger or critter is CritterBuilder) and _sys != null:
 		critter.set_dependencies(_sys, _ground)
 	elif critter is CritterBreaker and _dur != null:
 		critter.set_dependencies(_dur, _ground)

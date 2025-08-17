@@ -1,4 +1,4 @@
-[gd_scene load_steps=23 format=3 uid="uid://c5gv3n6byiin7"]
+[gd_scene load_steps=24 format=3 uid="uid://c5gv3n6byiin7"]
 
 [ext_resource type="Script" uid="uid://dgppaejvd18y0" path="res://scripts/world.gd" id="1_f3sb7"]
 [ext_resource type="Script" uid="uid://dsrbjd0kmv17k" path="res://scripts/terrain.gd" id="2_71j4m"]
@@ -21,6 +21,7 @@
 [ext_resource type="Script" uid="uid://by6y82yoenlkc" path="res://scripts/gas.gd" id="14_pm21f"]
 [ext_resource type="Script" uid="uid://n7d0orcaljj3" path="res://scripts/phase_change.gd" id="15_2lf6f"]
 [ext_resource type="Shader" uid="uid://bqtbrwxs4stbe" path="res://shaders/gray_scale.gdshader" id="20_2lf6f"]
+[ext_resource type="PackedScene" uid="uid://b3cc58761avvp" path="res://scenes/critter_builder.tscn" id="21_oo54l"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_7iits"]
 shader = ExtResource("20_2lf6f")
@@ -109,6 +110,7 @@ script = ExtResource("15_2lf6f")
 [node name="Spawner" type="Node2D" parent="Actors"]
 script = ExtResource("11_q5onr")
 critter_scene = ExtResource("10_bkrkr")
+builder_scene = ExtResource("21_oo54l")
 ground_path = NodePath("../../Terrain/Ground")
 tile_change_path = NodePath("../../Systems/TileChange")
 durability_path = NodePath("../../Systems/Durability")
