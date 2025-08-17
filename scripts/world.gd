@@ -12,9 +12,9 @@ extends Node2D
 @onready var tchange: TileChange = get_node("Systems/TileChange")
 @onready var liquid: Liquid = get_node("Systems/Liquid")
 
-@onready var grayscale_overlay: ColorRect = $UIFXLayer/RootControl/GrayscaleOverlay
-@onready var heatmap: HeatmapOverlay = $OverlaysLayer/HeatmapOverlay
-@onready var heat_src: HeatSourceOverlay = $OverlaysLayer/HeatSourceOverlay
+@onready var overlay_manager: OverlayManager = get_node("OverlayManager")
+@onready var heatmap: HeatmapOverlay = overlay_manager.get_overlay(OverlayManager.OverlayMode.HEATMAP) as HeatmapOverlay
+@onready var heat_src: HeatSourceOverlay = overlay_manager.get_overlay(OverlayManager.OverlayMode.HEAT_SOURCE) as HeatSourceOverlay
 
 enum OverlayMode { NONE, HEATMAP, HEAT_SOURCE }
 
@@ -50,8 +50,6 @@ func _ready() -> void:
 	if durability != null and crack_overlay != null:
 		durability.hp_changed.connect(crack_overlay.on_hp_changed)
 		durability.break_requested.connect(crack_overlay.on_break_requested)
-
-	_apply_overlay_state() # 생략 가능
 
 func _on_world_generated(tiles: PackedInt32Array, size: Vector2i, liquid_amount: PackedFloat32Array, springs: PackedVector2Array) -> void:
 	terrain.apply_tiles(tiles, size)
@@ -127,54 +125,6 @@ func _unhandled_input(event: InputEvent) -> void:
 		var e: InputEventKey = event
 		if e.pressed and not e.echo:
 			if e.keycode == KEY_T:
-				toggle_overlay(OverlayMode.HEATMAP)
+				overlay_manager.toggle_overlay(OverlayManager.OverlayMode.HEATMAP)
 			elif e.keycode == KEY_Y:
-				toggle_overlay(OverlayMode.HEAT_SOURCE)
-
-func _get_overlay(mode: int) -> CanvasItem:
-	if mode == OverlayMode.NONE:
-		return null
-	if not overlay_paths.has(mode):
-		return null
-	var path: NodePath = overlay_paths[mode]
-	if not has_node(path):
-		return null
-	return get_node(path) as CanvasItem
-
-func _apply_overlay_state() -> void:
-	# 1) 모든 오버레이 끄기
-	for m in overlay_paths.keys():
-		var overlay_node := _get_overlay(m)
-		if overlay_node != null:
-			overlay_node.visible = false
-	# 2) 흑백화 해제
-	if grayscale_overlay != null:
-		grayscale_overlay.visible = false
-	# 3) 현재 모드 켜기 (NONE이면 생략)
-	if current_overlay != OverlayMode.NONE:
-		var target_overlay := _get_overlay(current_overlay)
-		if target_overlay != null:
-			target_overlay.visible = true
-		if grayscale_overlay != null:
-			grayscale_overlay.visible = true
-
-func set_overlay(mode: int) -> void:
-	if mode == current_overlay:
-		print("overlay ERROR")
-		return
-	current_overlay = mode
-	_apply_overlay_state()
-
-	var name_str: String = "NONE"
-	if mode == OverlayMode.HEATMAP:
-		name_str = "HEATMAP"
-	elif mode == OverlayMode.HEAT_SOURCE:
-		name_str = "HEAT_SOURCE"
-	print("[Overlay] ", name_str)
-
-func toggle_overlay(mode: int) -> void:
-	# 같은 모드를 다시 누르면 NONE으로 전환
-	if current_overlay == mode:
-		set_overlay(OverlayMode.NONE)
-	else:
-		set_overlay(mode)
+				overlay_manager.toggle_overlay(OverlayManager.OverlayMode.HEAT_SOURCE)
