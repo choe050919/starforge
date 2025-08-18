@@ -22,8 +22,8 @@ var current_overlay: int = OverlayMode.NONE
 
 # 오버레이 경로 테이블 (존재하는 것만 등록)
 var overlay_paths := {
-        OverlayMode.HEATMAP:     NodePath("OverlaysLayer/HeatmapOverlay"),
-        OverlayMode.HEAT_SOURCE: NodePath("OverlaysLayer/HeatSourceOverlay"),
+	OverlayMode.HEATMAP:     NodePath("OverlaysLayer/HeatmapOverlay"),
+	OverlayMode.HEAT_SOURCE: NodePath("OverlaysLayer/HeatSourceOverlay"),
 }
 
 var tile_store: TileStore = TileStore.new()
@@ -56,8 +56,8 @@ func _ready() -> void:
 		durability.break_requested.connect(crack_overlay.on_break_requested)
 
 func _on_world_generated(tiles: PackedInt32Array, size: Vector2i, liquid_amount: PackedFloat32Array, springs: PackedVector2Array) -> void:
-        terrain.apply_tiles(tiles, size)
-        tile_store.setup(tiles, size)
+	terrain.apply_tiles(tiles, size)
+	tile_store.setup(tiles, size)
 	# center camera on the map
 	if has_node("Camera2D") and terrain.ground != null and terrain.ground.tile_set != null:
 		var ts: TileSet = terrain.ground.tile_set
@@ -80,8 +80,8 @@ func _on_world_generated(tiles: PackedInt32Array, size: Vector2i, liquid_amount:
 	if durability:
 		durability.setup_from_tiles(tiles, size)
 
-        if tchange:
-                tchange.setup(tile_store, size, event_queue) # 타일 변경 시스템에 현재 맵 전달
+	if tchange:
+		tchange.setup(tile_store, size, event_queue) # 타일 변경 시스템에 현재 맵 전달
 	if liquid:
 		var solid := PackedByteArray()
 		if temp:
@@ -106,12 +106,12 @@ func _on_tick_sim(dt: float) -> void:
 		temp.on_tick(dt)
 	if liquid:
 		liquid.tick_liquid(dt)
-		if liquid_overlay != null:
-			liquid_overlay.render(liquid.get_amounts())
-        if tchange:
-                var events := event_queue.pop_all()
-                if events.size() > 0:
-                        tchange.apply_events(events)
+	if liquid_overlay != null:
+		liquid_overlay.render(liquid.get_amounts())
+	if tchange:
+		var events := event_queue.pop_all()
+		if events.size() > 0:
+			tchange.apply_events(events)
 
 func _on_tile_destroyed(cell: Vector2i, from_tile: int, reason: StringName) -> void:
 	if temp != null:

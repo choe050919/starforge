@@ -24,44 +24,44 @@ func _ready() -> void:
 		_terrain = get_node(terrain_node_path) as Terrain
 
 func setup(store: TileStore, grid_size: Vector2i, queue: EventQueue) -> void:
-        _store = store
-        _queue = queue
-        size = grid_size
+		_store = store
+		_queue = queue
+		size = grid_size
 
 func get_tiles() -> PackedInt32Array:
-        if _store:
-                return _store.get_tiles()
-        return PackedInt32Array()
+		if _store:
+				return _store.get_tiles()
+		return PackedInt32Array()
 
 func queue_replace(cell: Vector2i, to_tile: int, reason: StringName = &"") -> void:
-        if size == Vector2i.ZERO or _queue == null:
-                push_warning("[TileChange] setup() not ready."); return
-        if cell.x < 0 or cell.y < 0 or cell.x >= size.x or cell.y >= size.y:
-                return
-        _queue.push_replace(cell, to_tile, reason)
+	if size == Vector2i.ZERO or _queue == null:
+			push_warning("[TileChange] setup() not ready."); return
+	if cell.x < 0 or cell.y < 0 or cell.x >= size.x or cell.y >= size.y:
+			return
+	_queue.push_replace(cell, to_tile, reason)
 
 func queue_destroy(cell: Vector2i, reason: StringName = &"destroy") -> void:
-        queue_replace(cell, TILE_AIR, reason)
+		queue_replace(cell, TILE_AIR, reason)
 
 func apply_events(events: Array) -> void:
-        if _store == null:
-                return
-        var changed: bool = false
-        for op in events:
-                if op.get("type") != "replace_tile":
-                        continue
-                var cell: Vector2i = op.get("cell", Vector2i.ZERO)
-                var to_tile: int = int(op.get("to", TILE_AIR))
-                var reason: StringName = op.get("reason", &"")
-                var from_tile: int = _store.get_tile(cell)
-                if from_tile == to_tile:
-                        continue
-                _store.set_tile(cell, to_tile)
-                changed = true
-                if _terrain != null:
-                        _terrain.apply_cell_change(cell, to_tile)
-                if to_tile == TILE_AIR:
-                        emit_signal("tile_destroyed", cell, from_tile, reason)
-                emit_signal("tile_replaced", cell, from_tile, to_tile, reason)
-        if changed:
-                emit_signal("cells_changed")
+	if _store == null:
+		return
+	var changed: bool = false
+	for op in events:
+		if op.get("type") != "replace_tile":
+			continue
+		var cell: Vector2i = op.get("cell", Vector2i.ZERO)
+		var to_tile: int = int(op.get("to", TILE_AIR))
+		var reason: StringName = op.get("reason", &"")
+		var from_tile: int = _store.get_tile(cell)
+		if from_tile == to_tile:
+			continue
+		_store.set_tile(cell, to_tile)
+		changed = true
+		if _terrain != null:
+			_terrain.apply_cell_change(cell, to_tile)
+		if to_tile == TILE_AIR:
+			emit_signal("tile_destroyed", cell, from_tile, reason)
+		emit_signal("tile_replaced", cell, from_tile, to_tile, reason)
+	if changed:
+		emit_signal("cells_changed")
