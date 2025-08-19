@@ -1,7 +1,9 @@
 extends Node
 class_name WorldGen
 
-signal generated(tile_types: PackedInt32Array, size: Vector2i, liquid_amount: PackedFloat32Array, springs: PackedVector2Array)
+# signal generated_legacy(tile_types: PackedInt32Array, size: Vector2i, liquid_amount: PackedFloat32Array, springs: PackedVector2Array)
+# legacy
+signal generated(size: Vector2i, phases: PackedByteArray, mass: PackedFloat32Array, tile_types: PackedInt32Array, springs: PackedVector2Array)
 
 @export var size: Vector2i = Vector2i(256, 128)
 
@@ -38,7 +40,28 @@ func generate() -> void:
 	var tiles := classify_tiles(hmap)
 	place_uranium(tiles, hmap)
 	var liquid := generate_liquids(hmap)
-	emit_signal("generated", tiles, size, liquid.amount, liquid.springs)
+
+	# 함수로 분리할지 결정 필요
+	var total := size.x * size.y
+	var phases := PackedByteArray(); phases.resize(total)
+	var mass := PackedFloat32Array(liquid.amount)
+	for i in total:
+		var tile := tiles[i]
+		var ph: int = PhaseStore.VACUUM
+		if tile == TILE_GROUND or tile == TILE_ICE or tile == TILE_URANIUM:
+			ph = PhaseStore.SOLID
+		var m: float = mass[i]
+		if m > 0.0:
+			if ph == PhaseStore.SOLID:
+				m = 0.0
+				mass[i] = 0.0
+			else:
+				ph = PhaseStore.LIQUID
+		phases[i] = ph
+		mass[i] = m
+
+	emit_signal("generated", size, phases, mass, tiles, liquid.springs)
+	# emit_signal("generated_legacy", tiles, size, liquid.amount, liquid.springs)
 
 # Build a 1D heightmap representing surface level per column
 func generate_heightmap() -> PackedInt32Array:

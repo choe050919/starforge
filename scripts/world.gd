@@ -29,6 +29,7 @@ var overlay_paths := {
 var tile_store: TileStore = TileStore.new()
 var event_queue: EventQueue = EventQueue.new()
 var material_db: MaterialDB = MaterialDB.new()
+var data_layer: DataLayer = DataLayer.new()
 
 func _ready() -> void:
 	if worldgen == null:
@@ -38,6 +39,7 @@ func _ready() -> void:
 
 	# connect signals
 	worldgen.generated.connect(_on_world_generated)
+	# worldgen.generated_legacy.connect(_on_world_generated_legacy)
 	temp.temperature_updated.connect(_on_temperature_updated)
 
 	worldgen.generate()
@@ -55,7 +57,38 @@ func _ready() -> void:
 		durability.hp_changed.connect(crack_overlay.on_hp_changed)
 		durability.break_requested.connect(crack_overlay.on_break_requested)
 
-func _on_world_generated(tiles: PackedInt32Array, size: Vector2i, liquid_amount: PackedFloat32Array, springs: PackedVector2Array) -> void:
+func _on_world_generated(size: Vector2i, phases: PackedByteArray, mass: PackedFloat32Array, tiles: PackedInt32Array, springs: PackedVector2Array) -> void:
+	terrain.apply_tiles(tiles, size)
+	tile_store.setup(tiles, size)
+	data_layer.setup(size, phases, mass)
+
+	if has_node("Camera2D") and terrain.ground != null and terrain.ground.tile_set != null:
+		var ts: TileSet = terrain.ground.tile_set
+		var map_px: Vector2 = Vector2(size.x * ts.tile_size.x, size.y * ts.tile_size.y)
+		$Camera2D.position = map_px * 0.5
+		heatmap.set_layout(size, ts.tile_size)
+		if heat_src != null:
+			heat_src.set_layout(size, ts.tile_size)
+		if crack_overlay != null:
+			crack_overlay.set_layout(size)
+		if liquid_overlay != null:
+			liquid_overlay.set_layout(size, ts.tile_size)
+
+	temp.setup_from_tiles(tiles, size)
+	_on_temperature_updated()
+
+	if durability:
+		durability.setup_from_tiles(tiles, size)
+
+	if tchange:
+		tchange.setup(tile_store, size, event_queue)
+	if liquid:
+		liquid.setup(data_layer, springs)
+	if liquid_overlay != null:
+		liquid_overlay.render(mass)
+
+"""
+func _on_world_generated_legacy(tiles: PackedInt32Array, size: Vector2i, liquid_amount: PackedFloat32Array, springs: PackedVector2Array) -> void:
 	terrain.apply_tiles(tiles, size)
 	tile_store.setup(tiles, size)
 	# center camera on the map
@@ -71,7 +104,6 @@ func _on_world_generated(tiles: PackedInt32Array, size: Vector2i, liquid_amount:
 			crack_overlay.set_layout(size)
 		if liquid_overlay != null:
 			liquid_overlay.set_layout(size, ts.tile_size)
-
 
 	# initialize temperature and first render
 	temp.setup_from_tiles(tiles, size)
@@ -89,6 +121,7 @@ func _on_world_generated(tiles: PackedInt32Array, size: Vector2i, liquid_amount:
 		liquid.setup(liquid_amount, springs, size, solid)
 	if liquid_overlay != null:
 		liquid_overlay.render(liquid_amount)
+"""
 
 func _on_temperature_updated() -> void:
 	var T := temp.get_temperature_buffer()
