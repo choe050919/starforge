@@ -16,31 +16,38 @@ extends Node2D
 @onready var heatmap: HeatmapOverlay = overlay_manager.get_overlay(OverlayManager.OverlayMode.HEATMAP) as HeatmapOverlay
 @onready var heat_src: HeatSourceOverlay = overlay_manager.get_overlay(OverlayManager.OverlayMode.HEAT_SOURCE) as HeatSourceOverlay
 
-enum OverlayMode { NONE, HEATMAP, HEAT_SOURCE }
-
-var current_overlay: int = OverlayMode.NONE
-
-# 오버레이 경로 테이블 (존재하는 것만 등록)
-var overlay_paths := {
-	OverlayMode.HEATMAP:     NodePath("OverlaysLayer/HeatmapOverlay"),
-	OverlayMode.HEAT_SOURCE: NodePath("OverlaysLayer/HeatSourceOverlay"),
-}
-
 var tile_store: TileStore = TileStore.new()
 var event_queue: EventQueue = EventQueue.new()
 var material_db: MaterialDB = MaterialDB.new()
 var data_layer: DataLayer = DataLayer.new()
 
-func _ready() -> void:
-	if worldgen == null:
-		push_error("[World] Systems/WorldGen 노드를 찾지 못했습니다."); return
-	if terrain == null:
-		push_error("[World] Terrain 노드를 찾지 못했습니다."); return
+# 경로 주입용
+@export var highlight_path: NodePath
+@export var info_panel_path: NodePath
 
-	# connect signals
-	worldgen.generated.connect(_on_world_generated)
-	# worldgen.generated_legacy.connect(_on_world_generated_legacy)
-	temp.temperature_updated.connect(_on_temperature_updated)
+@onready var input_controller: InputController = get_node("Systems/InputController")
+@onready var hover_service: HoverService = get_node("Systems/HoverService")
+@onready var camera: Camera2D = get_node("Camera2D")
+
+func _ready() -> void:
+        if worldgen == null:
+                push_error("[World] Systems/WorldGen 노드를 찾지 못했습니다."); return
+        if terrain == null:
+                push_error("[World] Terrain 노드를 찾지 못했습니다."); return
+
+        hover_service.set_data_layer(data_layer)
+        input_controller.set_dependencies(data_layer, hover_service)
+        if input_controller != null:
+                input_controller.pan_requested.connect(_on_pan_requested)
+                input_controller.zoom_requested.connect(_on_zoom_requested)
+                input_controller.overlay_toggle_requested.connect(_on_overlay_toggle_requested)
+        if hover_service != null:
+                hover_service.hover_changed.connect(_on_hover_changed)
+
+        # connect signals
+        worldgen.generated.connect(_on_world_generated)
+        # worldgen.generated_legacy.connect(_on_world_generated_legacy)
+        temp.temperature_updated.connect(_on_temperature_updated)
 
 	worldgen.generate()
 
@@ -62,17 +69,18 @@ func _on_world_generated(size: Vector2i, phases: PackedByteArray, mass: PackedFl
 	tile_store.setup(tiles, size)
 	data_layer.setup(size, phases, mass)
 
-	if has_node("Camera2D") and terrain.ground != null and terrain.ground.tile_set != null:
-		var ts: TileSet = terrain.ground.tile_set
-		var map_px: Vector2 = Vector2(size.x * ts.tile_size.x, size.y * ts.tile_size.y)
-		$Camera2D.position = map_px * 0.5
-		heatmap.set_layout(size, ts.tile_size)
-		if heat_src != null:
-			heat_src.set_layout(size, ts.tile_size)
-		if crack_overlay != null:
-			crack_overlay.set_layout(size)
-		if liquid_overlay != null:
-			liquid_overlay.set_layout(size, ts.tile_size)
+        if has_node("Camera2D") and terrain.ground != null and terrain.ground.tile_set != null:
+                var ts: TileSet = terrain.ground.tile_set
+                var map_px: Vector2 = Vector2(size.x * ts.tile_size.x, size.y * ts.tile_size.y)
+                $Camera2D.position = map_px * 0.5
+                heatmap.set_layout(size, ts.tile_size)
+                if heat_src != null:
+                        heat_src.set_layout(size, ts.tile_size)
+                if crack_overlay != null:
+                        crack_overlay.set_layout(size)
+                if liquid_overlay != null:
+                        liquid_overlay.set_layout(size, ts.tile_size)
+                input_controller.set_cell_size(ts.tile_size)
 
 	temp.setup_from_tiles(tiles, size)
 	_on_temperature_updated()
@@ -153,18 +161,24 @@ func _on_tile_destroyed(cell: Vector2i, from_tile: int, reason: StringName) -> v
 		liquid.on_tile_destroyed(cell, from_tile, reason)
 
 func _on_tile_replaced(cell: Vector2i, from_tile: int, to_tile: int, reason: StringName) -> void:
-	if temp != null:
-		temp.on_tile_replaced(cell, from_tile, to_tile, reason)
-	if liquid != null:
-		liquid.on_tile_replaced(cell, from_tile, to_tile, reason)
-	if durability != null:
-		durability.on_tile_replaced(cell, from_tile, to_tile, reason)
+        if temp != null:
+                temp.on_tile_replaced(cell, from_tile, to_tile, reason)
+        if liquid != null:
+                liquid.on_tile_replaced(cell, from_tile, to_tile, reason)
+        if durability != null:
+                durability.on_tile_replaced(cell, from_tile, to_tile, reason)
 
-func _unhandled_input(event: InputEvent) -> void:
-	if event is InputEventKey:
-		var e: InputEventKey = event
-		if e.pressed and not e.echo:
-			if e.keycode == KEY_T:
-				overlay_manager.toggle_overlay(OverlayManager.OverlayMode.HEATMAP)
-			elif e.keycode == KEY_Y:
-				overlay_manager.toggle_overlay(OverlayManager.OverlayMode.HEAT_SOURCE)
+func _on_pan_requested(delta: Vector2) -> void:
+        if camera != null:
+                camera.pan(delta)
+
+func _on_zoom_requested(dir: float) -> void:
+        if camera != null:
+                camera.apply_zoom(dir)
+
+func _on_overlay_toggle_requested(mode: int) -> void:
+        overlay_manager.toggle_overlay(mode)
+
+func _on_hover_changed(cell: Vector2i) -> void:
+        # TODO: highlight hovered tile and update info panel
+        pass

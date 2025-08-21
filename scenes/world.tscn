@@ -1,4 +1,4 @@
-[gd_scene load_steps=24 format=3 uid="uid://c5gv3n6byiin7"]
+[gd_scene load_steps=26 format=3 uid="uid://c5gv3n6byiin7"]
 
 [ext_resource type="Script" uid="uid://dgppaejvd18y0" path="res://scripts/world.gd" id="1_f3sb7"]
 [ext_resource type="Script" uid="uid://dsrbjd0kmv17k" path="res://scripts/terrain.gd" id="2_71j4m"]
@@ -22,6 +22,8 @@
 [ext_resource type="Script" uid="uid://n7d0orcaljj3" path="res://scripts/phase_change.gd" id="15_2lf6f"]
 [ext_resource type="Shader" uid="uid://bqtbrwxs4stbe" path="res://shaders/gray_scale.gdshader" id="20_2lf6f"]
 [ext_resource type="PackedScene" uid="uid://b3cc58761avvp" path="res://scenes/critter_builder.tscn" id="21_oo54l"]
+[ext_resource type="Script" uid="uid://59c3966733db4eb18cb4531c285a4343" path="res://scripts/input_controller.gd" id="22_ictrl"]
+[ext_resource type="Script" uid="uid://bf94325d0452431ebc61f3c9d848eb22" path="res://scripts/hover_service.gd" id="23_hovsvc"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_7iits"]
 shader = ExtResource("20_2lf6f")
@@ -107,8 +109,10 @@ script = ExtResource("14_pm21f")
 script = ExtResource("15_2lf6f")
 
 [node name="InputController" type="Node" parent="Systems"]
+script = ExtResource("22_ictrl")
 
 [node name="HoverService" type="Node" parent="Systems"]
+script = ExtResource("23_hovsvc")
 
 [node name="Actors" type="Node2D" parent="."]
 
