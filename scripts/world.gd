@@ -176,7 +176,7 @@ func _on_zoom_requested(dir: float) -> void:
         if camera != null:
                 camera.apply_zoom(dir)
 
-func _on_overlay_toggle_requested(mode: int) -> void:
+func _on_overlay_toggle_requested(mode: OverlayManager.OverlayMode) -> void:
         overlay_manager.toggle_overlay(mode)
 
 func _on_hover_changed(cell: Vector2i) -> void:

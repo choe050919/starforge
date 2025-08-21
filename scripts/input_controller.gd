@@ -3,7 +3,7 @@ class_name InputController
 
 signal pan_requested(delta: Vector2)
 signal zoom_requested(direction: float)
-signal overlay_toggle_requested(mode: int)
+signal overlay_toggle_requested(mode: OverlayManager.OverlayMode)
 
 var data_layer: DataLayer
 var hover_service: HoverService
@@ -40,9 +40,9 @@ func _unhandled_input(event: InputEvent) -> void:
         elif event.is_action_pressed("zoom_out"):
                 zoom_requested.emit(1.0)
         if event.is_action_pressed("overlay_toggle_heatmap"):
-                overlay_toggle_requested.emit(1) # OverlayManager.OverlayMode.HEATMAP
+                overlay_toggle_requested.emit(OverlayManager.OverlayMode.HEATMAP)
         elif event.is_action_pressed("overlay_toggle_heatsrc"):
-                overlay_toggle_requested.emit(2) # OverlayManager.OverlayMode.HEAT_SOURCE
+                overlay_toggle_requested.emit(OverlayManager.OverlayMode.HEAT_SOURCE)
 
 func _update_hover() -> void:
         if hover_service == null:
