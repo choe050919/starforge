@@ -106,6 +106,8 @@ script = ExtResource("14_pm21f")
 [node name="PhaseChange" type="Node" parent="Systems"]
 script = ExtResource("15_2lf6f")
 
+[node name="InputController" type="Node" parent="Systems"]
+
 [node name="Actors" type="Node2D" parent="."]
 
 [node name="Spawner" type="Node2D" parent="Actors"]
