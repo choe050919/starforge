@@ -143,5 +143,6 @@ func _on_overlay_toggle_requested(mode: OverlayManager.OverlayMode) -> void:
 		overlay_manager.toggle_overlay(mode)
 
 func _on_hover_changed(cell: Vector2i) -> void:
-		# TODO: highlight hovered tile and update info panel
-		pass
+	# TODO: highlight hovered tile and update info panel
+	
+	pass

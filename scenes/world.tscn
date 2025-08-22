@@ -1,4 +1,4 @@
-[gd_scene load_steps=26 format=3 uid="uid://c5gv3n6byiin7"]
+[gd_scene load_steps=28 format=3 uid="uid://c5gv3n6byiin7"]
 
 [ext_resource type="Script" uid="uid://dgppaejvd18y0" path="res://scripts/world.gd" id="1_f3sb7"]
 [ext_resource type="Script" uid="uid://dsrbjd0kmv17k" path="res://scripts/terrain.gd" id="2_71j4m"]
@@ -13,7 +13,9 @@
 [ext_resource type="TileSet" uid="uid://dyepojxtr2r7l" path="res://tilesets/cracks.tres" id="6_xo05s"]
 [ext_resource type="Script" uid="uid://cheovfjbqki2h" path="res://scripts/heatmap_overlay.gd" id="7_4mrxx"]
 [ext_resource type="Script" uid="uid://c7wi2g2m2x6vj" path="res://scripts/overlay_manager.gd" id="7_7iits"]
+[ext_resource type="Texture2D" uid="uid://drcw3d5sjondu" path="res://icon.svg" id="7_munwf"]
 [ext_resource type="Script" uid="uid://dl4jofyiuxsbc" path="res://scripts/tile_change.gd" id="8_7r4gi"]
+[ext_resource type="Script" uid="uid://dwqjgykotlorq" path="res://scripts/corner_highlight.gd" id="8_ts3gi"]
 [ext_resource type="Script" uid="uid://d1vx7d5vanhpq" path="res://scripts/durability.gd" id="9_d1vx7"]
 [ext_resource type="PackedScene" uid="uid://dvfaso5evvyd" path="res://scenes/critter_breaker.tscn" id="10_bkrkr"]
 [ext_resource type="Script" uid="uid://b2776qmf4l0o" path="res://scripts/critter_spawner.gd" id="11_q5onr"]
@@ -45,6 +47,11 @@ script = ExtResource("4_pm21f")
 [node name="CrackOverlay" type="TileMapLayer" parent="Terrain"]
 tile_set = ExtResource("6_xo05s")
 script = ExtResource("6_o8fc1")
+
+[node name="CornerHighlight" type="Sprite2D" parent="Terrain"]
+texture = ExtResource("7_munwf")
+centered = false
+script = ExtResource("8_ts3gi")
 
 [node name="OverlayManager" type="Node" parent="."]
 script = ExtResource("7_7iits")
