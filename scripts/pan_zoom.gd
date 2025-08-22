@@ -1,35 +1,21 @@
 extends Camera2D
 
-@export var pan_button: MouseButton = MOUSE_BUTTON_RIGHT
 @export var pan_speed: float = 1.0            # 드래그 감도 (1.0 기본)
 @export var zoom_step: float = 0.1
 @export var min_zoom: float = 0.5
 @export var max_zoom: float = 3.0
 @export var zoom_lerp_speed: float = 12.0     # 줌 보간 속도(크면 더 빠르게 붙음)
 
-var _panning: bool = false
 var _target_zoom: float = 1.0                 # 실제 zoom.x와 동기
 
 func _ready() -> void:
-	_target_zoom = zoom.x
+		_target_zoom = zoom.x
 
-func _input(e: InputEvent) -> void:
-	if e is InputEventMouseButton:
-		var mb := e as InputEventMouseButton
+func pan(delta: Vector2) -> void:
+		position -= delta * (_target_zoom * pan_speed)
 
-		if mb.button_index == pan_button:
-			_panning = mb.pressed
-
-		elif mb.pressed and mb.button_index == MOUSE_BUTTON_WHEEL_UP:
-			_zoom_towards_cursor(-zoom_step)
-
-		elif mb.pressed and mb.button_index == MOUSE_BUTTON_WHEEL_DOWN:
-			_zoom_towards_cursor(+zoom_step)
-
-	elif e is InputEventMouseMotion and _panning:
-		var mm := e as InputEventMouseMotion
-		# 화면 기준 상대 이동을 월드 이동으로 환산 (줌 반영)
-		position -= mm.relative * (_target_zoom * pan_speed)
+func apply_zoom(direction: float) -> void:
+	_zoom_towards_cursor(direction * zoom_step)
 
 func _process(dt: float) -> void:
 	# 줌 부드럽게 보간
