@@ -46,7 +46,6 @@ func _ready() -> void:
 
 	# connect signals
 	worldgen.generated.connect(_on_world_generated)
-	# worldgen.generated_legacy.connect(_on_world_generated_legacy)
 	temp.temperature_updated.connect(_on_temperature_updated)
 
 	worldgen.generate()
@@ -94,42 +93,6 @@ func _on_world_generated(size: Vector2i, phases: PackedByteArray, mass: PackedFl
 		liquid.setup(data_layer, springs)
 	if liquid_overlay != null:
 		liquid_overlay.render(mass)
-
-"""
-func _on_world_generated_legacy(tiles: PackedInt32Array, size: Vector2i, liquid_amount: PackedFloat32Array, springs: PackedVector2Array) -> void:
-	terrain.apply_tiles(tiles, size)
-	tile_store.setup(tiles, size)
-	# center camera on the map
-	if has_node("Camera2D") and terrain.ground != null and terrain.ground.tile_set != null:
-		var ts: TileSet = terrain.ground.tile_set
-		var map_px: Vector2 = Vector2(size.x * ts.tile_size.x, size.y * ts.tile_size.y)
-		$Camera2D.position = map_px * 0.5
-		# adjust overlays to tile size
-		heatmap.set_layout(size, ts.tile_size)
-		if heat_src != null:
-			heat_src.set_layout(size, ts.tile_size)
-		if crack_overlay != null:
-			crack_overlay.set_layout(size)
-		if liquid_overlay != null:
-			liquid_overlay.set_layout(size, ts.tile_size)
-
-	# initialize temperature and first render
-	temp.setup_from_tiles(tiles, size)
-	_on_temperature_updated() # 첫 프레임 그리기
-
-	if durability:
-		durability.setup_from_tiles(tiles, size)
-
-	if tchange:
-		tchange.setup(tile_store, size, event_queue) # 타일 변경 시스템에 현재 맵 전달
-	if liquid:
-		var solid := PackedByteArray()
-		if temp:
-			solid = temp.get_solid_mask()
-		liquid.setup(liquid_amount, springs, size, solid)
-	if liquid_overlay != null:
-		liquid_overlay.render(liquid_amount)
-"""
 
 func _on_temperature_updated() -> void:
 	var T := temp.get_temperature_buffer()

@@ -14,11 +14,11 @@ func set_data_layer(dl: DataLayer) -> void:
 		print("[HoverService] DataLayer injected: SUCCESS")
 
 func update_hover(cell: Vector2i) -> void:
-		if data_layer == null:
-				return
-		if not data_layer.index.in_bounds(cell):
-				cell = Vector2i(-1, -1)
-		if cell == _current:
-				return
-		_current = cell
-		hover_changed.emit(cell)
+	if data_layer == null:
+		return
+	if not data_layer.index.in_bounds(cell):
+		cell = Vector2i(-1, -1)
+	if cell == _current:
+		return
+	_current = cell
+	hover_changed.emit(cell)
