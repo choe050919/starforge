@@ -11,7 +11,7 @@ config_version=5
 [application]
 
 config/name="StarForge"
-config/version="0.0.4.0"
+config/version="0.0.4.1"
 run/main_scene="uid://c5gv3n6byiin7"
 config/features=PackedStringArray("4.4", "Forward Plus")
 config/icon="res://icon.svg"
@@ -19,26 +19,52 @@ config/icon="res://icon.svg"
 [input]
 
 select={
-"deadzone":0.5,
-"events":[{"type":"InputEventMouseButton","button_index":1}]
+"deadzone": 0.5,
+"events": [{
+"button_index": 1,
+"type": "InputEventMouseButton"
+}, Object(InputEventMouseButton,"resource_local_to_scene":false,"resource_name":"","device":-1,"window_id":0,"alt_pressed":false,"shift_pressed":false,"ctrl_pressed":false,"meta_pressed":false,"button_mask":1,"position":Vector2(252, 7),"global_position":Vector2(261, 55),"factor":1.0,"button_index":1,"canceled":false,"pressed":true,"double_click":false,"script":null)
+]
 }
 pan={
-"deadzone":0.5,
-"events":[{"type":"InputEventMouseButton","button_index":2}]
+"deadzone": 0.5,
+"events": [{
+"button_index": 2,
+"type": "InputEventMouseButton"
+}, Object(InputEventMouseButton,"resource_local_to_scene":false,"resource_name":"","device":-1,"window_id":0,"alt_pressed":false,"shift_pressed":false,"ctrl_pressed":false,"meta_pressed":false,"button_mask":2,"position":Vector2(226, 19),"global_position":Vector2(235, 67),"factor":1.0,"button_index":2,"canceled":false,"pressed":true,"double_click":false,"script":null)
+]
 }
 zoom_in={
-"deadzone":0.5,
-"events":[{"type":"InputEventMouseButton","button_index":4}]
+"deadzone": 0.5,
+"events": [{
+"button_index": 4,
+"type": "InputEventMouseButton"
+}, Object(InputEventMouseButton,"resource_local_to_scene":false,"resource_name":"","device":-1,"window_id":0,"alt_pressed":false,"shift_pressed":false,"ctrl_pressed":false,"meta_pressed":false,"button_mask":8,"position":Vector2(563, 23),"global_position":Vector2(572, 71),"factor":1.0,"button_index":4,"canceled":false,"pressed":true,"double_click":false,"script":null)
+]
 }
 zoom_out={
-"deadzone":0.5,
-"events":[{"type":"InputEventMouseButton","button_index":5}]
+"deadzone": 0.5,
+"events": [{
+"button_index": 5,
+"type": "InputEventMouseButton"
+}, Object(InputEventMouseButton,"resource_local_to_scene":false,"resource_name":"","device":-1,"window_id":0,"alt_pressed":false,"shift_pressed":false,"ctrl_pressed":false,"meta_pressed":false,"button_mask":16,"position":Vector2(422, 18),"global_position":Vector2(431, 66),"factor":1.0,"button_index":5,"canceled":false,"pressed":true,"double_click":false,"script":null)
+]
 }
 overlay_toggle_heatmap={
-"deadzone":0.5,
-"events":[{"type":"InputEventKey","keycode":84,"physical_keycode":84}]
+"deadzone": 0.5,
+"events": [{
+"keycode": 84,
+"physical_keycode": 84,
+"type": "InputEventKey"
+}, Object(InputEventKey,"resource_local_to_scene":false,"resource_name":"","device":-1,"window_id":0,"alt_pressed":false,"shift_pressed":false,"ctrl_pressed":false,"meta_pressed":false,"pressed":false,"keycode":0,"physical_keycode":84,"key_label":0,"unicode":116,"location":0,"echo":false,"script":null)
+]
 }
 overlay_toggle_heatsrc={
-"deadzone":0.5,
-"events":[{"type":"InputEventKey","keycode":89,"physical_keycode":89}]
+"deadzone": 0.5,
+"events": [{
+"keycode": 89,
+"physical_keycode": 89,
+"type": "InputEventKey"
+}, Object(InputEventKey,"resource_local_to_scene":false,"resource_name":"","device":-1,"window_id":0,"alt_pressed":false,"shift_pressed":false,"ctrl_pressed":false,"meta_pressed":false,"pressed":false,"keycode":0,"physical_keycode":89,"key_label":0,"unicode":121,"location":0,"echo":false,"script":null)
+]
 }
