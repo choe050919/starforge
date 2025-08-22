@@ -22,7 +22,7 @@ func _ready() -> void:
 		_dur = get_node(durability_path) as Durability
 	_rng.randomize()
 
-func _unhandled_input(e: InputEvent) -> void:
+func _unhandled_input(e: InputEvent) -> void: # 테스트용 임시 코드이기에 input_controller 밖에서 처리 중
 	if e is InputEventMouseButton:
 		var mb := e as InputEventMouseButton
 		if mb.button_index == MOUSE_BUTTON_LEFT and mb.pressed:

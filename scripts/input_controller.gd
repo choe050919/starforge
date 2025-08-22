@@ -43,11 +43,11 @@ func _unhandled_input(event: InputEvent) -> void:
 		overlay_toggle_requested.emit(OverlayManager.OverlayMode.HEAT_SOURCE)
 
 func _update_hover() -> void:
-		if hover_service == null:
-				return
-		var cam := get_viewport().get_camera_2d()
-		if cam == null:
-				return
-		var world_pos := cam.get_global_mouse_position()
-		var cell := Vector2i(floor(world_pos.x / cell_size.x), floor(world_pos.y / cell_size.y))
-		hover_service.update_hover(cell)
+	if hover_service == null:
+		return
+	var cam := get_viewport().get_camera_2d()
+	if cam == null:
+		return
+	var world_pos := cam.get_global_mouse_position()
+	var cell := Vector2i(floor(world_pos.x / cell_size.x), floor(world_pos.y / cell_size.y))
+	hover_service.update_hover(cell)

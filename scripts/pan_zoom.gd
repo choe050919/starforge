@@ -15,20 +15,20 @@ func pan(delta: Vector2) -> void:
 		position -= delta * (_target_zoom * pan_speed)
 
 func apply_zoom(direction: float) -> void:
-		_zoom_towards_cursor(direction * zoom_step)
+	_zoom_towards_cursor(direction * zoom_step)
 
 func _process(dt: float) -> void:
-		# 줌 부드럽게 보간
-		var z: float = lerp(zoom.x, _target_zoom, clamp(zoom_lerp_speed * dt, 0.0, 1.0))
-		zoom = Vector2.ONE * z
+	# 줌 부드럽게 보간
+	var z: float = lerp(zoom.x, _target_zoom, clamp(zoom_lerp_speed * dt, 0.0, 1.0))
+	zoom = Vector2.ONE * z
 
 func _zoom_towards_cursor(delta_step: float) -> void:
-		var before_mouse_world := get_global_mouse_position()
+	var before_mouse_world := get_global_mouse_position()
 
-		_target_zoom = clamp(_target_zoom + delta_step, min_zoom, max_zoom)
-		# 즉시 살짝 반영해서 포인트 보정 정확도 ↑
-		zoom = Vector2.ONE * _target_zoom
+	_target_zoom = clamp(_target_zoom + delta_step, min_zoom, max_zoom)
+	# 즉시 살짝 반영해서 포인트 보정 정확도 ↑
+	zoom = Vector2.ONE * _target_zoom
 
-		var after_mouse_world := get_global_mouse_position()
-		# 커서 아래 포인트 고정: 줌으로 바뀐 만큼 카메라 위치를 되돌림
-		position += (before_mouse_world - after_mouse_world)
+	var after_mouse_world := get_global_mouse_position()
+	# 커서 아래 포인트 고정: 줌으로 바뀐 만큼 카메라 위치를 되돌림
+	position += (before_mouse_world - after_mouse_world)
