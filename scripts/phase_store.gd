@@ -1,5 +1,7 @@
 class_name PhaseStore
 
+signal phase_changed(cell: Vector2i) # 셀 1개 변경
+
 const VACUUM := 0
 const SOLID := 1
 const LIQUID := 2
@@ -38,9 +40,12 @@ func is_gas(cell: Vector2i) -> bool:
 func is_vacuum(cell: Vector2i) -> bool:
 	return get_phase(cell) == VACUUM
 
-func _set_internal(cell: Vector2i, phase: int) -> void:
-	if _index.in_bounds(cell):
-		_data[_index.idx(cell)] = phase
-
 func get_raw() -> PackedByteArray: # data 전체 반환
 	return _data
+
+func _set_internal(cell: Vector2i, phase: int) -> void:
+	if not _index.in_bounds(cell):
+		push_error("[PhaseStore] wrong Vector2i value")
+		return
+	_data[_index.idx(cell)] = phase
+	emit_signal("phase_changed", cell)

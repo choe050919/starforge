@@ -1,6 +1,7 @@
-[gd_scene load_steps=2 format=3 uid="uid://balj4m27d4euf"]
+[gd_scene load_steps=3 format=3 uid="uid://balj4m27d4euf"]
 
 [ext_resource type="Script" uid="uid://smqt0eyp1ywq" path="res://scripts/tile_info_hud.gd" id="1_sj014"]
+[ext_resource type="Script" uid="uid://btffupy1f8216" path="res://scripts/tile_info_tracker.gd" id="2_1f1er"]
 
 [node name="TileInfoHUD" type="Control"]
 layout_mode = 3
@@ -31,3 +32,4 @@ layout_mode = 2
 layout_mode = 2
 
 [node name="TileInfoTracker" type="Node" parent="."]
+script = ExtResource("2_1f1er")

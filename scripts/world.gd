@@ -20,6 +20,9 @@ extends Node2D
 @onready var heatmap: HeatmapOverlay = overlay_manager.get_overlay(OverlayManager.OverlayMode.HEATMAP) as HeatmapOverlay
 @onready var heat_src: HeatSourceOverlay = overlay_manager.get_overlay(OverlayManager.OverlayMode.HEAT_SOURCE) as HeatSourceOverlay
 
+@onready var tile_info_hud: TileInfoHUD = $UIFXLayer/TileInfoHUD
+var tile_info_tracker: TileInfoTracker
+
 var tile_store: TileStore = TileStore.new()
 var event_queue: EventQueue = EventQueue.new()
 var material_db: MaterialDB = MaterialDB.new()
@@ -41,6 +44,7 @@ func _ready() -> void:
 		input.overlay_toggle_requested.connect(_on_overlay_toggle_requested)
 	if hover_service != null:
 		hover_service.hover_changed.connect(_on_hover_changed)
+	tile_info_tracker = tile_info_hud.get_node("TileInfoTracker") as TileInfoTracker
 
 	# connect signals
 	worldgen.generated.connect(_on_world_generated)
@@ -93,6 +97,8 @@ func _on_world_generated(size: Vector2i, phases: PackedByteArray, mass: PackedFl
 	if liquid_overlay != null:
 		liquid_overlay.render(mass)
 
+	tile_info_hud.setup(hover_service, data_layer.index, data_layer.phase)
+
 func _on_temperature_updated() -> void:
 	var T := temp.get_temperature_buffer()
 	var mask := temp.get_solid_mask()
@@ -143,4 +149,4 @@ func _on_overlay_toggle_requested(mode: OverlayManager.OverlayMode) -> void:
 
 func _on_hover_changed(cell: Vector2i) -> void:
 	corner_highlight.show_cell(cell)
-	# TODO
+	tile_info_tracker.on_hover_changed(cell)
