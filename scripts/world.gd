@@ -97,7 +97,7 @@ func _on_world_generated(size: Vector2i, phases: PackedByteArray, mass: PackedIn
 	if liquid_overlay != null:
 		liquid_overlay.render(mass)
 
-	tile_info_hud.setup(hover_service, data_layer.index, data_layer.phase)
+	tile_info_hud.setup(hover_service, data_layer.index, data_layer.phase, data_layer.mass)
 
 func _on_temperature_updated() -> void:
 	var T := temp.get_temperature_buffer()

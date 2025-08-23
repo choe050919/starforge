@@ -14,22 +14,25 @@ offset_right = 40.0
 offset_bottom = 40.0
 mouse_filter = 2
 
-[node name="Phase" type="HBoxContainer" parent="TileInfoPanel"]
+[node name="VBoxContainer" type="VBoxContainer" parent="TileInfoPanel"]
 layout_mode = 2
 
-[node name="PhaseIcon" type="TextureRect" parent="TileInfoPanel/Phase"]
+[node name="Phase" type="HBoxContainer" parent="TileInfoPanel/VBoxContainer"]
 layout_mode = 2
 
-[node name="PhaseLabel" type="Label" parent="TileInfoPanel/Phase"]
+[node name="PhaseIcon" type="TextureRect" parent="TileInfoPanel/VBoxContainer/Phase"]
 layout_mode = 2
 
-[node name="TODO" type="HBoxContainer" parent="TileInfoPanel"]
+[node name="PhaseLabel" type="Label" parent="TileInfoPanel/VBoxContainer/Phase"]
 layout_mode = 2
 
-[node name="TODOIcon" type="TextureRect" parent="TileInfoPanel/TODO"]
+[node name="Mass" type="HBoxContainer" parent="TileInfoPanel/VBoxContainer"]
 layout_mode = 2
 
-[node name="TODOLabel" type="Label" parent="TileInfoPanel/TODO"]
+[node name="MassIcon" type="TextureRect" parent="TileInfoPanel/VBoxContainer/Mass"]
+layout_mode = 2
+
+[node name="MassLabel" type="Label" parent="TileInfoPanel/VBoxContainer/Mass"]
 layout_mode = 2
 
 [node name="TileInfoTracker" type="Node" parent="."]

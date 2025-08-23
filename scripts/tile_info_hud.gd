@@ -1,11 +1,11 @@
 extends Control
 class_name TileInfoHUD
 
-@onready var tile_info_panel: PanelContainer = $TileInfoPanel
 @onready var tile_info_tracker: TileInfoTracker = $TileInfoTracker
 
 @onready var _panel: PanelContainer = $TileInfoPanel
-@onready var _phase_label: Label = $TileInfoPanel/Phase/PhaseLabel
+@onready var _phase_label: Label = $TileInfoPanel/VBoxContainer/Phase/PhaseLabel
+@onready var _mass_label: Label = $TileInfoPanel/VBoxContainer/Mass/MassLabel
 
 @export var offset := Vector2(14, 18)   # 커서와 겹치지 않도록
 @export var edge_margin := 8.0          # 화면 가장자리 여백
@@ -26,8 +26,8 @@ const PHASE_COLOR := {                 # 선택: Label 폰트 색 등
 	 3: Color(0.7,0.8,0.95),
 }
 
-func setup(hs: HoverService, gi: GridIndex, ps: PhaseStore) -> void:
-	tile_info_tracker.setup(hs, gi, ps)
+func setup(hs: HoverService, gi: GridIndex, ps: PhaseStore, ms: MassStore) -> void:
+	tile_info_tracker.setup(hs, gi, ps, ms)
 	tile_info_tracker.connect("info_updated", _on_info_updated)
 
 func _on_info_updated(info: Dictionary) -> void:
@@ -40,9 +40,27 @@ func _on_info_updated(info: Dictionary) -> void:
 	_phase_label.add_theme_color_override("font_color", col)
 	# _phase_icon.texture = ... (아이콘 매핑을 쓴다면 여기서 교체)
 
+	_update_mass(info)
+
 	# 패널이 꺼져 있으면 켠다(hover 연결을 안 쓴 경우 대비)
 	if not _panel.visible:
 		_panel.show()
+
+func _update_mass(info: Dictionary) -> void:
+	var raw = info.get("mass", null)
+	var mass_val: int
+	if raw == null:
+		mass_val = -1
+	else:
+		mass_val = int(raw)
+
+	var text: String
+	if mass_val == -1:
+		text = "—"
+	else:
+		text = "%d mg" % mass_val  # 자리수는 취향대로
+
+	_mass_label.text = text
 
 func _process(delta: float) -> void:
 	if not visible:
@@ -51,9 +69,9 @@ func _process(delta: float) -> void:
 	var target := get_viewport().get_mouse_position()# + offset
 	target = _anti_clip(target)
 	if smoothing > 0.0:
-		tile_info_panel.global_position = global_position.lerp(target, clamp(smoothing, 0.0, 1.0))
+		_panel.global_position = global_position.lerp(target, clamp(smoothing, 0.0, 1.0))
 	else:
-		tile_info_panel.global_position = target
+		_panel.global_position = target
 
 func _anti_clip(p: Vector2) -> Vector2:
 	# 화면 밖 방지(우하 우선 배치, 안되면 좌/상쪽으로 밀어넣기)

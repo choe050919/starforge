@@ -13,8 +13,7 @@ var hover_service: HoverService
 
 # 세분화 푸시: 필요한 스토어들
 var phase_store: PhaseStore
-var durability_store: Node       # expects: signal durability_changed(cell: Vector2i)
-var temperature_store: Node      # expects: signal temperature_changed(cell: Vector2i)
+var mass_store: MassStore
 
 # 경계 체크용 인덱스
 var index: GridIndex
@@ -26,16 +25,14 @@ var _has_focus: bool = false             # hover 중 여부(hover_cleared 대응
 func _ready() -> void:
 	_connect_sources()
 
-func setup(hs: HoverService, gi: GridIndex, ps: PhaseStore, ds: Node = null, ts: Node = null) -> void:
+func setup(hs: HoverService, gi: GridIndex, ps: PhaseStore, ms: MassStore) -> void:
 	hover_service = hs
 	index = gi
 	phase_store = ps
-	durability_store = ds
-	temperature_store = ts
 	_connect_sources()
 
 	if info_provider:
-		info_provider.setup(ps, gi)
+		info_provider.setup(ps, ms, gi)
 	else:
 		push_error("[TileInfoTracker] 어쩌구저쩌구 귀찮다")
 
@@ -49,10 +46,8 @@ func _connect_sources() -> void:
 	# Stores (세분화된 푸시)
 	if phase_store and phase_store.has_signal("phase_changed"):
 		phase_store.phase_changed.connect(_on_phase_changed)
-	#if durability_store and durability_store.has_signal("durability_changed"):
-		#durability_store.durability_changed.connect(_on_durability_changed)
-	#if temperature_store and temperature_store.has_signal("temperature_changed"):
-		#temperature_store.temperature_changed.connect(_on_temperature_changed)
+	if mass_store and mass_store.has_signal("mass_changed"):
+		mass_store.mass_changed.connect(_on_mass_changed)
 
 ## ── Hover 수신 ────────────────────────────────────────────────────────
 func on_hover_changed(cell: Vector2i,) -> void:
@@ -76,17 +71,9 @@ func _on_phase_changed(cell: Vector2i) -> void:
 	if cell == _current_cell:
 		_emit_full_info_now()
 
-#func _on_durability_changed(cell: Vector2i) -> void:
-	#if cell == _current_cell:
-		#_emit_full_info_now()
-#
-#func _on_temperature_changed(cell: Vector2i) -> void:
-	#if cell == _current_cell:
-		#_emit_full_info_now()
-#
-#func _on_liquid_changed(cell: Vector2i) -> void:
-	#if cell == _current_cell:
-		#_emit_full_info_now()
+func _on_mass_changed(cell: Vector2i) -> void:
+	if cell == _current_cell:
+		_emit_full_info_now()
 
 ## ── 조회 & 발행 ───────────────────────────────────────────────────────
 func _emit_full_info_now() -> void:

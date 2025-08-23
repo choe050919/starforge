@@ -3,31 +3,40 @@ class_name TileInfoProvider
 ## 한 셀의 표시용 정보를 묶어서 돌려주는 조회기.
 
 # ── 의존성 ────────────────────────────────────────────────
-var _phase_store: PhaseStore
 var _grid_index: GridIndex
+var _phase_store: PhaseStore
+var _mass_store: MassStore
 
-func setup(ps: PhaseStore, gi: GridIndex = null) -> void:
+# ── 설정 ─────────────────────────────────────────────────
+func setup(ps: PhaseStore, ms: MassStore, gi: GridIndex = null) -> void:
 	_phase_store = ps
 	_grid_index = gi
+	_mass_store = ms
 
 func is_ready() -> bool:
 	if not _phase_store.has_method("get_phase"):
 		push_warning("[TileInfoProvider] Missing method: PhaseStore.get_phase")
+		return false
+	if not _mass_store.has_method("get_mass"):
+		push_warning("[TileInfoProvider] Missing method: PhaseStore.get_mass")
 		return false
 	else: return true
 
 # ── 조회 API ──────────────────────────────────────────────
 func query(cell: Vector2i):
 	# 반환: TileInfo(권장) 또는 Dictionary(대체). 패널이 enum→문자열 매핑을 맡는다.
+	# 준비 안 됐으면 UNKNOWN만 채워서 반환
 	if not is_ready():
-		return _make_info(cell, UNKNOWN_PHASE())
+		return _make_info(cell, UNKNOWN_PHASE(), -1)
 
 	if _grid_index and _grid_index.has_method("in_bounds") and not _grid_index.in_bounds(cell):
 		push_warning("[TileInfoProvider] cell is not in bounds")
-		return _make_info(cell, UNKNOWN_PHASE())
+		return _make_info(cell, UNKNOWN_PHASE(), -1)
 
 	var phase_val := _read_phase(cell)
-	return _make_info(cell, phase_val)
+	var mass_val: float = _read_mass(cell)  # 없으면 NAN
+
+	return _make_info(cell, phase_val, mass_val)
 
 # ── 내부 유틸 ─────────────────────────────────────────────
 func _read_phase(cell: Vector2i) -> int:
@@ -37,11 +46,19 @@ func _read_phase(cell: Vector2i) -> int:
 		p = int(_phase_store.get_phase(cell))
 	return p
 
+func _read_mass(cell: Vector2i) -> int:
+	# MassStore가 없거나 메서드가 없으면 NAN을 반환(표시는 HUD에서 "—")
+	if _mass_store == null:
+		return -1
+	if _mass_store.has_method("get_mass"):
+		return _mass_store.get_mass(_grid_index.idx(cell))
+	return -1
+
 func UNKNOWN_PHASE() -> int:
 	# 프로젝트 enum에 sentinel이 없다면 -1을 UNKNOWN으로 사용
 	return -1
 
-func _make_info(cell: Vector2i, phase_val: int):
+func _make_info(cell: Vector2i, phase_val: int, mass_val: int):
 	# 프로젝트에 TileInfo 클래스가 있으면 그걸 사용하고, 없으면 Dictionary로 반환.
 	if ClassDB.class_exists("TileInfo"):
 		#var info = TileInfo.new()
@@ -59,5 +76,6 @@ func _make_info(cell: Vector2i, phase_val: int):
 	else:
 		return {
 			"cell": cell,
-			"phase": phase_val
+			"phase": phase_val,
+			"mass": mass_val,
 		}
