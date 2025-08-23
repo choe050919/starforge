@@ -68,9 +68,9 @@ func tick_liquid(_dt: float) -> void:
 		if final[i] <= 0.0 and phases.get_by_index(i) == PhaseStore.LIQUID:
 			phases._set_internal(idx.cell(i), PhaseStore.VACUUM)
 
-func get_amounts() -> PackedFloat32Array:
+func get_amounts() -> PackedInt64Array:
 	if data == null:
-		return PackedFloat32Array()
+		return PackedInt64Array()
 	return data.mass.get_read()
 
 func on_tile_destroyed(cell: Vector2i, from_tile: int, reason: StringName) -> void:

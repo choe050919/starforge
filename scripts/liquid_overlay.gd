@@ -23,7 +23,7 @@ func set_layout(size: Vector2i, tile_size: Vector2i) -> void:
 	sprite.scale = Vector2(tile_px)
 	sprite.modulate.a = color.a
 
-func render(amounts: PackedFloat32Array) -> void:
+func render(amounts: PackedInt64Array) -> void:
 	if amounts.size() != grid_size.x * grid_size.y:
 		push_error("[LiquidOverlay] Size mismatch.")
 		return

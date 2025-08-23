@@ -1,42 +1,102 @@
 class_name MassStore
+# 단위: milligram(㎎). 내부 저장/연산은 int64(mg) 기준.
+
+const MG_PER_G  := 1000
+const MG_PER_KG := 1000000
 
 var _index: GridIndex
-var _read: PackedFloat32Array = PackedFloat32Array()
-var _write: PackedFloat32Array = PackedFloat32Array()
+var _read: PackedInt64Array = PackedInt64Array()
+var _write: PackedInt64Array = PackedInt64Array()
 
-func setup(index: GridIndex, initial: PackedFloat32Array) -> void:
+func setup(index: GridIndex, initial: PackedInt64Array) -> void:
 	_index = index
+	if _index == null:
+		push_error("[MassStore.setup] _index not set; call setup() first")
 	var expected := index.size.x * index.size.y
 	if initial.size() != expected:
-		push_error("MassStore.setup: size mismatch. expected=%d, got=%d" % [expected, initial.size()])
-		_read = PackedFloat32Array(); _read.resize(expected)
+		push_error("[MassStore.setup] size mismatch. expected=%d, got=%d" % [expected, initial.size()])
+		_read = PackedInt64Array(); _read.resize(expected)
 	else:
-		_read = PackedFloat32Array(initial)
-	_write = PackedFloat32Array(_read)
+		_read = PackedInt64Array(initial)
+	_write = PackedInt64Array(_read)
 
 func begin_write() -> void:
 	if _write.size() != _read.size():
-		_write = PackedFloat32Array(_read)
+		_write = PackedInt64Array(_read)
 	else:
 		for i in _read.size():
 			_write[i] = _read[i]
 
-func add(i: int, dm: float) -> void:
-	_write[i] += dm
+func add(i: int, dm_mg: int) -> void:
+	if not _index.in_bounds_i(i):
+		push_warning("[MassStore] Out‑of‑Bounds cell ignored: idx=%d" % i)
+		return
+	_write[i] += dm_mg
 
-func set_mass(i: int, m: float) -> void:
-	_write[i] = m
+func set_mass(i: int, m_mg: int) -> void:
+	if not _index.in_bounds_i(i):
+		push_warning("[MassStore] Out‑of‑Bounds cell ignored: idx=%d" % i)
+		return
+	_write[i] = m_mg
 
-func commit() -> void: # read 버전을 write 버전으로 최신화
+func get_mass(i: int) -> int:
+	if not _index.in_bounds_i(i):
+		push_warning("[MassStore] Out‑of‑Bounds cell ignored: idx=%d" % i)
+		return 0
+	return _read[i]
+
+func get_mass_g(i: int) -> float:
+	return float(get_mass(i)) / MG_PER_G
+
+func get_mass_kg(i: int) -> float:
+	return float(get_mass(i)) / MG_PER_KG
+
+# ===== 오버플로 안전 합계 =====
+func _safe_sum(arr: PackedInt64Array) -> int:
+	var s: int = 0
+	var overflow := false
+	for i in arr.size():
+		var v := arr[i]
+		var ns := s + v
+		# int64 오버플로 감지(부호 변화로 감지)
+		if (v > 0 and s > 0 and ns < 0) or (v < 0 and s < 0 and ns > 0):
+			overflow = true
+		s = ns
+	if overflow:
+		push_warning("[MassStore] potential int64 overflow detected while summing")
+	return s
+
+# ===== 음수 클램프 =====
+func _clamp_negatives_on_write() -> int:
+	var clamp_count := 0
+	for i in _write.size():
+		if _write[i] < 0:
+			_write[i] = 0
+			clamp_count += 1
+	if clamp_count > 0:
+		push_warning("[MassStore] clamp(negative)=%d" % clamp_count)
+	return clamp_count
+
+# ===== 커밋/합계 =====
+func commit() -> void: # read 버전을 write 버전으로 최신화(참조 스왑)
+	# 1) 음수 보정
+	_clamp_negatives_on_write()
+
+	# 2) (선택) 합계 계산 시 오버플로 감시
+	#    - 정수 mg 사용이므로 보존검증할 때 안전 합계를 쓰자
+	var sum_r := _safe_sum(_read)
+	var sum_w := _safe_sum(_write)
+	var delta := sum_w - sum_r
+	if delta != 0:
+		push_warning("[MassStore] conservation violated: Δ=%d mg (r=%d, w=%d)" % [delta, sum_r, sum_w])
+
+	# 3) 참조 스왑
 	var tmp := _read
 	_read = _write
 	_write = tmp
 
-func sum() -> float:
-	var total: float = 0.0
-	for i in _read.size():
-		total += _read[i]
-	return total
+func sum() -> int:
+	return _safe_sum(_read)
 
-func get_read() -> PackedFloat32Array:
+func get_read() -> PackedInt64Array:
 	return _read

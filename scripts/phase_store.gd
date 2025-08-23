@@ -14,7 +14,7 @@ func setup(index: GridIndex, initial: PackedByteArray) -> void:
 	_index = index
 	var expected := index.size.x * index.size.y
 	if initial.size() != expected:
-		push_error("PhaseStore.setup: size mismatch. expected=%d, got=%d" % [expected, initial.size()])
+		push_error("[PhaseStore.setup] size mismatch. expected=%d, got=%d" % [expected, initial.size()])
 		_data = PackedByteArray()
 		_data.resize(expected) # 어떤 용도지?
 		return

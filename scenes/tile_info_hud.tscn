@@ -6,6 +6,7 @@
 [node name="TileInfoHUD" type="Control"]
 layout_mode = 3
 anchors_preset = 0
+mouse_filter = 2
 script = ExtResource("1_sj014")
 
 [node name="TileInfoPanel" type="PanelContainer" parent="."]

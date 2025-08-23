@@ -4,7 +4,7 @@ var index: GridIndex = GridIndex.new()
 var phase: PhaseStore = PhaseStore.new()
 var mass: MassStore = MassStore.new()
 
-func setup(size: Vector2i, phases: PackedByteArray, masses: PackedFloat32Array) -> void:
+func setup(size: Vector2i, phases: PackedByteArray, masses: PackedInt64Array) -> void:
 	index.setup(size)
 	phase.setup(index, phases)
 	mass.setup(index, masses)

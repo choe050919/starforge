@@ -6,9 +6,9 @@ class_name TileInfoProvider
 var _phase_store: PhaseStore
 var _grid_index: GridIndex
 
-func setup(phase_store: PhaseStore, grid_index: GridIndex = null) -> void:
-	_phase_store = phase_store
-	_grid_index = grid_index
+func setup(ps: PhaseStore, gi: GridIndex = null) -> void:
+	_phase_store = ps
+	_grid_index = gi
 
 func is_ready() -> bool:
 	if not _phase_store.has_method("get_phase"):

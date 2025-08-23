@@ -1,9 +1,7 @@
 extends Node
 class_name WorldGen
 
-# signal generated_legacy(tile_types: PackedInt32Array, size: Vector2i, liquid_amount: PackedFloat32Array, springs: PackedVector2Array)
-# legacy
-signal generated(size: Vector2i, phases: PackedByteArray, mass: PackedFloat32Array, tile_types: PackedInt32Array, springs: PackedVector2Array)
+signal generated(size: Vector2i, phases: PackedByteArray, mass: PackedInt64Array, tile_types: PackedInt32Array, springs: PackedVector2Array)
 
 @export var size: Vector2i = Vector2i(256, 128)
 
@@ -44,13 +42,13 @@ func generate() -> void:
 	# 함수로 분리할지 결정 필요
 	var total := size.x * size.y
 	var phases := PackedByteArray(); phases.resize(total)
-	var mass := PackedFloat32Array(liquid.amount)
+	var mass := PackedInt64Array(liquid.amount)
 	for i in total:
 		var tile := tiles[i]
 		var ph: int = PhaseStore.VACUUM
 		if tile == TILE_GROUND or tile == TILE_ICE or tile == TILE_URANIUM:
 			ph = PhaseStore.SOLID
-		var m: float = mass[i]
+		var m: int = mass[i]
 		if m > 0.0:
 			if ph == PhaseStore.SOLID:
 				m = 0.0
@@ -61,7 +59,6 @@ func generate() -> void:
 		mass[i] = m
 
 	emit_signal("generated", size, phases, mass, tiles, liquid.springs)
-	# emit_signal("generated_legacy", tiles, size, liquid.amount, liquid.springs)
 
 # Build a 1D heightmap representing surface level per column
 func generate_heightmap() -> PackedInt32Array:
@@ -138,7 +135,7 @@ func place_uranium(tiles: PackedInt32Array, hmap: PackedInt32Array) -> void:
 				tiles[idx2] = TILE_URANIUM
 
 func generate_liquids(hmap: PackedInt32Array) -> Dictionary:
-	var amount := PackedFloat32Array()
+	var amount := PackedInt64Array()
 	amount.resize(size.x * size.y)
 	var springs := PackedVector2Array()
 	var min_h: int = hmap[0]
@@ -173,7 +170,7 @@ func generate_liquids(hmap: PackedInt32Array) -> Dictionary:
 			springs.append(Vector2i(x, h0))
 	return {"amount": amount, "springs": springs}
 
-func _fill_lake(amount: PackedFloat32Array, hmap: PackedInt32Array, sx: int, ex: int, water_level: int) -> void:
+func _fill_lake(amount: PackedInt64Array, hmap: PackedInt32Array, sx: int, ex: int, water_level: int) -> void:
 	var width: int = ex - sx + 1
 	if width < min_lake_size:
 		return

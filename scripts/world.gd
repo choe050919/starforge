@@ -65,7 +65,7 @@ func _ready() -> void:
 		durability.hp_changed.connect(crack_overlay.on_hp_changed)
 		durability.break_requested.connect(crack_overlay.on_break_requested)
 
-func _on_world_generated(size: Vector2i, phases: PackedByteArray, mass: PackedFloat32Array, tiles: PackedInt32Array, springs: PackedVector2Array) -> void:
+func _on_world_generated(size: Vector2i, phases: PackedByteArray, mass: PackedInt64Array, tiles: PackedInt32Array, springs: PackedVector2Array) -> void:
 	terrain.apply_tiles(tiles, size)
 	tile_store.setup(tiles, size)
 	data_layer.setup(size, phases, mass)
