@@ -4,6 +4,9 @@ class_name MassStore
 const MG_PER_G  := 1000
 const MG_PER_KG := 1000000
 
+enum { STATE_READING, STATE_WRITING }
+var _state := STATE_READING
+
 var _index: GridIndex
 var _read: PackedInt64Array = PackedInt64Array()
 var _write: PackedInt64Array = PackedInt64Array()
@@ -19,26 +22,37 @@ func setup(index: GridIndex, initial: PackedInt64Array) -> void:
 	else:
 		_read = PackedInt64Array(initial)
 	_write = PackedInt64Array(_read)
+	_state = STATE_READING
 
 func begin_write() -> void:
+	_state = STATE_WRITING
 	if _write.size() != _read.size():
+		push_warning("[MassStore] resync buffers: read=%d write=%d -> write=%d" % [_read.size(), _write.size(), _read.size()])
 		_write = PackedInt64Array(_read)
 	else:
 		for i in _read.size():
 			_write[i] = _read[i]
 
+# ===== 쓰기 경로 =====
 func add(i: int, dm_mg: int) -> void:
+	if _state != STATE_WRITING:
+		push_warning("[MassStore] write without begin_write (ignored)")
+		return
 	if not _index.in_bounds_i(i):
 		push_warning("[MassStore] Out‑of‑Bounds cell ignored: idx=%d" % i)
 		return
 	_write[i] += dm_mg
 
 func set_mass(i: int, m_mg: int) -> void:
+	if _state != STATE_WRITING:
+		push_warning("[MassStore] write without begin_write (ignored)")
+		return
 	if not _index.in_bounds_i(i):
 		push_warning("[MassStore] Out‑of‑Bounds cell ignored: idx=%d" % i)
 		return
 	_write[i] = m_mg
 
+# ===== 읽기 경로 =====
 func get_mass(i: int) -> int:
 	if not _index.in_bounds_i(i):
 		push_warning("[MassStore] Out‑of‑Bounds cell ignored: idx=%d" % i)
@@ -79,11 +93,14 @@ func _clamp_negatives_on_write() -> int:
 
 # ===== 커밋/합계 =====
 func commit() -> void: # read 버전을 write 버전으로 최신화(참조 스왑)
+	if _state != STATE_WRITING:
+		push_warning("[MassStore] commit called while not writing")
+		return
+
 	# 1) 음수 보정
 	_clamp_negatives_on_write()
 
-	# 2) (선택) 합계 계산 시 오버플로 감시
-	#    - 정수 mg 사용이므로 보존검증할 때 안전 합계를 쓰자
+	# 2) 합계 보존 검증(정수 mg → Δ는 0이어야 정상)
 	var sum_r := _safe_sum(_read)
 	var sum_w := _safe_sum(_write)
 	var delta := sum_w - sum_r
@@ -94,6 +111,7 @@ func commit() -> void: # read 버전을 write 버전으로 최신화(참조 스�
 	var tmp := _read
 	_read = _write
 	_write = tmp
+	_state = STATE_READING
 
 func sum() -> int:
 	return _safe_sum(_read)
