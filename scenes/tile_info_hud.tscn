@@ -7,7 +7,27 @@ layout_mode = 3
 anchors_preset = 0
 script = ExtResource("1_sj014")
 
-[node name="PanelContainer" type="PanelContainer" parent="."]
+[node name="TileInfoPanel" type="PanelContainer" parent="."]
 offset_right = 40.0
 offset_bottom = 40.0
 mouse_filter = 2
+
+[node name="Phase" type="HBoxContainer" parent="TileInfoPanel"]
+layout_mode = 2
+
+[node name="PhaseIcon" type="TextureRect" parent="TileInfoPanel/Phase"]
+layout_mode = 2
+
+[node name="PhaseLabel" type="Label" parent="TileInfoPanel/Phase"]
+layout_mode = 2
+
+[node name="TODO" type="HBoxContainer" parent="TileInfoPanel"]
+layout_mode = 2
+
+[node name="TODOIcon" type="TextureRect" parent="TileInfoPanel/TODO"]
+layout_mode = 2
+
+[node name="TODOLabel" type="Label" parent="TileInfoPanel/TODO"]
+layout_mode = 2
+
+[node name="TileInfoTracker" type="Node" parent="."]
