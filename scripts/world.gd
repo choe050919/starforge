@@ -1,9 +1,12 @@
 extends Node2D
 
+var dasd := 0
+
 @onready var terrain: Terrain = get_node("Terrain")
 @onready var ground_layer: TileMapLayer = get_node("Terrain/Ground")
 @onready var liquid_overlay: LiquidOverlay = get_node("Terrain/LiquidOverlay")
 @onready var crack_overlay: CrackOverlay = get_node("Terrain/CrackOverlay")
+@onready var corner_highlight: CornerHighlight = terrain.get_node("CornerHighlight")
 
 @onready var worldgen: WorldGen = get_node("Systems/WorldGen")
 @onready var durability: Durability = get_node("Systems/Durability")
@@ -15,6 +18,7 @@ extends Node2D
 @onready var overlay_manager: OverlayManager = get_node("OverlayManager")
 @onready var heatmap: HeatmapOverlay = overlay_manager.get_overlay(OverlayManager.OverlayMode.HEATMAP) as HeatmapOverlay
 @onready var heat_src: HeatSourceOverlay = overlay_manager.get_overlay(OverlayManager.OverlayMode.HEAT_SOURCE) as HeatSourceOverlay
+
 
 var tile_store: TileStore = TileStore.new()
 var event_queue: EventQueue = EventQueue.new()
@@ -69,17 +73,18 @@ func _on_world_generated(size: Vector2i, phases: PackedByteArray, mass: PackedFl
 	data_layer.setup(size, phases, mass)
 
 	if has_node("Camera2D") and terrain.ground != null and terrain.ground.tile_set != null:
-			var ts: TileSet = terrain.ground.tile_set
-			var map_px: Vector2 = Vector2(size.x * ts.tile_size.x, size.y * ts.tile_size.y)
-			$Camera2D.position = map_px * 0.5
-			heatmap.set_layout(size, ts.tile_size)
-			if heat_src != null:
-					heat_src.set_layout(size, ts.tile_size)
-			if crack_overlay != null:
-					crack_overlay.set_layout(size)
-			if liquid_overlay != null:
-					liquid_overlay.set_layout(size, ts.tile_size)
-			input_controller.set_cell_size(ts.tile_size)
+		var ts: TileSet = terrain.ground.tile_set
+		var map_px: Vector2 = Vector2(size.x * ts.tile_size.x, size.y * ts.tile_size.y)
+		$Camera2D.position = map_px * 0.5
+		heatmap.set_layout(size, ts.tile_size)
+		if heat_src != null:
+			heat_src.set_layout(size, ts.tile_size)
+		if crack_overlay != null:
+			crack_overlay.set_layout(size)
+		if liquid_overlay != null:
+			liquid_overlay.set_layout(size, ts.tile_size)
+		input_controller.set_cell_size(ts.tile_size)
+		corner_highlight.setup(ground_layer)
 
 	temp.setup_from_tiles(tiles, size)
 	_on_temperature_updated()
@@ -144,5 +149,8 @@ func _on_overlay_toggle_requested(mode: OverlayManager.OverlayMode) -> void:
 
 func _on_hover_changed(cell: Vector2i) -> void:
 	# TODO: highlight hovered tile and update info panel
-	
-	pass
+	print(dasd, cell)
+	dasd += 1
+	# 테스트 부분 끝
+
+	corner_highlight.show_cell(cell)
