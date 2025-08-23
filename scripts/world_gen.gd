@@ -14,6 +14,12 @@ signal generated(size: Vector2i, phases: PackedByteArray, mass: PackedInt64Array
 @export var ice_max_depth: int = 6
 @export var ice_edge_bonus: float = 0.15
 
+# 고체 타일 질량 파라미터
+@export var mass_ice_mg_per_cell: int = 900_000_000       # 900 kg
+@export var mass_ground_mg_per_cell: int = 1_200_000_000  # 1200 kg
+@export var mass_uranium_mg_per_cell: int = 1_900_000_000 # 1900 kg
+@export var water_capacity_mg_per_cell: int = 1_000_000
+
 # ── 우라늄 분포 파라미터 ──
 @export var uranium_seed: int = 24680
 @export var uranium_freq: float = 0.06          # 클러스터 크기(작을수록 더 큰 덩어리)
@@ -42,21 +48,53 @@ func generate() -> void:
 	# 함수로 분리할지 결정 필요
 	var total := size.x * size.y
 	var phases := PackedByteArray(); phases.resize(total)
-	var mass := PackedInt64Array(liquid.amount)
+	var mass := PackedInt64Array()
+	mass.resize(total)
+
 	for i in total:
 		var tile := tiles[i]
-		var ph: int = PhaseStore.VACUUM
-		if tile == TILE_GROUND or tile == TILE_ICE or tile == TILE_URANIUM:
-			ph = PhaseStore.SOLID
-		var m: int = mass[i]
-		if m > 0.0:
-			if ph == PhaseStore.SOLID:
-				m = 0.0
-				mass[i] = 0.0
-			else:
-				ph = PhaseStore.LIQUID
-		phases[i] = ph
-		mass[i] = m
+		var liq = liquid.amount[i]  # 복사한 mass[i] 대신 원본 참조로 판정이 명확함
+
+		# 1) 액체가 있으면 무조건 LIQUID 우선
+		if liq > 0:
+			phases[i] = PhaseStore.LIQUID
+			mass[i] = liq
+			continue
+
+		# 2) 액체가 없으면 고체/진공 판정
+		if tile == TILE_GROUND:
+			phases[i] = PhaseStore.SOLID
+			mass[i] = mass_ground_mg_per_cell
+		elif tile == TILE_ICE:
+			phases[i] = PhaseStore.SOLID
+			mass[i] = mass_ice_mg_per_cell
+		elif tile == TILE_URANIUM:
+			phases[i] = PhaseStore.SOLID
+			mass[i] = mass_uranium_mg_per_cell
+		else:
+			phases[i] = PhaseStore.VACUUM
+			mass[i] = 0
+
+		#var ph: int = PhaseStore.VACUUM
+		#var m: int = mass[i]
+#
+		#if tile == TILE_GROUND or tile == TILE_ICE or tile == TILE_URANIUM:
+			#ph = PhaseStore.SOLID
+			#if tile == TILE_GROUND:
+				#m = mass_ground_mg_per_cell
+			#elif tile == TILE_ICE:
+				#m = mass_ice_mg_per_cell
+			#else: # TILE_URANIUM
+				#m = mass_uranium_mg_per_cell
+		#else:
+			## 비고체: 액체가 있으면 LIQUID, 없으면 VACUUM
+			#if m > 0:
+				#ph = PhaseStore.LIQUID
+				#m = 1
+			#else:
+				#ph = PhaseStore.VACUUM
+		#phases[i] = ph
+		#mass[i] = m
 
 	emit_signal("generated", size, phases, mass, tiles, liquid.springs)
 
@@ -168,6 +206,19 @@ func generate_liquids(hmap: PackedInt32Array) -> Dictionary:
 			continue
 		if rng.randf() < prob:
 			springs.append(Vector2i(x, h0))
+
+	var cnt:int = 0
+	var minv:int = 0
+	var maxv:int = 0
+	for i in amount.size():
+		var v:int = amount[i]
+		if v > 0:
+			cnt += 1
+			if minv == 0 or v < minv: minv = v
+			if v > maxv: maxv = v
+	print("[WorldGen] liquids: cells=%d min=%d max=%d springs=%d water_level=%d"
+		% [cnt, minv, maxv, springs.size(), water_level])
+
 	return {"amount": amount, "springs": springs}
 
 func _fill_lake(amount: PackedInt64Array, hmap: PackedInt32Array, sx: int, ex: int, water_level: int) -> void:
@@ -180,4 +231,4 @@ func _fill_lake(amount: PackedInt64Array, hmap: PackedInt32Array, sx: int, ex: i
 			var depth_from_surface: int = y - water_level + 1
 			var fill: float = clamp(float(depth_from_surface) / depth_scale, 0.0, 1.0)
 			var idx: int = y * size.x + x
-			amount[idx] = fill
+			amount[idx] = int(round(fill * water_capacity_mg_per_cell))

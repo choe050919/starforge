@@ -1,6 +1,9 @@
 extends Node2D
 class_name LiquidOverlay
 
+# 여기도 있고 liquid에도 있음. 문제!!!!
+@export var water_capacity_mg_per_cell: int = 1_000_000 
+
 @onready var sprite: Sprite2D = get_node("Map")
 
 @export var color: Color = Color(0.2, 0.4, 1.0, 0.8)
@@ -31,7 +34,7 @@ func render(amounts: PackedInt64Array) -> void:
 	for y in grid_size.y:
 		for x in grid_size.x:
 			var idx: int = y * grid_size.x + x
-			var a: float = clamp(amounts[idx], 0.0, 1.0)
+			var a: float = clamp(float(amounts[idx]) / float(water_capacity_mg_per_cell), 0.0, 1.0)
 			if a <= 0.0:
 				img.set_pixel(x, y, Color(0,0,0,0))
 			else:

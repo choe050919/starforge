@@ -23,10 +23,22 @@ func _validate() -> void: # 오류 검증
 	var m := mass.get_read()
 	var violations: int = 0
 	for i in p.size():
-		if p[i] == PhaseStore.SOLID and m[i] != 0.0:
-			violations += 1
-		elif m[i] > 0.0 and p[i] != PhaseStore.LIQUID:
-			violations += 1
+		match p[i]:
+			PhaseStore.VACUUM:
+				if m[i] != 0:
+					violations += 1
+			PhaseStore.LIQUID:
+				if m[i] <= 0:
+					violations += 1
+			PhaseStore.SOLID:
+				if m[i] <= 0:
+					violations += 1
+			PhaseStore.GAS:
+				# 현재 가스 질량은 추적하지 않는다고 가정
+				if m[i] != 0:
+					violations += 1
+			_:
+				pass
 	if violations > 0:
 		push_error("[DataLayer] invariant violations: %d" % violations)
 	else:
