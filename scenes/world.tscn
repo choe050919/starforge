@@ -1,4 +1,4 @@
-[gd_scene load_steps=28 format=3 uid="uid://c5gv3n6byiin7"]
+[gd_scene load_steps=30 format=3 uid="uid://c5gv3n6byiin7"]
 
 [ext_resource type="Script" uid="uid://dgppaejvd18y0" path="res://scripts/world.gd" id="1_f3sb7"]
 [ext_resource type="Script" uid="uid://dsrbjd0kmv17k" path="res://scripts/terrain.gd" id="2_71j4m"]
@@ -26,6 +26,8 @@
 [ext_resource type="PackedScene" uid="uid://b3cc58761avvp" path="res://scenes/critter_builder.tscn" id="21_oo54l"]
 [ext_resource type="Script" uid="uid://dou5of5j8rehy" path="res://scripts/input_controller.gd" id="22_ictrl"]
 [ext_resource type="Script" uid="uid://dcuvrt05007wb" path="res://scripts/hover_service.gd" id="23_hovsvc"]
+[ext_resource type="PackedScene" uid="uid://balj4m27d4euf" path="res://scenes/tile_info_hud.tscn" id="27_ts3gi"]
+[ext_resource type="Script" uid="uid://j3edpypdb7d7" path="res://scripts/fps_mem_monitor.gd" id="28_0nbtd"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_7iits"]
 shader = ExtResource("20_2lf6f")
@@ -143,6 +145,9 @@ pan_speed = 1.5
 
 [node name="UIFXLayer" type="CanvasLayer" parent="."]
 
-[node name="OverlaysLayer" type="CanvasLayer" parent="."]
-layer = 2
-follow_viewport_enabled = true
+[node name="TileInfoHUD" parent="UIFXLayer" instance=ExtResource("27_ts3gi")]
+
+[node name="FpsMemMonitor" type="Control" parent="UIFXLayer"]
+layout_mode = 3
+anchors_preset = 0
+script = ExtResource("28_0nbtd")

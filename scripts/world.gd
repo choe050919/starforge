@@ -25,10 +25,6 @@ var event_queue: EventQueue = EventQueue.new()
 var material_db: MaterialDB = MaterialDB.new()
 var data_layer: DataLayer = DataLayer.new()
 
-# 경로 주입용
-@export var highlight_path: NodePath
-@export var info_panel_path: NodePath
-
 @onready var camera: Camera2D = get_node("Camera2D")
 
 func _ready() -> void:
