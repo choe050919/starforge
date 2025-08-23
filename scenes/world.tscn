@@ -54,6 +54,7 @@ centered = false
 script = ExtResource("8_ts3gi")
 
 [node name="OverlayManager" type="Node" parent="."]
+unique_name_in_owner = true
 script = ExtResource("7_7iits")
 
 [node name="OverlayLayer" type="CanvasLayer" parent="OverlayManager"]
@@ -88,6 +89,7 @@ grow_vertical = 2
 mouse_filter = 2
 
 [node name="Systems" type="Node" parent="."]
+unique_name_in_owner = true
 
 [node name="WorldGen" type="Node" parent="Systems"]
 script = ExtResource("4_qfnet")
@@ -140,15 +142,6 @@ script = ExtResource("2_tlwt5")
 pan_speed = 1.5
 
 [node name="UIFXLayer" type="CanvasLayer" parent="."]
-
-[node name="RootControl" type="Control" parent="UIFXLayer"]
-layout_mode = 3
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 2
 
 [node name="OverlaysLayer" type="CanvasLayer" parent="."]
 layer = 2

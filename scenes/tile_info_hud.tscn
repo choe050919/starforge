@@ -1,0 +1,18 @@
+[gd_scene load_steps=2 format=3 uid="uid://balj4m27d4euf"]
+
+[ext_resource type="Script" uid="uid://smqt0eyp1ywq" path="res://scripts/tile_info_hud.gd" id="1_sj014"]
+
+[node name="TileInfoHUD" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_sj014")
+
+[node name="PanelContainer" type="PanelContainer" parent="."]
+layout_mode = 0
+offset_right = 40.0
+offset_bottom = 40.0
+mouse_filter = 2

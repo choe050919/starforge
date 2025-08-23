@@ -30,4 +30,4 @@ func _validate() -> void: # 오류 검증
 	if violations > 0:
 		push_error("[DataLayer] invariant violations: %d" % violations)
 	else:
-		print("[DataLayer] invariants OK")
+		print("[DataLayer] invariants: OK")

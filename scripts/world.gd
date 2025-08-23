@@ -1,24 +1,24 @@
 extends Node2D
 
-var dasd := 0
-
 @onready var terrain: Terrain = get_node("Terrain")
 @onready var ground_layer: TileMapLayer = get_node("Terrain/Ground")
 @onready var liquid_overlay: LiquidOverlay = get_node("Terrain/LiquidOverlay")
 @onready var crack_overlay: CrackOverlay = get_node("Terrain/CrackOverlay")
 @onready var corner_highlight: CornerHighlight = terrain.get_node("CornerHighlight")
 
-@onready var worldgen: WorldGen = get_node("Systems/WorldGen")
-@onready var durability: Durability = get_node("Systems/Durability")
-@onready var temp: Temperature = get_node("Systems/Temperature")
-@onready var clock: SimClock = get_node("Systems/SimClock")
-@onready var tchange: TileChange = get_node("Systems/TileChange")
-@onready var liquid: Liquid = get_node("Systems/Liquid")
+@onready var systems = %Systems
+@onready var worldgen: WorldGen = systems.get_node("WorldGen")
+@onready var durability: Durability = systems.get_node("Durability")
+@onready var temp: Temperature = systems.get_node("Temperature")
+@onready var clock: SimClock = systems.get_node("SimClock")
+@onready var tchange: TileChange = systems.get_node("TileChange")
+@onready var liquid: Liquid = systems.get_node("Liquid")
+@onready var input: InputController = systems.get_node("InputController")
+@onready var hover_service: HoverService = systems.get_node("HoverService")
 
-@onready var overlay_manager: OverlayManager = get_node("OverlayManager")
+@onready var overlay_manager: OverlayManager = %OverlayManager
 @onready var heatmap: HeatmapOverlay = overlay_manager.get_overlay(OverlayManager.OverlayMode.HEATMAP) as HeatmapOverlay
 @onready var heat_src: HeatSourceOverlay = overlay_manager.get_overlay(OverlayManager.OverlayMode.HEAT_SOURCE) as HeatSourceOverlay
-
 
 var tile_store: TileStore = TileStore.new()
 var event_queue: EventQueue = EventQueue.new()
@@ -29,8 +29,6 @@ var data_layer: DataLayer = DataLayer.new()
 @export var highlight_path: NodePath
 @export var info_panel_path: NodePath
 
-@onready var input_controller: InputController = get_node("Systems/InputController")
-@onready var hover_service: HoverService = get_node("Systems/HoverService")
 @onready var camera: Camera2D = get_node("Camera2D")
 
 func _ready() -> void:
@@ -39,12 +37,12 @@ func _ready() -> void:
 	if terrain == null:
 		push_error("[World] Terrain 노드를 찾지 못했습니다."); return
 
-	hover_service.set_data_layer(data_layer)
-	input_controller.set_dependencies(data_layer, hover_service)
-	if input_controller != null:
-		input_controller.pan_requested.connect(_on_pan_requested)
-		input_controller.zoom_requested.connect(_on_zoom_requested)
-		input_controller.overlay_toggle_requested.connect(_on_overlay_toggle_requested)
+	hover_service.setup(data_layer)
+	input.setup(data_layer, hover_service)
+	if input != null:
+		input.pan_requested.connect(_on_pan_requested)
+		input.zoom_requested.connect(_on_zoom_requested)
+		input.overlay_toggle_requested.connect(_on_overlay_toggle_requested)
 	if hover_service != null:
 		hover_service.hover_changed.connect(_on_hover_changed)
 
@@ -83,7 +81,7 @@ func _on_world_generated(size: Vector2i, phases: PackedByteArray, mass: PackedFl
 			crack_overlay.set_layout(size)
 		if liquid_overlay != null:
 			liquid_overlay.set_layout(size, ts.tile_size)
-		input_controller.set_cell_size(ts.tile_size)
+		input.set_cell_size(ts.tile_size)
 		corner_highlight.setup(ground_layer)
 
 	temp.setup_from_tiles(tiles, size)
@@ -129,28 +127,24 @@ func _on_tile_destroyed(cell: Vector2i, from_tile: int, reason: StringName) -> v
 		liquid.on_tile_destroyed(cell, from_tile, reason)
 
 func _on_tile_replaced(cell: Vector2i, from_tile: int, to_tile: int, reason: StringName) -> void:
-		if temp != null:
-				temp.on_tile_replaced(cell, from_tile, to_tile, reason)
-		if liquid != null:
-				liquid.on_tile_replaced(cell, from_tile, to_tile, reason)
-		if durability != null:
-				durability.on_tile_replaced(cell, from_tile, to_tile, reason)
+	if temp != null:
+		temp.on_tile_replaced(cell, from_tile, to_tile, reason)
+	if liquid != null:
+		liquid.on_tile_replaced(cell, from_tile, to_tile, reason)
+	if durability != null:
+		durability.on_tile_replaced(cell, from_tile, to_tile, reason)
 
 func _on_pan_requested(delta: Vector2) -> void:
 	if camera != null:
 		camera.pan(delta)
 
 func _on_zoom_requested(dir: float) -> void:
-		if camera != null:
-				camera.apply_zoom(dir)
+	if camera != null:
+		camera.apply_zoom(dir)
 
 func _on_overlay_toggle_requested(mode: OverlayManager.OverlayMode) -> void:
-		overlay_manager.toggle_overlay(mode)
+	overlay_manager.toggle_overlay(mode)
 
 func _on_hover_changed(cell: Vector2i) -> void:
-	# TODO: highlight hovered tile and update info panel
-	print(dasd, cell)
-	dasd += 1
-	# 테스트 부분 끝
-
 	corner_highlight.show_cell(cell)
+	# TODO

@@ -9,7 +9,7 @@ var data_layer: DataLayer
 var hover_service: HoverService
 var cell_size: Vector2 = Vector2.ONE
 
-func set_dependencies(dl: DataLayer, hover: HoverService) -> void:
+func setup(dl: DataLayer, hover: HoverService) -> void:
 	data_layer = dl
 	hover_service = hover
 	if dl == null:
