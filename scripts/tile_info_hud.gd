@@ -11,6 +11,9 @@ class_name TileInfoHUD
 @export var edge_margin := 8.0          # 화면 가장자리 여백
 @export var smoothing := 0.0            # 0이면 즉시, 0.0~1.0이면 스무딩 강도
 
+# 표시 자리수 조정(kg/g일 때)
+@export var mass_decimals := 2
+
 const PHASE_TEXT := {
 	-1: "—",
 	 0: "VACUUM",
@@ -48,19 +51,38 @@ func _on_info_updated(info: Dictionary) -> void:
 
 func _update_mass(info: Dictionary) -> void:
 	var raw = info.get("mass", null)
-	var mass_val: int
-	if raw == null:
-		mass_val = -1
-	else:
-		mass_val = int(raw)
+	var mass_val: int = -1 if raw == null else int(raw)
+	_mass_label.text = "MASS: " + _format_mass(mass_val)
 
-	var text: String
-	if mass_val == -1:
-		text = "—"
-	else:
-		text = "%d mg" % mass_val  # 자리수는 취향대로
+# mg → g → kg 자동 포맷터 (HUD 전용)
+# 추후 다른 패널에서도 사용될 수 있지만 일단 빠른 개발을 위해 여기서 구현하였음.
+func _format_mass(mg: int) -> String:
+	const MG_PER_G := 1000
+	const MG_PER_KG := 1000000
 
-	_mass_label.text = text
+	if mg < 0:
+		return "—"
+
+	if mg >= MG_PER_KG:
+		var kg := float(mg) / MG_PER_KG
+		return _trim_zeros(kg, mass_decimals) + " kg"
+	elif mg >= MG_PER_G:
+		var g := float(mg) / MG_PER_G
+		return _trim_zeros(g, mass_decimals) + " g"
+	else:
+		# mg는 정수로 그대로 표기(원하면 천단위 구분자 사용도 가능)
+		return "%d mg" % mg
+
+# 소수부 불필요한 0 제거 (예: 12.340 → 12.34, 10.000 → 10)
+func _trim_zeros(val: float, decimals: int) -> String:
+	var fmt := "%." + str(max(0, decimals)) + "f"
+	var s := fmt % val
+	# 오른쪽 0과 마지막 점 제거
+	while s.ends_with("0"):
+		s = s.substr(0, s.length() - 1)
+	if s.ends_with("."):
+		s = s.substr(0, s.length() - 1)
+	return s
 
 func _process(delta: float) -> void:
 	if not visible:
