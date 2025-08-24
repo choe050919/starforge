@@ -21,6 +21,7 @@ func _index(cell: Vector2i) -> int:
 
 # index를 cell 좌표로 변환
 func index_to_cell(i: int) -> Vector2i:
+	@warning_ignore("integer_division")
 	return Vector2i(i % size.x, i / size.x)
 
 # cell 좌표가 경계 내에 있는지 검사 후 반환

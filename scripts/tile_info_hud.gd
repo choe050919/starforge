@@ -88,10 +88,10 @@ func _process(delta: float) -> void:
 	if not visible:
 		return
 
-	var target := get_viewport().get_mouse_position()# + offset
+	var target := get_viewport().get_mouse_position() + offset
 	target = _anti_clip(target)
 	if smoothing > 0.0:
-		_panel.global_position = global_position.lerp(target, clamp(smoothing, 0.0, 1.0))
+		_panel.global_position = _panel.global_position.lerp(target, clamp(smoothing, 0.0, 1.0))
 	else:
 		_panel.global_position = target
 

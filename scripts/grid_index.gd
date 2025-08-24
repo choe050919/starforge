@@ -9,6 +9,7 @@ func idx(c: Vector2i) -> int:
 	return c.y * size.x + c.x
 
 func cell(i: int) -> Vector2i:
+	@warning_ignore("integer_division")
 	return Vector2i(i % size.x, i / size.x)
 
 func in_bounds_cell(c: Vector2i) -> bool:
