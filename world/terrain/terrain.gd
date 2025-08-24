@@ -21,7 +21,7 @@ const TILE_GROUND: int = 2
 const TILE_URANIUM: int = 3
 
 func apply_tiles(tile_types: PackedInt32Array, size: Vector2i) -> void:
-	if ground == null or ground.tile_set == null:
+	if ground.tile_set == null:
 		push_error("[Terrain] Ground/TileSet missing."); return
 
 	ground.clear()

@@ -1,25 +1,25 @@
 extends Node2D
 class_name World
 
-@onready var terrain: Terrain = get_node("Terrain")
-@onready var ground_layer: TileMapLayer = get_node("Terrain/Ground")
-@onready var liquid_overlay: LiquidOverlay = get_node("Terrain/LiquidOverlay")
-@onready var crack_overlay: CrackOverlay = get_node("Terrain/CrackOverlay")
-@onready var corner_highlight: CornerHighlight = terrain.get_node("CornerHighlight")
+@onready var terrain = $Terrain
+@onready var ground_layer: TileMapLayer =        $Terrain/Ground
+@onready var liquid_overlay: LiquidOverlay =     $Terrain/LiquidOverlay
+@onready var crack_overlay: CrackOverlay =       $Terrain/CrackOverlay
+@onready var corner_highlight: CornerHighlight = $Terrain/CornerHighlight
 
 @onready var systems = %Systems
-@onready var worldgen: WorldGen = systems.get_node("WorldGen")
-@onready var durability: Durability = systems.get_node("Durability")
-@onready var temp: Temperature = systems.get_node("Temperature")
-@onready var clock: SimClock = systems.get_node("SimClock")
-@onready var tchange: TileChange = systems.get_node("TileChange")
-@onready var liquid: Liquid = systems.get_node("Liquid")
-@onready var input: InputController = systems.get_node("InputController")
-@onready var hover_service: HoverService = systems.get_node("HoverService")
+@onready var worldgen: WorldGen =          %Systems/WorldGen
+@onready var durability: Durability =      %Systems/Durability
+@onready var temp: Temperature =           %Systems/Temperature
+@onready var clock: SimClock =             %Systems/SimClock
+@onready var tchange: TileChange =         %Systems/TileChange
+@onready var liquid: Liquid =              %Systems/Liquid
+@onready var input: InputController =      %Systems/InputController
+@onready var hover_service: HoverService = %Systems/HoverService
 
 @onready var overlay_manager: OverlayManager = %OverlayManager
-@onready var heatmap: HeatmapOverlay = overlay_manager.get_overlay(OverlayManager.OverlayMode.HEATMAP) as HeatmapOverlay
-@onready var heat_src: HeatSourceOverlay = overlay_manager.get_overlay(OverlayManager.OverlayMode.HEAT_SOURCE) as HeatSourceOverlay
+@onready var heatmap = overlay_manager.get_overlay(OverlayManager.OverlayMode.HEATMAP) as HeatmapOverlay
+@onready var heat_src = overlay_manager.get_overlay(OverlayManager.OverlayMode.HEAT_SOURCE) as HeatSourceOverlay
 
 @onready var tile_info_hud: TileInfoHUD = $UIFXLayer/TileInfoHUD
 var tile_info_tracker: TileInfoTracker
@@ -29,22 +29,18 @@ var event_queue: EventQueue = EventQueue.new()
 var material_db: MaterialDB = MaterialDB.new()
 var data_layer: DataLayer = DataLayer.new()
 
-@onready var camera: Camera2D = get_node("Camera2D")
+@onready var camera: Camera2D = $Camera2D
 
 func _ready() -> void:
-	if worldgen == null:
-		push_error("[World] Systems/WorldGen 노드를 찾지 못했습니다."); return
-	if terrain == null:
-		push_error("[World] Terrain 노드를 찾지 못했습니다."); return
-
 	hover_service.setup(data_layer)
+
 	input.setup(data_layer, hover_service)
-	if input != null:
-		input.pan_requested.connect(_on_pan_requested)
-		input.zoom_requested.connect(_on_zoom_requested)
-		input.overlay_toggle_requested.connect(_on_overlay_toggle_requested)
-	if hover_service != null:
-		hover_service.hover_changed.connect(_on_hover_changed)
+	input.pan_requested.connect(_on_pan_requested)
+	input.zoom_requested.connect(_on_zoom_requested)
+	input.overlay_toggle_requested.connect(_on_overlay_toggle_requested)
+
+	hover_service.hover_changed.connect(_on_hover_changed)
+
 	tile_info_tracker = tile_info_hud.get_node("TileInfoTracker") as TileInfoTracker
 
 	# connect signals
@@ -78,10 +74,10 @@ func _on_world_generated(
 	tile_store.setup(tiles, size)
 	data_layer.setup(size, substances, phases, mass)
 
-	if has_node("Camera2D") and terrain.ground != null and terrain.ground.tile_set != null:
-		var ts: TileSet = terrain.ground.tile_set
+	if ground_layer.tile_set != null: # 이중 검증임. 위의 apply_tiles에서 이미 검증.
+		var ts: TileSet = ground_layer.tile_set
 		var map_px: Vector2 = Vector2(size.x * ts.tile_size.x, size.y * ts.tile_size.y)
-		$Camera2D.position = map_px * 0.5
+		camera.position = map_px * 0.5
 		heatmap.set_layout(size, ts.tile_size)
 		if heat_src != null:
 			heat_src.set_layout(size, ts.tile_size)
@@ -109,8 +105,8 @@ func _on_world_generated(
 
 func _on_temperature_updated() -> void:
 	var T := temp.get_temperature_buffer()
-	var mask := temp.get_solid_mask()
-	var vr := temp.get_visual_range() # Vector2(min, max)
+	var mask:= temp.get_solid_mask()
+	var vr := temp.get_visual_range()
 	heatmap.render_full_with_mask(T, mask, vr.x, vr.y)
 	
 	# ΔT 기반 열원 오버레이 렌더
@@ -145,8 +141,7 @@ func _on_tile_replaced(cell: Vector2i, from_tile: int, to_tile: int, reason: Str
 		durability.on_tile_replaced(cell, from_tile, to_tile, reason)
 
 func _on_pan_requested(delta: Vector2) -> void:
-	if camera != null:
-		camera.pan(delta)
+	camera.pan(delta)
 
 func _on_zoom_requested(dir: float) -> void:
 	if camera != null:
