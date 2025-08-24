@@ -14,24 +14,25 @@ var _read: PackedByteArray = PackedByteArray()
 var _write: PackedByteArray = PackedByteArray()
 
 func setup(index: GridIndex, initial: Variant = null) -> void:
-	super.setup(index)
-	if _index == null: return
+	super.setup(index, initial)
+
 	var n := _index.size.x * _index.size.y
-	if initial == null or initial.size() != n:
-		push_error("[PhaseStore.setup] size mismatch. expected=%d, got=%d" % [n, initial.size()])
-		_read = PackedByteArray(); _read.resize(n) # 기본 0(VACUUM)
-	else:
+	if initial is PackedByteArray and initial.size() == n:
 		_read = PackedByteArray(initial)
+	else:
+		if initial is PackedByteArray:
+			push_error("[PhaseStore.setup] size mismatch. n=%d, got=%d.  Allocating empty buffer." % [n, initial.size()])
+		else:
+			push_error("[PhaseStore.setup] initial type mismatch (%s). PackedByteArray required; allocating empty buffer." % typeof(initial))
+		_read = PackedByteArray(); _read.resize(n); _read.fill(0)
+
 	_write = PackedByteArray(_read)
 
 func begin_write() -> void:
 	super.begin_write()
-	# 최신 읽기 스냅샷을 쓰기 버퍼로 복제
-	if _write.size() != _read.size():
-		_write = PackedByteArray(_read)
-	else:
-		for i in _read.size():
-			_write[i] = _read[i]
+
+	_write.resize(0)
+	_write.append_array(_read)
 
 func commit() -> void:
 	if not is_writing():

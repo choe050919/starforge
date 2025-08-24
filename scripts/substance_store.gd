@@ -16,35 +16,24 @@ enum { STATE_READING, STATE_WRITING }
 
 func setup(index: GridIndex, initial: Variant = null) -> void:
 	super.setup(index, initial)
-	if _index == null:
-		push_error("[SubstanceStore.setup] GridIndex not set")
-		return
 
 	var n := index.size.x * index.size.y
-
-	_read = PackedInt32Array()
-	_read.resize(n)
-
 	if initial is PackedInt32Array and initial.size() == n:
-		for i in n:
-			_read[i] = initial[i]
+		_read = PackedInt32Array(initial)
 	else:
-		if initial != null and initial is PackedInt32Array and initial.size() != n:
-			push_error("[SubstanceStore.setup] size mismatch. expected=%d, got=%d" % [n, initial.size()])
-		# 기본값: VACUUM
-		for i in n:
-			_read[i] = SubstanceId.VACUUM
+		if initial is PackedInt32Array:
+			push_error("[SubstanceStore.setup] size mismatch. n=%d, got=%d.  Allocating empty buffer." % [n, initial.size()])
+		else:
+			push_error("[SubstanceStore.setup] initial type mismatch (%s). PackedInt32Array required; allocating empty buffer." % typeof(initial))
+		_read = PackedInt32Array(); _read.resize(n); _read.fill(0)
 
 	_write = PackedInt32Array(_read)
 
 func begin_write() -> void:
 	super.begin_write()
-	# 최신 읽기 스냅샷을 쓰기 버퍼로 복제
-	if _write.size() != _read.size():
-		_write = PackedInt32Array(_read)
-	else:
-		for i in _read.size():
-			_write[i] = _read[i]
+
+	_write.resize(0)
+	_write.append_array(_read)
 
 func commit() -> void:
 	if not is_writing():

@@ -9,29 +9,25 @@ var _read: PackedInt64Array = PackedInt64Array()
 var _write: PackedInt64Array = PackedInt64Array()
 
 func setup(index: GridIndex, initial: Variant = null) -> void:
-	super.setup(index,initial)
-	if _index == null:
-		push_error("[MassStore.setup] _index not set; call setup() first")
-		return
+	super.setup(index, initial)
 
-	var expected := index.size.x * index.size.y
-	if initial is PackedInt64Array and initial.size() == expected:
+	var n := index.size.x * index.size.y
+	if initial is PackedInt64Array and initial.size() == n:
 		_read = PackedInt64Array(initial)
 	else:
-		if initial != null and initial is PackedInt64Array and initial.size() != expected:
-			push_error("[MassStore.setup] size mismatch. expected=%d, got=%d" % [expected, initial.size()])
-		_read = PackedInt64Array(); _read.resize(expected)
+		if initial is PackedInt64Array:
+			push_error("[MassStore.setup] size mismatch. n=%d, got=%d.  Allocating empty buffer." % [n, initial.size()])
+		else:
+			push_error("[MassStore.setup] initial type mismatch (%s). PackedInt64Array required; allocating empty buffer." % typeof(initial))
+		_read = PackedInt64Array(); _read.resize(n); _read.fill(0)
 
 	_write = PackedInt64Array(_read)
 
 func begin_write() -> void:
 	super.begin_write()
-	if _write.size() != _read.size():
-		push_warning("[MassStore] resync buffers: read=%d write=%d -> write=%d" % [_read.size(), _write.size(), _read.size()])
-		_write = PackedInt64Array(_read)
-	else:
-		for i in _read.size():
-			_write[i] = _read[i]
+
+	_write.resize(0)
+	_write.append_array(_read)
 
 # ===== 쓰기 경로 =====
 func add(i: int, dm_mg: int) -> void:
