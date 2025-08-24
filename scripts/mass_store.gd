@@ -38,23 +38,26 @@ func add(i: int, dm_mg: int) -> void:
 	if _state != STATE_WRITING:
 		push_warning("[MassStore] write without begin_write (ignored)")
 		return
-	if not _index.in_bounds_i(i):
+	if not _index.in_bounds_idx(i):
 		push_warning("[MassStore] Out‑of‑Bounds cell ignored: idx=%d" % i)
 		return
 	_write[i] += dm_mg
 
-func set_mass(i: int, m_mg: int) -> void:
+func set_idx(i: int, m_mg: int) -> void:
 	if _state != STATE_WRITING:
 		push_warning("[MassStore] write without begin_write (ignored)")
 		return
-	if not _index.in_bounds_i(i):
+	if not _index.in_bounds_idx(i):
 		push_warning("[MassStore] Out‑of‑Bounds cell ignored: idx=%d" % i)
 		return
 	_write[i] = m_mg
 
+func set_cell(cell: Vector2i, m_mg: int) -> void:
+	set_idx(_index.idx(cell), m_mg)
+
 # ===== 읽기 경로 =====
 func get_mass(i: int) -> int:
-	if not _index.in_bounds_i(i):
+	if not _index.in_bounds_idx(i):
 		push_warning("[MassStore] Out‑of‑Bounds cell ignored: idx=%d" % i)
 		return 0
 	return _read[i]
@@ -118,3 +121,11 @@ func sum() -> int:
 
 func get_read() -> PackedInt64Array:
 	return _read
+
+# ===== 총 질량 출력 =====
+func print_total_mass() -> void:
+	var total_mg := sum()
+	var total_g := float(total_mg) / MG_PER_G
+	var total_kg := float(total_mg) / MG_PER_KG
+
+	print("[MassStore] total mass = %d mg (%.3f g, %.6f kg)" % [total_mg, total_g, total_kg])

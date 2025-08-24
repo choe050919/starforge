@@ -1,4 +1,5 @@
 extends Node2D
+class_name World
 
 @onready var terrain: Terrain = get_node("Terrain")
 @onready var ground_layer: TileMapLayer = get_node("Terrain/Ground")
@@ -65,10 +66,17 @@ func _ready() -> void:
 		durability.hp_changed.connect(crack_overlay.on_hp_changed)
 		durability.break_requested.connect(crack_overlay.on_break_requested)
 
-func _on_world_generated(size: Vector2i, phases: PackedByteArray, mass: PackedInt64Array, tiles: PackedInt32Array, springs: PackedVector2Array) -> void:
+func _on_world_generated(
+		size: Vector2i,
+		substances: PackedInt32Array,
+		phases: PackedByteArray,
+		mass: PackedInt64Array,
+		tiles: PackedInt32Array,
+		springs: PackedVector2Array
+	) -> void:
 	terrain.apply_tiles(tiles, size)
 	tile_store.setup(tiles, size)
-	data_layer.setup(size, phases, mass)
+	data_layer.setup(size, substances, phases, mass)
 
 	if has_node("Camera2D") and terrain.ground != null and terrain.ground.tile_set != null:
 		var ts: TileSet = terrain.ground.tile_set

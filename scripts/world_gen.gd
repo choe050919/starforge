@@ -1,7 +1,14 @@
 extends Node
 class_name WorldGen
 
-signal generated(size: Vector2i, phases: PackedByteArray, mass: PackedInt64Array, tile_types: PackedInt32Array, springs: PackedVector2Array)
+signal generated(
+	size: Vector2i,
+	substances: PackedInt32Array,
+	phases: PackedByteArray,
+	mass: PackedInt64Array,
+	tile_types: PackedInt32Array,
+	springs: PackedVector2Array
+)
 
 @export var size: Vector2i = Vector2i(256, 128)
 
@@ -45,11 +52,10 @@ func generate() -> void:
 	place_uranium(tiles, hmap)
 	var liquid := generate_liquids(hmap)
 
-	# 함수로 분리할지 결정 필요
 	var total := size.x * size.y
 	var phases := PackedByteArray(); phases.resize(total)
-	var mass := PackedInt64Array()
-	mass.resize(total)
+	var mass := PackedInt64Array(); mass.resize(total)
+	var substances := PackedInt32Array(); substances.resize(total)
 
 	for i in total:
 		var tile := tiles[i]
@@ -57,46 +63,30 @@ func generate() -> void:
 
 		# 1) 액체가 있으면 무조건 LIQUID 우선
 		if liq > 0:
-			phases[i] = PhaseStore.LIQUID
+			phases[i] = PhaseStore.Phase.LIQUID
 			mass[i] = liq
+			substances[i] = SubstanceId.ID.WATER
 			continue
 
 		# 2) 액체가 없으면 고체/진공 판정
 		if tile == TILE_GROUND:
-			phases[i] = PhaseStore.SOLID
+			phases[i] = PhaseStore.Phase.SOLID
 			mass[i] = mass_ground_mg_per_cell
+			substances[i] = SubstanceId.ID.GROUND
 		elif tile == TILE_ICE:
-			phases[i] = PhaseStore.SOLID
+			phases[i] = PhaseStore.Phase.SOLID
 			mass[i] = mass_ice_mg_per_cell
+			substances[i] = SubstanceId.ID.ICE
 		elif tile == TILE_URANIUM:
-			phases[i] = PhaseStore.SOLID
+			phases[i] = PhaseStore.Phase.SOLID
 			mass[i] = mass_uranium_mg_per_cell
+			substances[i] = SubstanceId.ID.URANIUM
 		else:
-			phases[i] = PhaseStore.VACUUM
+			phases[i] = PhaseStore.Phase.VACUUM
 			mass[i] = 0
+			substances[i] = SubstanceId.ID.VACUUM
 
-		#var ph: int = PhaseStore.VACUUM
-		#var m: int = mass[i]
-#
-		#if tile == TILE_GROUND or tile == TILE_ICE or tile == TILE_URANIUM:
-			#ph = PhaseStore.SOLID
-			#if tile == TILE_GROUND:
-				#m = mass_ground_mg_per_cell
-			#elif tile == TILE_ICE:
-				#m = mass_ice_mg_per_cell
-			#else: # TILE_URANIUM
-				#m = mass_uranium_mg_per_cell
-		#else:
-			## 비고체: 액체가 있으면 LIQUID, 없으면 VACUUM
-			#if m > 0:
-				#ph = PhaseStore.LIQUID
-				#m = 1
-			#else:
-				#ph = PhaseStore.VACUUM
-		#phases[i] = ph
-		#mass[i] = m
-
-	emit_signal("generated", size, phases, mass, tiles, liquid.springs)
+	emit_signal("generated", size, substances, phases, mass, tiles, liquid.springs)
 
 # Build a 1D heightmap representing surface level per column
 func generate_heightmap() -> PackedInt32Array:

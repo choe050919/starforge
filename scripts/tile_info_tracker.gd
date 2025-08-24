@@ -16,7 +16,7 @@ var phase_store: PhaseStore
 var mass_store: MassStore
 
 # 경계 체크용 인덱스
-var index: GridIndex
+var _index: GridIndex
 
 ## ── 내부 상태 ─────────────────────────────────────────────────────────
 var _current_cell: Vector2i = Vector2i(-1, -1)
@@ -27,7 +27,7 @@ func _ready() -> void:
 
 func setup(hs: HoverService, gi: GridIndex, ps: PhaseStore, ms: MassStore) -> void:
 	hover_service = hs
-	index = gi
+	_index = gi
 	phase_store = ps
 	_connect_sources()
 
@@ -51,7 +51,7 @@ func _connect_sources() -> void:
 
 ## ── Hover 수신 ────────────────────────────────────────────────────────
 func on_hover_changed(cell: Vector2i,) -> void:
-	if not _in_bounds(cell):
+	if not _index.in_bounds_cell(cell):
 		_on_hover_cleared()
 		return
 	if cell == _current_cell and _has_focus:
@@ -79,7 +79,7 @@ func _on_mass_changed(cell: Vector2i) -> void:
 func _emit_full_info_now() -> void:
 	if not _has_focus:
 		return
-	if not _in_bounds(_current_cell):
+	if not _index.in_bounds_cell(_current_cell):
 		return
 	if info_provider.has_method("query"):
 		var info = info_provider.query(_current_cell)
@@ -89,17 +89,6 @@ func _emit_full_info_now() -> void:
 			push_error("[TileInfoTracker] info is null")
 	else:
 		push_error("[TileInfoTracker] Missing method: TileInfoProvider.query")
-		# Provider가 아직 없다면 최소 Fallback(Phase만) — 필요시 지워도 됨
-		#var info = _fallback_min_info(_current_cell)
-		#if info != null:
-			#emit_signal("info_updated", info)
-
-## ── 유틸 ─────────────────────────────────────────────────────────────
-func _in_bounds(cell: Vector2i) -> bool:
-	if index and index.has_method("in_bounds"):
-		return index.in_bounds(cell)
-	push_error("[TileInfoTracker] failed to use method in_bounds: temporary return true")
-	return true
 
 """
 # Provider가 준비되기 전 임시용: Phase만 채운 TileInfo

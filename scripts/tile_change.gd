@@ -30,7 +30,7 @@ func setup(store: TileStore, grid_size: Vector2i, queue: EventQueue) -> void:
 
 func get_tiles() -> PackedInt32Array:
 		if _store:
-				return _store.get_tiles()
+			return _store.get_tiles()
 		return PackedInt32Array()
 
 func queue_replace(cell: Vector2i, to_tile: int, reason: StringName = &"") -> void:
