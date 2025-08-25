@@ -30,33 +30,24 @@ func setup(phase_store: PhaseStore, substance_store: SubstanceStore, temperature
 	_index = index
 	_clock = clock
 
-func _ready() -> void:
 	_core = PhaseChangeCore.new()
 	_core.setup_rules(hyst_c, melt_c, freeze_c)
 
-	# 선택: 시계 신호 연결 (clock이 있으면)
-	if _clock and _clock.has_signal("tick"):
-		_clock.connect("tick", Callable(self, "_on_sim_tick"))
+	# 시계 신호 연결
+	if _clock.has_signal("tick_sim"):
+		_clock.connect("tick_sim", Callable(self, "_on_sim_tick"))
 
 func _on_sim_tick(dt: float) -> void:
 	# 시뮬레이션 틱마다 실행
 	if not enabled:
 		return
-	if _phase_store == null or _substance_store == null or _temperature == null or _index == null:
+	if _phase_store == null or _substance_store == null or _temperature == null or _index == null or _clock == null:
 		return
 
 	var stats = _core.tick_fullscan(_phase_store, _substance_store, _temperature, _index)
 	if debug_log and stats.total > 0:
 		print("[PhaseChange] Δ=", stats.total,
 			" (ICE→WATER=", stats.ice_to_water, ", WATER→ICE=", stats.water_to_ice, ")")
-
-# 선택: 수동 호출용 API (시계를 쓰지 않는 경우)
-func tick_once() -> Dictionary:
-	if not enabled:
-		return {"ice_to_water":0, "water_to_ice":0, "total":0}
-	if _phase_store == null or _substance_store == null or _temperature == null or _index == null:
-		return {"ice_to_water":0, "water_to_ice":0, "total":0}
-	return _core.tick_fullscan(_phase_store, _substance_store, _temperature, _index)
 
 # 런타임에서 파라미터를 바꿨다면 규칙 재적용
 func rebuild_rules() -> void:

@@ -71,8 +71,8 @@ func tick_fullscan(phase_store, substance_store, temperature, index) -> Dictiona
 	substance_store.begin_write()
 
 	for i in n:
-		var sid = substance_store.get_sid_i(i)
-		var ph = phase_store.get_phase_i(i)
+		var sid = substance_store.get_by_idx(i)
+		var ph = phase_store.get_by_index(i)
 
 		# 빠른 배제: 현재 phase별로 단일 비교만 수행
 		if ph == PH.SOLID:
