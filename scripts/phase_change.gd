@@ -1,1 +1,65 @@
 extends Node
+class_name PhaseChange
+## 씬 트리에 붙는 시스템 래퍼.
+## - 의존성 주입
+## - SimClock 신호 연결
+## - 디버그/토글/프로파일
+
+@export var enabled := true
+@export var debug_log := false
+
+# 히스테리시스/임계값 파라미터 (Core로 전달)
+@export var hyst_c := 2.0        # ICE/WATER 공용 히스테리시스 폭
+@export var melt_c := 0.0        # ICE 쪽 융해 기준(상향)
+@export var freeze_c := -1.0     # WATER 쪽 응고 기준(하향)
+
+# 의존성
+var _phase_store: PhaseStore
+var _substance_store: SubstanceStore
+var _temperature: Temperature
+var _index: GridIndex
+var _clock : SimClock
+
+# 코어
+var _core: PhaseChangeCore
+
+func setup(phase_store: PhaseStore, substance_store: SubstanceStore, temperature: Temperature, index: GridIndex, clock: SimClock) -> void:
+	_phase_store = phase_store
+	_substance_store = substance_store
+	_temperature = temperature
+	_index = index
+	_clock = clock
+
+func _ready() -> void:
+	_core = PhaseChangeCore.new()
+	_core.setup_rules(hyst_c, melt_c, freeze_c)
+
+	# 선택: 시계 신호 연결 (clock이 있으면)
+	if _clock and _clock.has_signal("tick"):
+		_clock.connect("tick", Callable(self, "_on_sim_tick"))
+
+func _on_sim_tick(dt: float) -> void:
+	# 시뮬레이션 틱마다 실행
+	if not enabled:
+		return
+	if _phase_store == null or _substance_store == null or _temperature == null or _index == null:
+		return
+
+	var stats = _core.tick_fullscan(_phase_store, _substance_store, _temperature, _index)
+	if debug_log and stats.total > 0:
+		print("[PhaseChange] Δ=", stats.total,
+			" (ICE→WATER=", stats.ice_to_water, ", WATER→ICE=", stats.water_to_ice, ")")
+
+# 선택: 수동 호출용 API (시계를 쓰지 않는 경우)
+func tick_once() -> Dictionary:
+	if not enabled:
+		return {"ice_to_water":0, "water_to_ice":0, "total":0}
+	if _phase_store == null or _substance_store == null or _temperature == null or _index == null:
+		return {"ice_to_water":0, "water_to_ice":0, "total":0}
+	return _core.tick_fullscan(_phase_store, _substance_store, _temperature, _index)
+
+# 런타임에서 파라미터를 바꿨다면 규칙 재적용
+func rebuild_rules() -> void:
+	if _core == null:
+		_core = PhaseChangeCore.new()
+	_core.setup_rules(hyst_c, melt_c, freeze_c)

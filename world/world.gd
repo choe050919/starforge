@@ -14,6 +14,7 @@ class_name World
 @onready var clock: SimClock =             %Systems/SimClock
 @onready var tchange: TileChange =         %Systems/TileChange
 @onready var liquid: Liquid =              %Systems/Liquid
+@onready var phase_change: PhaseChange =   %Systems/PhaseChange
 @onready var input: InputController =      %Systems/InputController
 @onready var hover_service: HoverService = %Systems/HoverService
 
@@ -49,18 +50,15 @@ func _ready() -> void:
 
 	worldgen.generate()
 
-	if clock:
-		clock.tick_sim.connect(_on_tick_sim)
+	clock.tick_sim.connect(_on_tick_sim)
 
-	if tchange != null:
-		tchange.tile_destroyed.connect(_on_tile_destroyed)
-		tchange.tile_replaced.connect(_on_tile_replaced)
-	if durability != null and tchange != null:
-		durability.break_requested.connect(func(cell: Vector2i): tchange.queue_destroy(cell, &"durability"))
+	tchange.tile_destroyed.connect(_on_tile_destroyed)
+	tchange.tile_replaced.connect(_on_tile_replaced)
 
-	if durability != null and crack_overlay != null:
-		durability.hp_changed.connect(crack_overlay.on_hp_changed)
-		durability.break_requested.connect(crack_overlay.on_break_requested)
+	durability.break_requested.connect(func(cell: Vector2i): tchange.queue_destroy(cell, &"durability"))
+
+	durability.hp_changed.connect(crack_overlay.on_hp_changed)
+	durability.break_requested.connect(crack_overlay.on_break_requested)
 
 func _on_world_generated(
 		size: Vector2i,
@@ -100,6 +98,8 @@ func _on_world_generated(
 		liquid.setup(data_layer, springs)
 	if liquid_overlay != null:
 		liquid_overlay.render(mass)
+
+	phase_change.setup(data_layer.phase, data_layer.substance, temp, data_layer.index, clock)
 
 	tile_info_hud.setup(hover_service, data_layer.index, data_layer.phase, data_layer.mass)
 
