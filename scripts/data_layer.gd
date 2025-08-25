@@ -4,6 +4,7 @@ var index: GridIndex = GridIndex.new()
 var substance: SubstanceStore = SubstanceStore.new()
 var phase: PhaseStore = PhaseStore.new()
 var mass: MassStore = MassStore.new()
+var temperature: TemperatureStore = TemperatureStore.new()
 
 func setup(
 		size: Vector2i,
