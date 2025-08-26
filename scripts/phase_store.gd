@@ -35,7 +35,7 @@ func begin_write() -> void:
 	_write.append_array(_read)
 
 func commit() -> void:
-	if not is_writing():
+	if not _is_writing:
 		push_warning("[PhaseStore] commit while not writing (ignored)")
 		return
 	# 스왑
@@ -64,7 +64,7 @@ func get_raw_write() -> PackedByteArray: return _write
 
 # ── 쓰기 ────────────────────────────────────────────────
 func set_phase(cell: Vector2i, phase: int) -> void:
-	if not is_writing():
+	if not _is_writing:
 		push_warning("[PhaseStore] write without begin_write (ignored)")
 		return
 	if not _index.in_bounds_cell(cell):
@@ -74,7 +74,7 @@ func set_phase(cell: Vector2i, phase: int) -> void:
 	emit_signal("phase_changed", cell)
 
 func set_by_index(i: int, phase: int) -> void:
-	if not is_writing():
+	if not _is_writing:
 		push_warning("[PhaseStore] write without begin_write (ignored)")
 		return
 	_write[i] = phase

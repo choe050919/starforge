@@ -12,8 +12,6 @@ enum SubstanceId {
 var _read: PackedInt32Array = PackedInt32Array()
 var _write: PackedInt32Array = PackedInt32Array()
 
-enum { STATE_READING, STATE_WRITING }
-
 func setup(index: GridIndex, initial: Variant = null) -> void:
 	super.setup(index, initial)
 
@@ -36,7 +34,7 @@ func begin_write() -> void:
 	_write.append_array(_read)
 
 func commit() -> void:
-	if not is_writing():
+	if not _is_writing:
 		push_warning("[SubstanceStore.commit] not in writing state (ignored)")
 		return
 	# 버퍼 스왑
@@ -63,7 +61,7 @@ func get_raw_write() -> PackedInt32Array: return _write
 
 # ── 쓰기 ────────────────────────────────────────────────
 func set_by_idx(i: int, mat: int) -> void:
-	if not is_writing():
+	if not _is_writing:
 		push_warning("[SubstanceStore] write without begin_write (ignored)")
 		return
 	if not is_valid_id(mat):
@@ -72,7 +70,7 @@ func set_by_idx(i: int, mat: int) -> void:
 	_write[i] = mat
 
 func set_substance(cell: Vector2i, mat: int) -> void:
-	if not is_writing():
+	if not _is_writing:
 		push_warning("[SubstanceStore] write without begin_write (ignored)")
 		return
 	if not _index.in_bounds(cell):

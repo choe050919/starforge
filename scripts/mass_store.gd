@@ -1,6 +1,7 @@
 extends BaseStore
 class_name MassStore
-# 단위: milligram(㎎). 내부 저장/연산은 int64(mg) 기준.
+## 셀 단위 질량 저장소 (더블 버퍼)
+## 단위: milligram(㎎). 내부 저장/연산은 int64(mg) 기준.
 
 const MG_PER_G  := 1_000
 const MG_PER_KG := 1_000_000
@@ -29,9 +30,32 @@ func begin_write() -> void:
 	_write.resize(0)
 	_write.append_array(_read)
 
+# ===== 커밋 =====
+func commit() -> void: # read 버전을 write 버전으로 최신화(참조 스왑)
+	if not _is_writing:
+		push_warning("[MassStore] commit called while not writing")
+		return
+
+	# 1) 음수 보정
+	_clamp_negatives_on_write()
+
+	# 2) 합계 보존 검증(정수 mg → Δ는 0이어야 정상)
+	var sum_r := _safe_sum(_read)
+	var sum_w := _safe_sum(_write)
+	var delta := sum_w - sum_r
+	if delta != 0:
+		push_warning("[MassStore] conservation violated: Δ=%d mg (r=%d, w=%d)" % [delta, sum_r, sum_w])
+
+	# 3) 버퍼 스왑
+	var tmp := _read
+	_read = _write
+	_write = tmp
+
+	super.commit()
+
 # ===== 쓰기 경로 =====
 func add(i: int, dm_mg: int) -> void:
-	if not is_writing():
+	if not _is_writing:
 		push_warning("[MassStore] write without begin_write (ignored)")
 		return
 	if not _index.in_bounds_idx(i):
@@ -40,7 +64,7 @@ func add(i: int, dm_mg: int) -> void:
 	_write[i] += dm_mg
 
 func set_idx(i: int, m_mg: int) -> void:
-	if not is_writing():
+	if not _is_writing:
 		push_warning("[MassStore] write without begin_write (ignored)")
 		return
 	if not _index.in_bounds_idx(i):
@@ -90,28 +114,6 @@ func _clamp_negatives_on_write() -> int:
 		push_warning("[MassStore] clamp(negative)=%d" % clamp_count)
 	return clamp_count
 
-# ===== 커밋 =====
-func commit() -> void: # read 버전을 write 버전으로 최신화(참조 스왑)
-	if not is_writing():
-		push_warning("[MassStore] commit called while not writing")
-		return
-
-	# 1) 음수 보정
-	_clamp_negatives_on_write()
-
-	# 2) 합계 보존 검증(정수 mg → Δ는 0이어야 정상)
-	var sum_r := _safe_sum(_read)
-	var sum_w := _safe_sum(_write)
-	var delta := sum_w - sum_r
-	if delta != 0:
-		push_warning("[MassStore] conservation violated: Δ=%d mg (r=%d, w=%d)" % [delta, sum_r, sum_w])
-
-	# 3) 버퍼 스왑
-	var tmp := _read
-	_read = _write
-	_write = tmp
-
-	super.commit()
 
 func sum() -> int:
 	return _safe_sum(_read)
