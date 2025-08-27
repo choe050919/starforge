@@ -25,14 +25,14 @@ var _has_focus: bool = false             # hover 중 여부(hover_cleared 대응
 func _ready() -> void:
 	_connect_sources()
 
-func setup(hs: HoverService, gi: GridIndex, ps: PhaseStore, ms: MassStore) -> void:
+func setup(hs: HoverService, gi: GridIndex, ss: SubstanceStore, ps: PhaseStore, ms: MassStore) -> void:
 	hover_service = hs
 	_index = gi
 	phase_store = ps
 	_connect_sources()
 
 	if info_provider:
-		info_provider.setup(ps, ms, gi)
+		info_provider.setup(gi, ss, ps, ms)
 	else:
 		push_error("[TileInfoTracker] 어쩌구저쩌구 귀찮다")
 
@@ -89,37 +89,3 @@ func _emit_full_info_now() -> void:
 			push_error("[TileInfoTracker] info is null")
 	else:
 		push_error("[TileInfoTracker] Missing method: TileInfoProvider.query")
-
-"""
-# Provider가 준비되기 전 임시용: Phase만 채운 TileInfo
-func _fallback_min_info(cell: Vector2i):
-	# TileInfo 타입이 프로젝트에 있다면 사용, 없다면 Dictionary로도 충분
-	var info := null
-	if ClassDB.class_exists("TileInfo"):
-		info = TileInfo.new()
-		info.cell = cell
-		info.name = "Tile"
-		# Phase 숫자값 → 문자열 매핑은 프로젝트 상수에 맞게 바꾸세요.
-		var phase_str := _read_phase_str(cell)
-		info.phase = phase_str if info.has_method("get") == false else phase_str # (유연성 보존)
-	else:
-		info = {
-			"cell": cell,
-			"name": "Tile",
-			"phase": _read_phase_str(cell)
-		}
-	return info
-"""
-
-"""
-func _read_phase_str(cell: Vector2i) -> String:
-	if phase_store:
-		# 가능한 메서드 패턴을 순차적으로 시도 (프로젝트 구현 체계에 맞게 하나만 남겨도 됨)
-		if phase_store.has_method("get_phase_at"):
-			return str(phase_store.get_phase_at(cell))
-		if phase_store.has_method("get"):
-			return str(phase_store.get(cell))
-		if phase_store.has_method("at"):
-			return str(phase_store.at(cell))
-	return "UNKNOWN"
-"""

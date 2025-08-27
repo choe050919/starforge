@@ -33,7 +33,7 @@ func begin_write() -> void:
 # ===== 커밋 =====
 func commit() -> void: # read 버전을 write 버전으로 최신화(참조 스왑)
 	if not _is_writing:
-		push_warning("[MassStore] commit called while not writing")
+		push_warning("[MassStore.commit] not in writing state (ignored)")
 		return
 
 	# 1) 음수 보정

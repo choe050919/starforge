@@ -101,7 +101,7 @@ func _on_world_generated(
 
 	phase_change.setup(data_layer.phase, data_layer.substance, temp, data_layer.index, clock)
 
-	tile_info_hud.setup(hover_service, data_layer.index, data_layer.phase, data_layer.mass)
+	tile_info_hud.setup(hover_service, data_layer.index, data_layer.substance, data_layer.phase, data_layer.mass)
 
 func _on_temperature_updated() -> void:
 	var T := temp.get_temperature_buffer()

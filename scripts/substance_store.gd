@@ -51,7 +51,7 @@ func get_by_idx(i: int) -> int:
 	return _read[i]
 
 func get_substance(cell: Vector2i) -> int:
-	if not _index.in_bounds(cell):
+	if not _index.in_bounds_cell(cell):
 		push_warning("[SubstanceStore.get] out of bounds: %s" % [cell])
 		return SubstanceId.VACUUM
 	return _read[_index.idx(cell)]

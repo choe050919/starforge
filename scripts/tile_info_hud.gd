@@ -4,8 +4,10 @@ class_name TileInfoHUD
 @onready var tile_info_tracker: TileInfoTracker = $TileInfoTracker
 
 @onready var _panel: PanelContainer = $TileInfoPanel
+@onready var _substance_label: Label = $TileInfoPanel/VBoxContainer/Substance/SubstanceLabel
 @onready var _phase_label: Label = $TileInfoPanel/VBoxContainer/Phase/PhaseLabel
 @onready var _mass_label: Label = $TileInfoPanel/VBoxContainer/Mass/MassLabel
+@onready var _temperature_label: Label = $TileInfoPanel/VBoxContainer/Temperature/TemperatureLabel
 
 @export var offset := Vector2(14, 18)   # 커서와 겹치지 않도록
 @export var edge_margin := 8.0          # 화면 가장자리 여백
@@ -14,6 +16,14 @@ class_name TileInfoHUD
 # 표시 자리수 조정(kg/g일 때)
 @export var mass_decimals := 2
 
+const SUBSTANCE_TEXT := {
+	-1: "—",
+	 0: "VACUUM",
+	 1: "ICE",
+	 2: "GROUND",
+	 3: "URANIUM",
+	 4: "WATER",
+}
 const PHASE_TEXT := {
 	-1: "—",
 	 0: "VACUUM",
@@ -29,30 +39,37 @@ const PHASE_COLOR := {                 # 선택: Label 폰트 색 등
 	 3: Color(0.7,0.8,0.95),
 }
 
-func setup(hs: HoverService, gi: GridIndex, ps: PhaseStore, ms: MassStore) -> void:
-	tile_info_tracker.setup(hs, gi, ps, ms)
+func setup(hs: HoverService, gi: GridIndex, ss: SubstanceStore, ps: PhaseStore, ms: MassStore) -> void:
+	tile_info_tracker.setup(hs, gi, ss, ps, ms)
 	tile_info_tracker.connect("info_updated", _on_info_updated)
 
 func _on_info_updated(info: Dictionary) -> void:
-	var phase_val: int = int(info.get("phase", -1))
-	var text: String = PHASE_TEXT.get(phase_val, "UNKNOWN")
+	_update_substance(info)
+	_update_phase(info)
+	_update_mass(info)
+	_update_temperature(info)
+
+func _update_substance(info: Dictionary) -> void:
+	var s: int = info.get("substance", -1)
+	var text: String = SUBSTANCE_TEXT.get(s, "UNKNOWN")
+	_substance_label.text = "SUBSTANCE: " + text
+
+func _update_phase(info: Dictionary) -> void:
+	var p: int = info.get("phase", -1)
+	var text: String = PHASE_TEXT.get(p, "UNKNOWN")
 	_phase_label.text = "PHASE: " + text
 
-	# 선택: 색/아이콘 갱신
-	var col: Color = PHASE_COLOR.get(phase_val, Color.WHITE)
+	# 색/아이콘 갱신
+	var col: Color = PHASE_COLOR.get(p, Color.WHITE)
 	_phase_label.add_theme_color_override("font_color", col)
-	# _phase_icon.texture = ... (아이콘 매핑을 쓴다면 여기서 교체)
-
-	_update_mass(info)
-
-	# 패널이 꺼져 있으면 켠다(hover 연결을 안 쓴 경우 대비)
-	if not _panel.visible:
-		_panel.show()
 
 func _update_mass(info: Dictionary) -> void:
-	var raw = info.get("mass", null)
-	var mass_val: int = -1 if raw == null else int(raw)
-	_mass_label.text = "MASS: " + _format_mass(mass_val)
+	var m = info.get("mass", null)
+	var text := _format_mass(-1 if m == null else int(m))
+	_mass_label.text = "MASS: " + text
+
+func _update_temperature(info: Dictionary) -> void:
+	pass
 
 # mg → g → kg 자동 포맷터 (HUD 전용)
 # 추후 다른 패널에서도 사용될 수 있지만 일단 빠른 개발을 위해 여기서 구현하였음.

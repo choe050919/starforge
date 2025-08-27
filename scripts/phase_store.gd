@@ -36,7 +36,7 @@ func begin_write() -> void:
 
 func commit() -> void:
 	if not _is_writing:
-		push_warning("[PhaseStore] commit while not writing (ignored)")
+		push_warning("[PhaseStore.commit] not in writing state (ignored)")
 		return
 	# 스왑
 	var tmp := _read

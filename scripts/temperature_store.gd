@@ -25,3 +25,19 @@ func setup(index: GridIndex, initial: Variant = null) -> void:
 		_read = PackedInt32Array(); _read.resize(n); _read.fill(0)
 
 	_write = PackedInt32Array(_read)
+
+func begin_write() -> void:
+	super.begin_write()
+
+	_write.resize(0)
+	_write.append_array(_read)
+
+func commit() -> void:
+	if not _is_writing:
+		push_warning("[TemperatureStore.commit] not in writing state (ignored)")
+		return
+	# 스왑
+	var tmp := _read
+	_read = _write
+	_write = tmp
+	super.commit()
