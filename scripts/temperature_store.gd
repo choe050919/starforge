@@ -6,7 +6,7 @@ class_name TemperatureStore
 const CK_PER_K := 100
 const CK_0C := 27315 # 0 °C = 273.15 K = 27315 cK
 const MIN_CK := 0 # 0 K = -273.15 °C
-#const MAX_CK := 15_000_000 # 150,000 K (안전 상한; 필요 시 조정)
+const MAX_CK := 15_000_000 # 150,000 K (안전 상한; 필요 시 조정)
 
 var _read: PackedInt32Array = PackedInt32Array()
 var _write: PackedInt32Array = PackedInt32Array()
@@ -36,8 +36,25 @@ func commit() -> void:
 	if not _is_writing:
 		push_warning("[TemperatureStore.commit] not in writing state (ignored)")
 		return
-	# 스왑
+	# 버퍼 스왑
 	var tmp := _read
 	_read = _write
 	_write = tmp
 	super.commit()
+
+func is_valid_value(t: int) -> bool:
+	return t >= MIN_CK and t <= MAX_CK
+
+# ── 읽기 ────────────────────────────────────────────────
+func get_by_index(i: int) -> int:
+	return _read[i]
+
+# ── 쓰기 ────────────────────────────────────────────────
+func set_by_index(i: int, temp: int) -> void:
+	if not _is_writing:
+		push_warning("[TemperatureStore.set_by_index] write without begin_write (ignored)")
+		return
+	if not is_valid_value(temp):
+		push_warning("[TemperatureStore.set_by_index] invalid id: %d" % temp)
+		return
+	_write[i] = temp

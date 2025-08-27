@@ -49,7 +49,7 @@ func commit() -> void: # read 버전을 write 버전으로 최신화(참조 스�
 	# 3) 버퍼 스왑
 	var tmp := _read
 	_read = _write
-	_write = tmp
+	_write = tmp # 왜 필요하지...?
 
 	super.commit()
 

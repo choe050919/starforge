@@ -43,11 +43,11 @@ func commit() -> void:
 	_write = tmp
 	super.commit()
 
-# ── 조회 ────────────────────────────────────────────────
 func is_valid_id(id: int) -> bool:
 	return id >= int(SubstanceId.VACUUM) and id <= int(SubstanceId.WATER)
 
-func get_by_idx(i: int) -> int:
+# ── 읽기 ────────────────────────────────────────────────
+func get_by_index(i: int) -> int:
 	return _read[i]
 
 func get_substance(cell: Vector2i) -> int:
