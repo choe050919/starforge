@@ -30,7 +30,6 @@ func is_ready() -> bool:
 # ── 조회 API ──────────────────────────────────────────────
 func query(cell: Vector2i):
 	# 반환: TileInfo(권장) 또는 Dictionary(대체). 패널이 enum→문자열 매핑을 맡는다.
-	# 준비 안 됐으면 UNKNOWN만 채워서 반환
 	if not is_ready():
 		return _make_info(cell, -1, -1, -1)
 
