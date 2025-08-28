@@ -5,6 +5,9 @@ class_name HeatmapOverlay
 
 @export var opacity: float = 0.9 # 오버레이 투명도
 
+@export var t_min: float = -20.0   # 히트맵 표시 최소/최대(시각화용)
+@export var t_max: float = 40.0
+
 var grid_size: Vector2i
 var tile_px: Vector2i = Vector2i(32, 32) # 타일 픽셀(런타임에 World가 세팅해줌)
 
@@ -25,7 +28,7 @@ func set_layout(size: Vector2i, tile_size: Vector2i) -> void:
 	sprite.scale = Vector2(tile_px) # 1 텍셀 = 1 타일
 	sprite.modulate.a = opacity
 
-func render_full_with_mask(T: PackedFloat32Array, mask: PackedByteArray, t_min: float, t_max: float) -> void:
+func render_full_with_mask(T: PackedFloat32Array, mask: PackedByteArray) -> void:
 	if grid_size.x * grid_size.y != T.size() or mask.size() != T.size():
 		push_error("[HeatmapOverlay] Size mismatch with mask."); 
 		return

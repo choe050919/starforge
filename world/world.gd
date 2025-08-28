@@ -106,9 +106,8 @@ func _on_world_generated(
 func _on_temperature_updated() -> void:
 	var T := temp.get_temperature_buffer()
 	var mask:= temp.get_solid_mask()
-	var vr := temp.get_visual_range()
-	heatmap.render_full_with_mask(T, mask, vr.x, vr.y)
-	
+	heatmap.render_full_with_mask(T, mask)
+
 	# ΔT 기반 열원 오버레이 렌더
 	if heat_src != null:
 		var dT := temp.get_last_delta()
