@@ -15,5 +15,5 @@ func cell(i: int) -> Vector2i:
 func in_bounds_cell(c: Vector2i) -> bool:
 	return c.x >= 0 and c.y >= 0 and c.x < size.x and c.y < size.y
 
-func in_bounds_idx(i: int) -> bool:
+func in_bounds_index(i: int) -> bool:
 	return i >= 0 and i < size.x * size.y

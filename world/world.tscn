@@ -104,10 +104,10 @@ script = ExtResource("14_ifjjt")
 
 [node name="Temperature" type="Node" parent="Systems"]
 script = ExtResource("15_behgl")
+k_ground = 10.0
 
 [node name="Temperature2" type="Node" parent="Systems"]
 script = ExtResource("16_inp7a")
-enabled = false
 
 [node name="SimClock" type="Node" parent="Systems"]
 script = ExtResource("16_k83x5")
@@ -124,8 +124,6 @@ script = ExtResource("19_pfbnl")
 
 [node name="PhaseChange" type="Node" parent="Systems"]
 script = ExtResource("20_gwdna")
-enabled = false
-debug_log = true
 
 [node name="InputController" type="Node" parent="Systems"]
 script = ExtResource("21_h4vgh")

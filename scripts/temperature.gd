@@ -13,7 +13,7 @@ signal temperature_updated() # fired when the entire temperature buffer updates
 @export var c_uranium: float = 1.0
 
 @export var t_ground_init: float = 12.0
-@export var t_ice_init: float = -5.0
+@export var t_ice_init: float = -10.0
 @export var t_uranium_init: float = 12.0
 @export var t_min_vis: float = -20.0   # 히트맵 표시 최소/최대(시각화용)
 @export var t_max_vis: float = 40.0
@@ -151,9 +151,6 @@ func _compute_delta(Tnew: PackedFloat32Array) -> void:
 
 func get_temperature_buffer() -> PackedFloat32Array:
 	return T
-
-func get_visual_range() -> Vector2:
-	return Vector2(t_min_vis, t_max_vis)
 
 func get_solid_mask() -> PackedByteArray:
 	return solid_mask

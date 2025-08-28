@@ -8,6 +8,22 @@ class_name Temperature2
 @export var enabled := true
 @export var debug_log := false
 
+# 규칙 파라미터 (Core로 전달)
+# α = k/c (무차원, 상대값). 확산 블렌딩에 사용.
+@export var alpha_ground := 0.9
+@export var alpha_ice := 0.4
+@export var alpha_uranium := 0.8
+
+@export var c_ground := 1.0
+@export var c_ice := 0.8
+@export var c_uranium := 1.0
+# 초기 온도(°C)
+@export var t_ground_init_c := 12.0
+@export var t_ice_init_c := -5.0
+@export var t_uranium_init_c := 12.0
+
+@export var uranium_power_c_per_s := 3.0
+
 # 의존성
 var _temperature_store: TemperatureStore
 var _index: GridIndex
@@ -21,8 +37,14 @@ func setup(ts: TemperatureStore, index: GridIndex, clock: SimClock) -> void:
 	_index = index
 	_clock = clock
 
+	@warning_ignore("shadowed_variable_base_class")
+	for name in ["_temperature_store", "_index", "_clock"]:
+		var value = get(name)
+		if value == null:
+			push_error("[PhaseChange.setup]%s is null" % name)
+
 	_core = TemperatureCore.new()
-	#_core.setup_rules()
+	_core.setup_rules()
 
 	# 시계 신호 연결
 	if _clock.has_signal("tick_sim"):
@@ -31,8 +53,6 @@ func setup(ts: TemperatureStore, index: GridIndex, clock: SimClock) -> void:
 func _on_sim_tick(dt: float) -> void:
 	# 시뮬레이션 틱마다 실행
 	if not enabled:
-		return
-	if _temperature_store == null or _index == null or _clock == null:
 		return
 
 	#var stats = _core.tick_fullscan(_phase_store, _substance_store, _temperature, _index)

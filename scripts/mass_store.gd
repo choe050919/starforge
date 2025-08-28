@@ -58,7 +58,7 @@ func add(i: int, dm_mg: int) -> void:
 	if not _is_writing:
 		push_warning("[MassStore] write without begin_write (ignored)")
 		return
-	if not _index.in_bounds_idx(i):
+	if not _index.in_bounds_index(i):
 		push_warning("[MassStore] Out‑of‑Bounds cell ignored: idx=%d" % i)
 		return
 	_write[i] += dm_mg
@@ -77,7 +77,7 @@ func set_cell(cell: Vector2i, m_mg: int) -> void:
 
 # ===== 읽기 경로 =====
 func get_mass(i: int) -> int:
-	if not _index.in_bounds_idx(i):
+	if not _index.in_bounds_index(i):
 		push_warning("[MassStore] Out‑of‑Bounds cell ignored: idx=%d" % i)
 		return 0
 	return _read[i]

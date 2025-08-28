@@ -28,7 +28,7 @@ func setup_rules(
 	hyst_c: float = 2.0,   # ICE/WATER 공용 히스테리시스 폭
 	melt_c: float = 0.0,   # 얼음(고체)의 융해 기준 온도(상향 문턱의 중심)
 	freeze_c: float = -1.0 # 물(액체)의 응고 기준 온도(하향 문턱의 중심)
-) -> void:
+	) -> void:
 	# sid 최대치 고려해 배열 준비(간단히 5칸)
 	melt_up = PackedFloat32Array([0, 0, 0, 0, 0])
 	freeze_down = PackedFloat32Array([0, 0, 0, 0, 0])
@@ -71,27 +71,27 @@ func tick_fullscan(phase_store, substance_store, temperature, index) -> Dictiona
 	substance_store.begin_write()
 
 	for i in n:
-		var sid = substance_store.get_by_idx(i)
+		var sid = substance_store.get_by_index(i)
 		var ph = phase_store.get_by_index(i)
 
 		# 빠른 배제: 현재 phase별로 단일 비교만 수행
 		if ph == PH.SOLID:
 			# 고체가 액체로 융해 가능한지(ICE만 실질적으로 허용)
-			var t = temperature.get_celsius_i(i)
+			var t = temperature.get_temperature_buffer()[i]
 			if t >= melt_up[sid]:
 				# ICE → WATER 로 substance 전환 + phase LIQUID
 				if sid == SID.ICE:
-					substance_store.set_sid_i(i, SID.WATER)
-					phase_store.set_phase_i(i, PH.LIQUID)
+					substance_store.set_by_index(i, SID.WATER)
+					phase_store.set_by_index(i, PH.LIQUID)
 					ice_to_water += 1
 				# (다른 sid는 melt_up가 불가능값이라 도달 불가)
 		elif ph == PH.LIQUID:
 			# 액체가 고체로 응고 가능한지(WATER만 실질적으로 허용)
-			var t2 = temperature.get_celsius_i(i)
+			var t2 = temperature.get_temperature_buffer()[i]
 			if t2 <= freeze_down[sid]:
 				if sid == SID.WATER:
-					substance_store.set_sid_i(i, SID.ICE)
-					phase_store.set_phase_i(i, PH.SOLID)
+					substance_store.set_by_index(i, SID.ICE)
+					phase_store.set_by_index(i, PH.SOLID)
 					water_to_ice += 1
 		else:
 			# VACUUM/GAS 단계는 현재 상전이 없음(무시)

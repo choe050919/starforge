@@ -8,7 +8,7 @@ class_name PhaseChange
 @export var enabled := true
 @export var debug_log := false
 
-# 히스테리시스/임계값 파라미터 (Core로 전달)
+# 히스테리시스/임계값 규칙 파라미터 (Core로 전달)
 @export var hyst_c := 2.0        # ICE/WATER 공용 히스테리시스 폭
 @export var melt_c := 0.0        # ICE 쪽 융해 기준(상향)
 @export var freeze_c := -1.0     # WATER 쪽 응고 기준(하향)
@@ -29,6 +29,12 @@ func setup(phase_store: PhaseStore, substance_store: SubstanceStore, temperature
 	_temperature = temperature
 	_index = index
 	_clock = clock
+
+	@warning_ignore("shadowed_variable_base_class")
+	for name in ["_phase_store", "_substance_store", "_temperature", "_index", "_clock"]:
+		var value = get(name)
+		if value == null:
+			push_error("[PhaseChange.setup]%s is null" % name)
 
 	_core = PhaseChangeCore.new()
 	_core.setup_rules(hyst_c, melt_c, freeze_c)

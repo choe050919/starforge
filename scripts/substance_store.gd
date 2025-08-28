@@ -60,7 +60,7 @@ func get_raw_read() -> PackedInt32Array:  return _read
 func get_raw_write() -> PackedInt32Array: return _write
 
 # ── 쓰기 ────────────────────────────────────────────────
-func set_by_idx(i: int, mat: int) -> void:
+func set_by_index(i: int, mat: int) -> void:
 	if not _is_writing:
 		push_warning("[SubstanceStore] write without begin_write (ignored)")
 		return
