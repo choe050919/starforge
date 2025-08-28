@@ -23,10 +23,10 @@ var _clock : SimClock
 # 코어
 var _core: PhaseChangeCore
 
-func setup(phase_store: PhaseStore, substance_store: SubstanceStore, temperature: Temperature, index: GridIndex, clock: SimClock) -> void:
+func setup(phase_store: PhaseStore, substance_store: SubstanceStore, temperature_store: TemperatureStore, index: GridIndex, clock: SimClock) -> void:
 	_phase_store = phase_store
 	_substance_store = substance_store
-	_temperature = temperature
+	#_temperature = temperature !!!!!!!!!!!!!!
 	_index = index
 	_clock = clock
 

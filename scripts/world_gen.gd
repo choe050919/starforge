@@ -6,11 +6,18 @@ signal generated(
 	substances: PackedInt32Array,
 	phases: PackedByteArray,
 	mass: PackedInt64Array,
+	temperatures: PackedInt32Array,
 	tile_types: PackedInt32Array,
 	springs: PackedVector2Array
 )
 
 @export var size: Vector2i = Vector2i(256, 128)
+
+# 초기 온도(°C)
+@export var t_ice_init_c: float = -8.0
+@export var t_ground_init_c: float = 12.0
+@export var t_uranium_init_c: float = 12.0
+@export var t_water_init_c: float = 8.0
 
 # 노이즈/분포 파라미터
 @export var seed_height: int = 12345
@@ -27,7 +34,7 @@ signal generated(
 @export var mass_uranium_mg_per_cell: int = 1_900_000_000 # 1900 kg
 @export var water_capacity_mg_per_cell: int = 1_000_000
 
-# ── 우라늄 분포 파라미터 ──
+# 우라늄 분포 파라미터
 @export var uranium_seed: int = 24680
 @export var uranium_freq: float = 0.06          # 클러스터 크기(작을수록 더 큰 덩어리)
 @export var uranium_threshold: float = 0.72     # 노이즈 임계(낮출수록 많아짐)
@@ -40,11 +47,16 @@ const TILE_ICE: int = 1
 const TILE_GROUND: int = 2
 const TILE_URANIUM: int = 3
 
-# ── 초기 액체 배치 파라미터 ──
+# 초기 액체 배치 파라미터
 @export var water_level_ratio: float = 0.4
 @export var min_lake_size: int = 4
 @export var depth_scale: float = 4.0
 @export var springs_per_k: float = 1.0
+
+# °C → cK(centiKelvin) 변환: cK = round(°C*100 + 27315)
+const CK_0C := 27315
+static func _c_to_ck(c: float) -> int:
+	return int(round(c * 100.0 + CK_0C))
 
 func generate() -> void:
 	var hmap := generate_heightmap()
@@ -56,16 +68,18 @@ func generate() -> void:
 	var phases := PackedByteArray(); phases.resize(total)
 	var mass := PackedInt64Array(); mass.resize(total)
 	var substances := PackedInt32Array(); substances.resize(total)
+	var temperatures := PackedInt32Array(); temperatures.resize(total)
 
 	for i in total:
 		var tile := tiles[i]
 		var liq = liquid.amount[i]  # 복사한 mass[i] 대신 원본 참조로 판정이 명확함
 
-		# 1) 액체가 있으면 무조건 LIQUID 우선
+		# 1) 물이 있으면 LIQUID + WATER로 고정
 		if liq > 0:
 			phases[i] = PhaseStore.Phase.LIQUID
 			mass[i] = liq
 			substances[i] = SubstanceId.ID.WATER
+			temperatures[i] = _c_to_ck(t_water_init_c)
 			continue
 
 		# 2) 액체가 없으면 고체/진공 판정
@@ -73,20 +87,24 @@ func generate() -> void:
 			phases[i] = PhaseStore.Phase.SOLID
 			mass[i] = mass_ground_mg_per_cell
 			substances[i] = SubstanceId.ID.GROUND
+			temperatures[i] = _c_to_ck(t_ground_init_c)
 		elif tile == TILE_ICE:
 			phases[i] = PhaseStore.Phase.SOLID
 			mass[i] = mass_ice_mg_per_cell
 			substances[i] = SubstanceId.ID.ICE
+			temperatures[i] = _c_to_ck(t_ice_init_c)
 		elif tile == TILE_URANIUM:
 			phases[i] = PhaseStore.Phase.SOLID
 			mass[i] = mass_uranium_mg_per_cell
 			substances[i] = SubstanceId.ID.URANIUM
+			temperatures[i] = _c_to_ck(t_uranium_init_c)
 		else:
 			phases[i] = PhaseStore.Phase.VACUUM
 			mass[i] = 0
 			substances[i] = SubstanceId.ID.VACUUM
+			temperatures[i] = 0
 
-	emit_signal("generated", size, substances, phases, mass, tiles, liquid.springs)
+	emit_signal("generated", size, substances, phases, mass, temperatures, tiles, liquid.springs)
 
 # Build a 1D heightmap representing surface level per column
 func generate_heightmap() -> PackedInt32Array:

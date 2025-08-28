@@ -10,7 +10,7 @@ class_name World
 @onready var systems = %Systems
 @onready var worldgen: WorldGen =          %Systems/WorldGen
 @onready var durability: Durability =      %Systems/Durability
-@onready var temp: Temperature =           %Systems/Temperature
+@onready var temp: Temperature2 =           %Systems/Temperature2
 @onready var clock: SimClock =             %Systems/SimClock
 @onready var tchange: TileChange =         %Systems/TileChange
 @onready var liquid: Liquid =              %Systems/Liquid
@@ -46,7 +46,7 @@ func _ready() -> void:
 
 	# connect signals
 	worldgen.generated.connect(_on_world_generated)
-	temp.temperature_updated.connect(_on_temperature_updated)
+	#temp.temperature_updated.connect(_on_temperature_updated) !!!!!!!!!
 
 	worldgen.generate()
 
@@ -65,6 +65,7 @@ func _on_world_generated(
 		substances: PackedInt32Array,
 		phases: PackedByteArray,
 		mass: PackedInt64Array,
+		temperatures: PackedInt32Array,
 		tiles: PackedInt32Array,
 		springs: PackedVector2Array
 	) -> void:
@@ -86,8 +87,8 @@ func _on_world_generated(
 		input.set_cell_size(ts.tile_size)
 		corner_highlight.setup(ground_layer)
 
-	temp.setup_from_tiles(tiles, size)
-	_on_temperature_updated()
+
+	temp.setup(data_layer.temperature, data_layer.index, clock)
 
 	if durability:
 		durability.setup_from_tiles(tiles, size)
@@ -99,23 +100,23 @@ func _on_world_generated(
 	if liquid_overlay != null:
 		liquid_overlay.render(mass)
 
-	phase_change.setup(data_layer.phase, data_layer.substance, temp, data_layer.index, clock)
+	phase_change.setup(data_layer.phase, data_layer.substance, data_layer.temperature, data_layer.index, clock)
 
 	tile_info_hud.setup(hover_service, data_layer.index, data_layer.substance, data_layer.phase, data_layer.mass)
 
-func _on_temperature_updated() -> void:
-	var T := temp.get_temperature_buffer()
-	var mask:= temp.get_solid_mask()
-	heatmap.render_full_with_mask(T, mask)
-
-	# ΔT 기반 열원 오버레이 렌더
-	if heat_src != null:
-		var dT := temp.get_last_delta()
-		heat_src.render_heat_sources(dT)
+#func _on_temperature_updated() -> void:  !!!!!!!!!!!!!!!!
+	#var T := temp.get_temperature_buffer()
+	#var mask:= temp.get_solid_mask()
+	#heatmap.render_full_with_mask(T, mask)
+#
+	## ΔT 기반 열원 오버레이 렌더
+	#if heat_src != null:
+		#var dT := temp.get_last_delta()
+		#heat_src.render_heat_sources(dT)
 
 func _on_tick_sim(dt: float) -> void:
 	if temp:
-		temp.on_tick(dt)
+		temp._on_sim_tick(dt)
 	if liquid:
 		liquid.tick_liquid(dt)
 	if liquid_overlay != null:
