@@ -60,9 +60,9 @@ func setup_rules(
 # 풀 스캔 실행:
 # - phase_store: get_phase_i(i), set_phase_i(i), begin_write(), commit()
 # - substance_store: get_sid_i(i), set_sid_i(i), begin_write(), commit()
-# - temperature: get_celsius_i(i)
+# - temperature: get_celsius_i(i) !!!!!!!!!!!!
 # - index: GridIndex(size)
-func tick_fullscan(phase_store, substance_store, temperature, index) -> Dictionary:
+func tick_fullscan(phase_store, substance_store, temperature_store, index) -> Dictionary:
 	var n = index.size.x * index.size.y
 	var ice_to_water := 0
 	var water_to_ice := 0
@@ -74,10 +74,14 @@ func tick_fullscan(phase_store, substance_store, temperature, index) -> Dictiona
 		var sid = substance_store.get_by_index(i)
 		var ph = phase_store.get_by_index(i)
 
+		print(i, ph, sid)
+		print(temperature_store._read.size())
+		print(temperature_store.get_by_index(540))
 		# 빠른 배제: 현재 phase별로 단일 비교만 수행
 		if ph == PH.SOLID:
 			# 고체가 액체로 융해 가능한지(ICE만 실질적으로 허용)
-			var t = temperature.get_temperature_buffer()[i]
+			var t = temperature_store.get_by_index(i)
+			print(t)
 			if t >= melt_up[sid]:
 				# ICE → WATER 로 substance 전환 + phase LIQUID
 				if sid == SID.ICE:
@@ -87,7 +91,8 @@ func tick_fullscan(phase_store, substance_store, temperature, index) -> Dictiona
 				# (다른 sid는 melt_up가 불가능값이라 도달 불가)
 		elif ph == PH.LIQUID:
 			# 액체가 고체로 응고 가능한지(WATER만 실질적으로 허용)
-			var t2 = temperature.get_temperature_buffer()[i]
+			var t2 = temperature_store.get_by_index(i)
+			print(t2)
 			if t2 <= freeze_down[sid]:
 				if sid == SID.WATER:
 					substance_store.set_by_index(i, SID.ICE)

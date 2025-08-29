@@ -88,7 +88,6 @@ func _on_world_generated(
 		corner_highlight.setup(ground_layer)
 
 
-	temp.setup(data_layer.temperature, data_layer.index, clock)
 
 	if durability:
 		durability.setup_from_tiles(tiles, size)
@@ -100,9 +99,14 @@ func _on_world_generated(
 	if liquid_overlay != null:
 		liquid_overlay.render(mass)
 
+	temp.setup(data_layer.temperature, data_layer.index, clock)
+
 	phase_change.setup(data_layer.phase, data_layer.substance, data_layer.temperature, data_layer.index, clock)
 
 	tile_info_hud.setup(hover_service, data_layer.index, data_layer.substance, data_layer.phase, data_layer.mass)
+
+	#clock.tick_sim.connect(_on_tick_sim)
+
 
 #func _on_temperature_updated() -> void:  !!!!!!!!!!!!!!!!
 	#var T := temp.get_temperature_buffer()
@@ -115,16 +119,14 @@ func _on_world_generated(
 		#heat_src.render_heat_sources(dT)
 
 func _on_tick_sim(dt: float) -> void:
-	if temp:
-		temp._on_sim_tick(dt)
-	if liquid:
-		liquid.tick_liquid(dt)
-	if liquid_overlay != null:
-		liquid_overlay.render(liquid.get_amounts())
-	if tchange:
-		var events := event_queue.pop_all()
-		if events.size() > 0:
-			tchange.apply_events(events)
+	temp._on_sim_tick(dt)
+	liquid.tick_liquid(dt)
+	liquid_overlay.render(liquid.get_amounts())
+	phase_change._on_sim_tick(dt)
+	var events := event_queue.pop_all()
+	if events.size() > 0:
+		tchange.apply_events(events)
+	
 
 func _on_tile_destroyed(cell: Vector2i, from_tile: int, reason: StringName) -> void:
 	if temp != null:

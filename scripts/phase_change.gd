@@ -16,7 +16,7 @@ class_name PhaseChange
 # 의존성
 var _phase_store: PhaseStore
 var _substance_store: SubstanceStore
-var _temperature: Temperature
+var _temperature_store: TemperatureStore
 var _index: GridIndex
 var _clock : SimClock
 
@@ -26,12 +26,12 @@ var _core: PhaseChangeCore
 func setup(phase_store: PhaseStore, substance_store: SubstanceStore, temperature_store: TemperatureStore, index: GridIndex, clock: SimClock) -> void:
 	_phase_store = phase_store
 	_substance_store = substance_store
-	#_temperature = temperature !!!!!!!!!!!!!!
+	_temperature_store = temperature_store
 	_index = index
 	_clock = clock
 
 	@warning_ignore("shadowed_variable_base_class")
-	for name in ["_phase_store", "_substance_store", "_temperature", "_index", "_clock"]:
+	for name in ["_phase_store", "_substance_store", "_temperature_store", "_index", "_clock"]:
 		var value = get(name)
 		if value == null:
 			push_error("[PhaseChange.setup]%s is null" % name)
@@ -39,18 +39,16 @@ func setup(phase_store: PhaseStore, substance_store: SubstanceStore, temperature
 	_core = PhaseChangeCore.new()
 	_core.setup_rules(hyst_c, melt_c, freeze_c)
 
-	# 시계 신호 연결
-	if _clock.has_signal("tick_sim"):
-		_clock.connect("tick_sim", Callable(self, "_on_sim_tick"))
+	## 시계 신호 연결
+	#if _clock.has_signal("tick_sim"):
+		#_clock.connect("tick_sim", Callable(self, "_on_sim_tick"))
 
 func _on_sim_tick(dt: float) -> void:
 	# 시뮬레이션 틱마다 실행
 	if not enabled:
 		return
-	if _phase_store == null or _substance_store == null or _temperature == null or _index == null or _clock == null:
-		return
 
-	var stats = _core.tick_fullscan(_phase_store, _substance_store, _temperature, _index)
+	var stats = _core.tick_fullscan(_phase_store, _substance_store, _temperature_store, _index)
 	if debug_log and stats.total > 0:
 		print("[PhaseChange] Δ=", stats.total,
 			" (ICE→WATER=", stats.ice_to_water, ", WATER→ICE=", stats.water_to_ice, ")")

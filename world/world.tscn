@@ -97,7 +97,7 @@ unique_name_in_owner = true
 
 [node name="WorldGen" type="Node" parent="Systems"]
 script = ExtResource("13_33qpb")
-size = Vector2i(128, 128)
+size = Vector2i(32, 32)
 
 [node name="Durability" type="Node" parent="Systems"]
 script = ExtResource("14_ifjjt")
@@ -124,7 +124,6 @@ script = ExtResource("19_pfbnl")
 
 [node name="PhaseChange" type="Node" parent="Systems"]
 script = ExtResource("20_gwdna")
-enabled = false
 
 [node name="InputController" type="Node" parent="Systems"]
 script = ExtResource("21_h4vgh")
