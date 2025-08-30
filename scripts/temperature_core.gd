@@ -63,7 +63,7 @@ func initialize_from_substances(temp_store, substance_store, index, overwrite_if
 # - index: GridIndex
 # - dt: float(초)
 # 반환: 간단 통계(평균 ΔT, 최대 |ΔT| in °C)
-func tick_fullscan(temp_store, phase_store, substance_store, index, dt: float) -> Dictionary:
+func tick_fullscan(substance_store, phase_store, temp_store, index, dt: float) -> Dictionary:
 	var n: int = index.size.x * index.size.y
 	if n <= 0 or dt <= 0.0:
 		last_avg_delta_c = 0.0

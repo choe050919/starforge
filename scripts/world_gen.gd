@@ -13,11 +13,11 @@ signal generated(
 
 @export var size: Vector2i = Vector2i(256, 128)
 
-# 초기 온도(°C)
-@export var t_ice_init_c: float = -8.0
-@export var t_ground_init_c: float = 12.0
-@export var t_uranium_init_c: float = 12.0
-@export var t_water_init_c: float = 8.0
+# 초기 온도(°cC)
+@export var t_ice_init_cc: int = -800
+@export var t_ground_init_cc: int = 1200
+@export var t_uranium_init_cc: int = 1200
+@export var t_water_init_cc: int = 800
 
 # 노이즈/분포 파라미터
 @export var seed_height: int = 12345
@@ -53,10 +53,10 @@ const TILE_URANIUM: int = 3
 @export var depth_scale: float = 4.0
 @export var springs_per_k: float = 1.0
 
-# °C → cK(centiKelvin) 변환: cK = round(°C*100 + 27315)
+# °cC → cK(centiKelvin) 변환: cK = round(°C*100 + 27315)
 const CK_0C := 27315
-static func _c_to_ck(c: float) -> int:
-	return int(round(c * 100.0 + CK_0C))
+static func _cc_to_ck(c: int) -> int:
+	return int(c + CK_0C)
 
 func generate() -> void:
 	var hmap := generate_heightmap()
@@ -79,7 +79,7 @@ func generate() -> void:
 			phases[i] = PhaseStore.Phase.LIQUID
 			mass[i] = liq
 			substances[i] = SubstanceId.ID.WATER
-			temperatures[i] = _c_to_ck(t_water_init_c)
+			temperatures[i] = _cc_to_ck(t_water_init_cc)
 			continue
 
 		# 2) 액체가 없으면 고체/진공 판정
@@ -87,17 +87,17 @@ func generate() -> void:
 			phases[i] = PhaseStore.Phase.SOLID
 			mass[i] = mass_ground_mg_per_cell
 			substances[i] = SubstanceId.ID.GROUND
-			temperatures[i] = _c_to_ck(t_ground_init_c)
+			temperatures[i] = _cc_to_ck(t_ground_init_cc)
 		elif tile == TILE_ICE:
 			phases[i] = PhaseStore.Phase.SOLID
 			mass[i] = mass_ice_mg_per_cell
 			substances[i] = SubstanceId.ID.ICE
-			temperatures[i] = _c_to_ck(t_ice_init_c)
+			temperatures[i] = _cc_to_ck(t_ice_init_cc)
 		elif tile == TILE_URANIUM:
 			phases[i] = PhaseStore.Phase.SOLID
 			mass[i] = mass_uranium_mg_per_cell
 			substances[i] = SubstanceId.ID.URANIUM
-			temperatures[i] = _c_to_ck(t_uranium_init_c)
+			temperatures[i] = _cc_to_ck(t_uranium_init_cc)
 		else:
 			phases[i] = PhaseStore.Phase.VACUUM
 			mass[i] = 0

@@ -98,6 +98,7 @@ unique_name_in_owner = true
 [node name="WorldGen" type="Node" parent="Systems"]
 script = ExtResource("13_33qpb")
 size = Vector2i(32, 32)
+t_uranium_init_cc = 12000
 
 [node name="Durability" type="Node" parent="Systems"]
 script = ExtResource("14_ifjjt")
@@ -108,6 +109,7 @@ k_ground = 10.0
 
 [node name="Temperature2" type="Node" parent="Systems"]
 script = ExtResource("16_inp7a")
+uranium_power_c_per_s = 300.0
 
 [node name="SimClock" type="Node" parent="Systems"]
 script = ExtResource("16_k83x5")
@@ -124,6 +126,7 @@ script = ExtResource("19_pfbnl")
 
 [node name="PhaseChange" type="Node" parent="Systems"]
 script = ExtResource("20_gwdna")
+enabled = false
 
 [node name="InputController" type="Node" parent="Systems"]
 script = ExtResource("21_h4vgh")

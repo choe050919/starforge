@@ -61,8 +61,8 @@ func is_liquid(cell: Vector2i) -> bool: return get_phase(cell) == Phase.LIQUID
 func is_gas(cell: Vector2i) -> bool:    return get_phase(cell) == Phase.GAS
 func is_vacuum(cell: Vector2i) -> bool: return get_phase(cell) == Phase.VACUUM
 
-func get_raw() -> PackedByteArray:      return _read        # 기존 호환
-func get_raw_read() -> PackedByteArray: return _read
+func get_read() -> PackedByteArray:      return _read
+func get_raw_read() -> PackedByteArray:  return _read
 func get_raw_write() -> PackedByteArray: return _write
 
 # ── 쓰기 ────────────────────────────────────────────────

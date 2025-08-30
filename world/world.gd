@@ -71,7 +71,7 @@ func _on_world_generated(
 	) -> void:
 	terrain.apply_tiles(tiles, size)
 	tile_store.setup(tiles, size)
-	data_layer.setup(size, substances, phases, mass)
+	data_layer.setup(size, substances, phases, mass, temperatures)
 
 	if ground_layer.tile_set != null: # 이중 검증임. 위의 apply_tiles에서 이미 검증.
 		var ts: TileSet = ground_layer.tile_set
@@ -87,36 +87,19 @@ func _on_world_generated(
 		input.set_cell_size(ts.tile_size)
 		corner_highlight.setup(ground_layer)
 
+	durability.setup_from_tiles(tiles, size)
 
+	tchange.setup(tile_store, size, event_queue)
 
-	if durability:
-		durability.setup_from_tiles(tiles, size)
+	liquid.setup(data_layer, springs)
 
-	if tchange:
-		tchange.setup(tile_store, size, event_queue)
-	if liquid:
-		liquid.setup(data_layer, springs)
-	if liquid_overlay != null:
-		liquid_overlay.render(mass)
+	liquid_overlay.render(mass)
 
-	temp.setup(data_layer.temperature, data_layer.index, clock)
+	temp.setup(data_layer.substance, data_layer.phase, data_layer.temperature, data_layer.index, clock)
 
 	phase_change.setup(data_layer.phase, data_layer.substance, data_layer.temperature, data_layer.index, clock)
 
-	tile_info_hud.setup(hover_service, data_layer.index, data_layer.substance, data_layer.phase, data_layer.mass)
-
-	#clock.tick_sim.connect(_on_tick_sim)
-
-
-#func _on_temperature_updated() -> void:  !!!!!!!!!!!!!!!!
-	#var T := temp.get_temperature_buffer()
-	#var mask:= temp.get_solid_mask()
-	#heatmap.render_full_with_mask(T, mask)
-#
-	## ΔT 기반 열원 오버레이 렌더
-	#if heat_src != null:
-		#var dT := temp.get_last_delta()
-		#heat_src.render_heat_sources(dT)
+	tile_info_hud.setup(hover_service, data_layer.index, data_layer.substance, data_layer.phase, data_layer.mass, data_layer.temperature)
 
 func _on_tick_sim(dt: float) -> void:
 	temp._on_sim_tick(dt)
@@ -126,7 +109,17 @@ func _on_tick_sim(dt: float) -> void:
 	var events := event_queue.pop_all()
 	if events.size() > 0:
 		tchange.apply_events(events)
-	
+	_on_temperature_updated() # 이름이 부적절한 함수 사용중
+
+func _on_temperature_updated() -> void: # 이름이 부적절함.
+	var T_ck: PackedInt32Array = data_layer.temperature.get_read()
+	var mask: PackedByteArray = data_layer.phase.get_read()
+	heatmap.render_full_with_mask(T_ck, mask)
+
+	# ΔT 기반 열원 오버레이 렌더
+	#if heat_src != null:
+		#var dT := temp.get_last_delta()
+		#heat_src.render_heat_sources(dT)
 
 func _on_tile_destroyed(cell: Vector2i, from_tile: int, reason: StringName) -> void:
 	if temp != null:

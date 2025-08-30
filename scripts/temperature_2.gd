@@ -17,14 +17,12 @@ class_name Temperature2
 @export var c_ground := 1.0
 @export var c_ice := 0.8
 @export var c_uranium := 1.0
-# 초기 온도(°C)
-@export var t_ground_init_c := 12.0
-@export var t_ice_init_c := -5.0
-@export var t_uranium_init_c := 12.0
 
 @export var uranium_power_c_per_s := 3.0
 
 # 의존성
+var _substance_store: SubstanceStore
+var _phase_store: PhaseStore
 var _temperature_store: TemperatureStore
 var _index: GridIndex
 var _clock : SimClock
@@ -32,7 +30,9 @@ var _clock : SimClock
 # 코어
 var _core: TemperatureCore
 
-func setup(ts: TemperatureStore, index: GridIndex, clock: SimClock) -> void:
+func setup(ss: SubstanceStore, ps: PhaseStore, ts: TemperatureStore, index: GridIndex, clock: SimClock) -> void:
+	_substance_store = ss
+	_phase_store = ps
 	_temperature_store = ts
 	_index = index
 	_clock = clock
@@ -55,11 +55,10 @@ func _on_sim_tick(dt: float) -> void:
 	if not enabled:
 		return
 
-	#var stats = _core.tick_fullscan(_phase_store, _substance_store, _temperature, _index)
-	#if debug_log and stats.total > 0:
-		#print("[PhaseChange] Δ=", stats.total,
-			#" (ICE→WATER=", stats.ice_to_water, ", WATER→ICE=", stats.water_to_ice, ")")
-
+	var stats = _core.tick_fullscan(_phase_store, _substance_store, _temperature_store, _index, dt)
+	if debug_log and stats.total > 0:
+		print("[PhaseChange] Δ=", stats.total,
+			" (ICE→WATER=", stats.ice_to_water, ", WATER→ICE=", stats.water_to_ice, ")")
 
 # 런타임에서 파라미터를 바꿨다면 규칙 재적용
 func rebuild_rules() -> void:

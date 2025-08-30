@@ -1,7 +1,7 @@
-extends Node
-class_name TileInfoTracker
 ## 세분화된 푸시 패턴용 트래커
 ## - 현재 hover 셀에 한해서만, Store들의 변경 신호에 반응하여 최신 TileInfo를 발행한다.
+extends Node
+class_name TileInfoTracker
 
 signal info_updated(info)                 # 갱신된 TileInfo를 외부(패널 등)로 알림
 signal current_cell_changed(cell: Vector2i)
@@ -12,8 +12,9 @@ var info_provider := TileInfoProvider.new()
 var hover_service: HoverService
 
 # 세분화 푸시: 필요한 스토어들
-var phase_store: PhaseStore
-var mass_store: MassStore
+var _phase_store: PhaseStore
+var _mass_store: MassStore
+var _temperature_store: TemperatureStore
 
 # 경계 체크용 인덱스
 var _index: GridIndex
@@ -22,19 +23,24 @@ var _index: GridIndex
 var _current_cell: Vector2i = Vector2i(-1, -1)
 var _has_focus: bool = false             # hover 중 여부(hover_cleared 대응)
 
-func _ready() -> void:
-	_connect_sources()
-
-func setup(hs: HoverService, gi: GridIndex, ss: SubstanceStore, ps: PhaseStore, ms: MassStore) -> void:
+func setup(hs: HoverService, gi: GridIndex, ss: SubstanceStore, ps: PhaseStore, ms: MassStore, ts: TemperatureStore) -> void:
 	hover_service = hs
 	_index = gi
-	phase_store = ps
+	_phase_store = ps
+	_mass_store = ms
+	_temperature_store = ts
+
+	for name in ["hover_service", "_index", "_phase_store", "_mass_store", "_temperature_store"]:
+		var value = get(name)
+		if value == null:
+			print("%s is null" % name)
+
 	_connect_sources()
 
 	if info_provider:
-		info_provider.setup(gi, ss, ps, ms)
+		info_provider.setup(gi, ss, ps, ms, ts)
 	else:
-		push_error("[TileInfoTracker] 어쩌구저쩌구 귀찮다")
+		push_error("[TileInfoTracker.setup] 어쩌구저쩌구 귀찮다")
 
 ## ── 연결부 ────────────────────────────────────────────────────────────
 func _connect_sources() -> void:
@@ -44,10 +50,12 @@ func _connect_sources() -> void:
 			#hover_service.hover_cleared.connect(_on_hover_cleared)
 
 	# Stores (세분화된 푸시)
-	if phase_store and phase_store.has_signal("phase_changed"):
-		phase_store.phase_changed.connect(_on_phase_changed)
-	if mass_store and mass_store.has_signal("mass_changed"):
-		mass_store.mass_changed.connect(_on_mass_changed)
+	if _phase_store.has_signal("phase_changed"):
+		_phase_store.phase_changed.connect(_on_phase_changed)
+	if _mass_store.has_signal("mass_changed"):
+		_mass_store.mass_changed.connect(_on_mass_changed)
+	if _temperature_store.has_signal("temperature_changed"):
+		_temperature_store.temperature_changed.connect(_on_temperature_changed)
 
 ## ── Hover 수신 ────────────────────────────────────────────────────────
 func on_hover_changed(cell: Vector2i,) -> void:
@@ -72,6 +80,10 @@ func _on_phase_changed(cell: Vector2i) -> void:
 		_emit_full_info_now()
 
 func _on_mass_changed(cell: Vector2i) -> void:
+	if cell == _current_cell:
+		_emit_full_info_now()
+
+func _on_temperature_changed(cell: Vector2i) -> void:
 	if cell == _current_cell:
 		_emit_full_info_now()
 

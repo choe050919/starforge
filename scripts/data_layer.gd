@@ -10,12 +10,14 @@ func setup(
 		size: Vector2i,
 		substances: PackedInt32Array,
 		phases: PackedByteArray,
-		masses: PackedInt64Array
+		masses: PackedInt64Array,
+		temperatures: PackedInt32Array
 	) -> void:
 	index.setup(size)
 	substance.setup(index, substances)
 	phase.setup(index, phases)
 	mass.setup(index, masses)
+	temperature.setup(index, temperatures)
 	_log_counts()
 	_validate()
 
@@ -55,14 +57,14 @@ func replace_substance(cell: Vector2i, id: int, opts: Dictionary = {}) -> void:
 # 각 phase 수 집계
 func _log_counts() -> void:
 	var counts := [0, 0, 0, 0]
-	var data := phase.get_raw()
+	var data := phase.get_read()
 	for i in data.size():
 		counts[data[i]] += 1
 	print("[DataLayer] SOLID=%d LIQUID=%d GAS=%d VACUUM=%d" % [counts[PhaseStore.Phase.SOLID], counts[PhaseStore.Phase.LIQUID], counts[PhaseStore.Phase.GAS], counts[PhaseStore.Phase.VACUUM]])
 
 # 무결성 검증(기존 + 물질/phase 일관성 체크 옵션)
 func _validate() -> void:
-	var p := phase.get_raw()
+	var p := phase.get_read()
 	var m := mass.get_read()
 	var violations: int = 0
 	for i in p.size():

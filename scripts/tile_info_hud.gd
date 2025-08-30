@@ -39,8 +39,8 @@ const PHASE_COLOR := {                 # 선택: Label 폰트 색 등
 	 3: Color(0.7,0.8,0.95),
 }
 
-func setup(hs: HoverService, gi: GridIndex, ss: SubstanceStore, ps: PhaseStore, ms: MassStore) -> void:
-	tile_info_tracker.setup(hs, gi, ss, ps, ms)
+func setup(hs: HoverService, gi: GridIndex, ss: SubstanceStore, ps: PhaseStore, ms: MassStore, ts: TemperatureStore) -> void:
+	tile_info_tracker.setup(hs, gi, ss, ps, ms, ts)
 	tile_info_tracker.connect("info_updated", _on_info_updated)
 
 func _on_info_updated(info: Dictionary) -> void:
@@ -65,14 +65,17 @@ func _update_phase(info: Dictionary) -> void:
 
 func _update_mass(info: Dictionary) -> void:
 	var m = info.get("mass", null)
-	var text := _format_mass(-1 if m == null else int(m))
+	var text := _format_mass(-1 if m == null else m)
 	_mass_label.text = "MASS: " + text
 
 func _update_temperature(info: Dictionary) -> void:
-	pass
+	var t = info.get("temperature", -1)
+	var text: String = "-1" if t == null else str(t)
+	#var text := _format_temperature(-1 if t == null else t)
+	_temperature_label.text = text + "K"
 
-# mg → g → kg 자동 포맷터 (HUD 전용)
-# 추후 다른 패널에서도 사용될 수 있지만 일단 빠른 개발을 위해 여기서 구현하였음.
+## mg → g → kg 자동 포맷터 (HUD 전용)
+## 추후 다른 패널에서도 사용될 수 있지만 일단 빠른 개발을 위해 여기서 구현하였음.
 func _format_mass(mg: int) -> String:
 	const MG_PER_G := 1000
 	const MG_PER_KG := 1000000
@@ -90,7 +93,7 @@ func _format_mass(mg: int) -> String:
 		# mg는 정수로 그대로 표기(원하면 천단위 구분자 사용도 가능)
 		return "%d mg" % mg
 
-# 소수부 불필요한 0 제거 (예: 12.340 → 12.34, 10.000 → 10)
+## 소수부 불필요한 0 제거 (예: 12.340 → 12.34, 10.000 → 10)
 func _trim_zeros(val: float, decimals: int) -> String:
 	var fmt := "%." + str(max(0, decimals)) + "f"
 	var s := fmt % val
@@ -100,6 +103,9 @@ func _trim_zeros(val: float, decimals: int) -> String:
 	if s.ends_with("."):
 		s = s.substr(0, s.length() - 1)
 	return s
+
+func _format_temperature() -> String:
+	return "-1"
 
 func _process(delta: float) -> void:
 	if not visible:

@@ -5,8 +5,13 @@ class_name HeatmapOverlay
 
 @export var opacity: float = 0.9 # 오버레이 투명도
 
-@export var t_min: float = -20.0   # 히트맵 표시 최소/최대(시각화용)
-@export var t_max: float = 40.0
+@export var t_min_cc: int = -2000   # 히트맵 표시 최소/최대(시각화용)
+@export var t_max_cc: int = 4000
+
+# °cC → cK(centiKelvin) 변환: cK = round(°C*100 + 27315)
+const CK_0C := 27315
+static func _cc_to_ck(c: int) -> int:
+	return int(c + CK_0C)
 
 var grid_size: Vector2i
 var tile_px: Vector2i = Vector2i(32, 32) # 타일 픽셀(런타임에 World가 세팅해줌)
@@ -28,13 +33,13 @@ func set_layout(size: Vector2i, tile_size: Vector2i) -> void:
 	sprite.scale = Vector2(tile_px) # 1 텍셀 = 1 타일
 	sprite.modulate.a = opacity
 
-func render_full_with_mask(T: PackedFloat32Array, mask: PackedByteArray) -> void:
+func render_full_with_mask(T: PackedInt32Array, mask: PackedByteArray) -> void:
 	if grid_size.x * grid_size.y != T.size() or mask.size() != T.size():
 		push_error("[HeatmapOverlay] Size mismatch with mask."); 
 		return
-	
+
 	var img: Image = Image.create(grid_size.x, grid_size.y, false, Image.FORMAT_RGBA8)
-	var denom: float = max(0.0001, (t_max - t_min))
+	var denom: int = max(1, (_cc_to_ck(t_max_cc) - _cc_to_ck(t_min_cc)))
 	var inv: float = 1.0 / denom
 
 	for y in grid_size.y:
@@ -43,8 +48,8 @@ func render_full_with_mask(T: PackedFloat32Array, mask: PackedByteArray) -> void
 			if mask[idx] == 0:
 				img.set_pixel(x, y, Color(0,0,0,0)) # 공기=완전 투명
 				continue
-			var v: float = T[idx]
-			var t: float = clamp((v - t_min) * inv, 0.0, 1.0)
+			var v: int = T[idx]
+			var t: float = clamp((v - _cc_to_ck(t_min_cc)) * inv, 0.0, 1.0)
 			var col: Color = _color_map(t)
 			img.set_pixel(x, y, col)
 
