@@ -104,18 +104,23 @@ func _on_world_generated(
 
 var sim_time := 0.0
 
-func _on_tick_sim(dt: float) -> void:
+func _on_tick_sim(tag: StringName, dt: float) -> void:
 	sim_time += dt
-	temp._on_sim_tick(dt)
-	phase_change._on_sim_tick(dt, sim_time)
-	liquid.tick_liquid(dt)
-	var events := event_queue.pop_all()
-	if events.size() > 0:
-		tchange.apply_events(events)
-
-	liquid_overlay.render(liquid.get_amounts())
-
-	_on_temperature_updated() # TODO: 이름 나중에 변경
+	match tag:
+		"sim":
+			# 기본 10Hz 틱
+			phase_change._on_sim_tick(dt, sim_time)
+			liquid.tick_liquid(dt)
+			var events := event_queue.pop_all()
+			if events.size() > 0:
+				tchange.apply_events(events)
+			liquid_overlay.render(liquid.get_amounts())
+			if not overlay_manager.current_overlay == OverlayManager.OverlayMode.NONE:
+				_on_temperature_updated() # TODO: 이름 변경
+		"temp":
+			temp._on_sim_tick(dt)
+		_:
+			push_error("[World._on_tick_sim] wrong tag")
 
 func _on_temperature_updated() -> void: # 이름이 부적절함.
 	var T_ck: PackedInt32Array = data_layer.temperature.get_read()
@@ -126,7 +131,7 @@ func _on_temperature_updated() -> void: # 이름이 부적절함.
 	#if heat_src != null:
 		#var dT := temp.get_last_delta()
 		#heat_src.render_heat_sources(dT)
-
+	
 func _on_tile_destroyed(cell: Vector2i, from_tile: int, reason: StringName) -> void:
 	if temp != null:
 		temp.on_tile_destroyed(cell, from_tile, reason)

@@ -46,10 +46,6 @@ func setup(ss: SubstanceStore, ps: PhaseStore, ts: TemperatureStore, index: Grid
 	_core = TemperatureCore.new()
 	_core.setup_rules()
 
-	# 시계 신호 연결
-	if _clock.has_signal("tick_sim"):
-		_clock.connect("tick_sim", Callable(self, "_on_sim_tick"))
-
 func _on_sim_tick(dt: float) -> void:
 	# 시뮬레이션 틱마다 실행
 	if not enabled:

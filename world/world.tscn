@@ -97,7 +97,7 @@ unique_name_in_owner = true
 
 [node name="WorldGen" type="Node" parent="Systems"]
 script = ExtResource("13_33qpb")
-size = Vector2i(32, 32)
+size = Vector2i(128, 96)
 
 [node name="Durability" type="Node" parent="Systems"]
 script = ExtResource("14_ifjjt")

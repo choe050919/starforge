@@ -1,14 +1,26 @@
 extends Node
 class_name SimClock
 
-signal tick_sim(dt: float)
+signal tick_sim(tag: StringName, dt: float)
 
-@export var sim_rate_hz: int = 10 # 10Hz(0.1s)로 시작
-var _accum: float = 0.0
+@export var sim_rate_hz: int = 10  # 기본 10Hz(0.1s)
+@export var temp_rate_hz: float = 5.0  # 온도는 5Hz
+var _step_sim: float
+var _step_temp: float
+var _accum_sim: float = 0.0
+var _accum_temp: float = 0.0
+
+func _ready() -> void:
+	_step_sim = 1.0 / sim_rate_hz
+	_step_temp = 1.0 / temp_rate_hz
 
 func _process(delta: float) -> void:
-	_accum += delta
-	var step := 1.0 / float(sim_rate_hz)
-	while _accum >= step:
-		_accum -= step
-		emit_signal("tick_sim", step)
+	_accum_sim += delta
+	_accum_temp += delta
+	while _accum_sim >= _step_sim:
+		_accum_sim -= _step_sim
+		emit_signal("tick_sim", "sim", _step_sim)  # 기본 시뮬레이션 신호
+
+	while _accum_temp >= _step_temp:
+		_accum_temp -= _step_temp
+		emit_signal("tick_sim", "temp", _step_temp)  # 온도 신호
