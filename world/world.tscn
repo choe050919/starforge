@@ -1,4 +1,4 @@
-[gd_scene load_steps=31 format=3 uid="uid://c5gv3n6byiin7"]
+[gd_scene load_steps=32 format=3 uid="uid://c5gv3n6byiin7"]
 
 [ext_resource type="Script" uid="uid://dgppaejvd18y0" path="res://world/world.gd" id="1_j7vgi"]
 [ext_resource type="Script" uid="uid://dsrbjd0kmv17k" path="res://world/terrain/terrain.gd" id="2_inp7a"]
@@ -16,13 +16,14 @@
 [ext_resource type="Script" uid="uid://d1vx7d5vanhpq" path="res://scripts/durability.gd" id="14_ifjjt"]
 [ext_resource type="Script" uid="uid://cio8nk8elsdnr" path="res://scripts/temperature.gd" id="16_inp7a"]
 [ext_resource type="Script" uid="uid://dtjuedvsbwjng" path="res://scripts/sim_clock.gd" id="16_k83x5"]
-[ext_resource type="Script" uid="uid://dl4jofyiuxsbc" path="res://scripts/tile_change.gd" id="17_b8tmp"]
-[ext_resource type="Script" uid="uid://db07wrr6kyq4v" path="res://scripts/liquid.gd" id="18_en1oy"]
+[ext_resource type="Script" uid="uid://dl4jofyiuxsbc" path="res://systems/tile_change.gd" id="17_b8tmp"]
+[ext_resource type="Script" uid="uid://db07wrr6kyq4v" path="res://systems/liquid/liquid.gd" id="18_en1oy"]
 [ext_resource type="Script" uid="uid://by6y82yoenlkc" path="res://scripts/gas.gd" id="19_pfbnl"]
-[ext_resource type="Script" uid="uid://n7d0orcaljj3" path="res://scripts/phase_change/phase_change.gd" id="20_gwdna"]
+[ext_resource type="Script" uid="uid://n7d0orcaljj3" path="res://systems/phase_change/phase_change.gd" id="20_gwdna"]
 [ext_resource type="Script" uid="uid://dou5of5j8rehy" path="res://scripts/input_controller.gd" id="21_h4vgh"]
 [ext_resource type="Script" uid="uid://dcuvrt05007wb" path="res://scripts/hover_service.gd" id="22_kvuv0"]
-[ext_resource type="Script" uid="uid://dsk25alr21kno" path="res://scripts/tool_manager.gd" id="23_sg5c8"]
+[ext_resource type="Script" uid="uid://dsk25alr21kno" path="res://systems/tool_manager.gd" id="23_sg5c8"]
+[ext_resource type="Script" uid="uid://0y3dr3nwo17m" path="res://systems/visual_sync.gd" id="24_inp7a"]
 [ext_resource type="Script" uid="uid://b2776qmf4l0o" path="res://scripts/critter_spawner.gd" id="24_vu62d"]
 [ext_resource type="PackedScene" uid="uid://dvfaso5evvyd" path="res://scenes/critter_breaker.tscn" id="25_58wjt"]
 [ext_resource type="PackedScene" uid="uid://b3cc58761avvp" path="res://scenes/critter_builder.tscn" id="26_dp8ul"]
@@ -120,11 +121,6 @@ script = ExtResource("19_pfbnl")
 
 [node name="PhaseChange" type="Node" parent="Systems"]
 script = ExtResource("20_gwdna")
-enabled = null
-debug_log = null
-hyst_ck = null
-melt_ck = null
-freeze_ck = null
 
 [node name="InputController" type="Node" parent="Systems"]
 script = ExtResource("21_h4vgh")
@@ -134,6 +130,11 @@ script = ExtResource("22_kvuv0")
 
 [node name="ToolManager" type="Node" parent="Systems"]
 script = ExtResource("23_sg5c8")
+
+[node name="VisualSync" type="Node" parent="Systems"]
+script = ExtResource("24_inp7a")
+terrain_path = NodePath("../../Terrain")
+liquid_overlay_path = NodePath("../../Terrain/LiquidOverlay")
 
 [node name="Actors" type="Node2D" parent="."]
 

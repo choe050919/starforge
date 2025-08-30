@@ -73,7 +73,6 @@ func _update_mass(info: Dictionary) -> void:
 
 func _update_temperature(info: Dictionary) -> void:
 	var t = info.get("temperature", -1)
-	#var text: String = "-1" if t == null else str(t)
 	var text := _format_temperature(-1 if t == null else t)
 	_temperature_label.text = "TEMPERATURE: " + text
 
@@ -103,7 +102,7 @@ func _format_temperature(ck: int) -> String:
 		return "—"
 
 	if use_celsius:
-		var cc := ck - CK_0C
+		var cc := float(ck - CK_0C)
 		cc /= 100
 		return _trim_zeros(cc, temperature_decimals) + " °C"
 	else:
@@ -129,19 +128,19 @@ func _process(delta: float) -> void:
 		return
 
 	var target := get_viewport().get_mouse_position() + offset
-	target = _anti_clip(target)
+	#target = _anti_clip(target)
 	if smoothing > 0.0:
 		_panel.global_position = _panel.global_position.lerp(target, clamp(smoothing, 0.0, 1.0))
 	else:
 		_panel.global_position = target
 
-func _anti_clip(p: Vector2) -> Vector2:
-	# 화면 밖 방지(우하 우선 배치, 안되면 좌/상쪽으로 밀어넣기)
-	var view := get_viewport_rect().size
-	var sz := size
-	var pos := p
-	#if pos.x + sz.x + edge_margin > view.x:
-		#pos.x = max(edge_margin, view.x - sz.x - edge_margin)
-	#if pos.y + sz.y + edge_margin > view.y:
-		#pos.y = max(edge_margin, view.y - sz.y - edge_margin)
-	return pos
+#func _anti_clip(p: Vector2) -> Vector2:
+	## 화면 밖 방지(우하 우선 배치, 안되면 좌/상쪽으로 밀어넣기)
+	#var view := get_viewport_rect().size
+	#var sz := size
+	#var pos := p
+	##if pos.x + sz.x + edge_margin > view.x:
+		##pos.x = max(edge_margin, view.x - sz.x - edge_margin)
+	##if pos.y + sz.y + edge_margin > view.y:
+		##pos.y = max(edge_margin, view.y - sz.y - edge_margin)
+	#return pos

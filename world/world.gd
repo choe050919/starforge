@@ -17,6 +17,7 @@ class_name World
 @onready var phase_change: PhaseChange =   %Systems/PhaseChange
 @onready var input: InputController =      %Systems/InputController
 @onready var hover_service: HoverService = %Systems/HoverService
+@onready var visual_sync: VisualSync =     %Systems/VisualSync
 
 @onready var overlay_manager: OverlayManager = %OverlayManager
 @onready var heatmap = overlay_manager.get_overlay(OverlayManager.OverlayMode.HEATMAP) as HeatmapOverlay
@@ -95,7 +96,7 @@ func _on_world_generated(
 
 	temp.setup(data_layer.substance, data_layer.phase, data_layer.temperature, data_layer.index, clock)
 
-	phase_change.setup(data_layer.phase, data_layer.substance, data_layer.temperature, data_layer.index, clock)
+	phase_change.setup(data_layer.phase, data_layer.substance, data_layer.temperature, data_layer.index, visual_sync, clock)
 
 	tile_info_hud.setup(hover_service, data_layer.index, data_layer.substance, data_layer.phase, data_layer.mass, data_layer.temperature)
 

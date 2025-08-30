@@ -23,9 +23,9 @@ var _clock : SimClock
 ## 코어: 계산만 담당
 var _core: PhaseChangeCore
 ## 적용기: 계산 결과를 수요자들에게 전달
-var _applier: PhasechangeApplier
+var _applier: PhaseChangeApplier
 
-func setup(phase_store: PhaseStore, substance_store: SubstanceStore, temperature_store: TemperatureStore, index: GridIndex, clock: SimClock) -> void:
+func setup(phase_store: PhaseStore, substance_store: SubstanceStore, temperature_store: TemperatureStore, index: GridIndex, visual_sync: VisualSync, clock: SimClock) -> void:
 	_phase_store = phase_store
 	_substance_store = substance_store
 	_temperature_store = temperature_store
@@ -40,19 +40,31 @@ func setup(phase_store: PhaseStore, substance_store: SubstanceStore, temperature
 
 	_core = PhaseChangeCore.new()
 	_core.setup_rules(hyst_ck, melt_ck, freeze_ck)
-	_applier = PhasechangeApplier.new()
+	_applier = PhaseChangeApplier.new()
+	_applier.setup(_index, _phase_store, _substance_store, visual_sync)
 
 func _on_sim_tick(dt: float, sim_time: float) -> void:
 	# 시뮬레이션 틱마다 실행
 	if not enabled:
 		return
 
-	var stats = _core.tick_fullscan(_phase_store, _substance_store, _temperature_store, _index)
-	if stats.total > 0:
-		emit_signal("")
+	# 1) Core: diff 생성 (셀 목록)
+	var diff: Dictionary = _core.tick_fullscan(_phase_store, _substance_store, _temperature_store, _index)
+	if diff.is_empty():
+		return
+
+	var melt: PackedVector2Array   = diff.get("ice_to_water", PackedVector2Array())
+	var freeze: PackedVector2Array = diff.get("water_to_ice", PackedVector2Array())
+	var total := melt.size() + freeze.size()
+
+	# 2) Applier: 스토어에 반영 + VisualSync 라우팅 (commit 포함)
+	if total > 0:
+		_applier.apply(diff, sim_time)
+
+		# 3) 디버그 로그
 		if debug_log:
 			print("[t=%.2f s][PhaseChange] Δ=%d (ICE→WATER=%d, WATER→ICE=%d)" % [
-				sim_time, stats.total, stats.ice_to_water, stats.water_to_ice
+				sim_time, total, melt.size(), freeze.size()
 			])
 
 ## 런타임에서 파라미터를 바꿨다면 규칙 재적용

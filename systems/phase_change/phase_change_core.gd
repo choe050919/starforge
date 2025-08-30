@@ -62,48 +62,36 @@ func setup_rules(
 # - substance_store: get_sid_i(i), set_sid_i(i), begin_write(), commit()
 # - temperature: get_celsius_i(i) !!!!!!!!!!!!
 # - index: GridIndex(size)
-func tick_fullscan(phase_store, substance_store, temperature_store, index) -> Dictionary:
-	var n = index.size.x * index.size.y
-	var ice_to_water := 0
-	var water_to_ice := 0
+func tick_fullscan(phase_store, substance_store, temp_store, index: GridIndex) -> Dictionary:
+	var n := index.size.x * index.size.y
+	if n <= 0:
+		return { "ice_to_water": PackedVector2Array(), "water_to_ice": PackedVector2Array(), "total": 0 }
 
-	phase_store.begin_write()
-	substance_store.begin_write()
+	# 가능한 한 직접 배열로 빠르게 읽기 (프로젝트 API에 맞춰 변경)
+	var P: PackedByteArray = phase_store.get_raw_read()
+	var S: PackedInt32Array= substance_store.get_raw_read()
+	var T: PackedInt32Array = temp_store.get_raw_read()
+
+	var melt := PackedVector2Array()      # ICE -> WATER
+	var freeze := PackedVector2Array()    # WATER -> ICE
 
 	for i in n:
-		var sid = substance_store.get_by_index(i)
-		var ph = phase_store.get_by_index(i)
+		# 빠른 필터: 해당 물질/상만 본다
+		var ph: int = P[i]
+		var sid: int = S[i]
+		if sid == SID.ICE and ph == PH.SOLID:
+			# 얼음이 충분히 따뜻하면 녹임
+			if int(T[i]) >= melt_up[sid]:
+				melt.push_back(index.cell(i))
+		elif sid == SID.WATER and ph == PH.LIQUID:
+			# 물이 충분히 차가우면 언다
+			if int(T[i]) <= freeze_down[sid]:
+				freeze.push_back(index.cell(i))
+		# 그 외 물질은 무시 (확장 시 여기에 케이스 추가)
 
-		# 빠른 배제: 현재 phase별로 단일 비교만 수행
-		if ph == PH.SOLID:
-			# 고체가 액체로 융해 가능한지(ICE만 실질적으로 허용)
-			var t = temperature_store.get_by_index(i)
-			if t >= melt_up[sid]:
-				# ICE → WATER 로 substance 전환 + phase LIQUID
-				if sid == SID.ICE:
-					substance_store.set_by_index(i, SID.WATER)
-					phase_store.set_by_index(i, PH.LIQUID)
-					ice_to_water += 1
-				# (다른 sid는 melt_up가 불가능값이라 도달 불가)
-		elif ph == PH.LIQUID:
-			# 액체가 고체로 응고 가능한지(WATER만 실질적으로 허용)
-			var t2 = temperature_store.get_by_index(i)
-			if t2 <= freeze_down[sid]:
-				if sid == SID.WATER:
-					substance_store.set_by_index(i, SID.ICE)
-					phase_store.set_by_index(i, PH.SOLID)
-					water_to_ice += 1
-		else:
-			# VACUUM/GAS 단계는 현재 상전이 없음(무시)
-			pass
-
-	substance_store.commit()
-	phase_store.commit()
-
-	last_tick_transitions_ice_to_water = ice_to_water
-	last_tick_transitions_water_to_ice = water_to_ice
+	var total := melt.size() + freeze.size()
 	return {
-		"ice_to_water": ice_to_water,
-		"water_to_ice": water_to_ice,
-		"total": ice_to_water + water_to_ice
+		"ice_to_water": melt,
+		"water_to_ice": freeze,
+		"total": total
 	}
