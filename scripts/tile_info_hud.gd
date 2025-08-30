@@ -15,6 +15,9 @@ class_name TileInfoHUD
 
 # 표시 자리수 조정(kg/g일 때)
 @export var mass_decimals := 2
+@export var temperature_decimals := 2
+
+@export var use_celsius := true
 
 const SUBSTANCE_TEXT := {
 	-1: "—",
@@ -70,9 +73,9 @@ func _update_mass(info: Dictionary) -> void:
 
 func _update_temperature(info: Dictionary) -> void:
 	var t = info.get("temperature", -1)
-	var text: String = "-1" if t == null else str(t)
-	#var text := _format_temperature(-1 if t == null else t)
-	_temperature_label.text = text + "K"
+	#var text: String = "-1" if t == null else str(t)
+	var text := _format_temperature(-1 if t == null else t)
+	_temperature_label.text = "TEMPERATURE: " + text
 
 ## mg → g → kg 자동 포맷터 (HUD 전용)
 ## 추후 다른 패널에서도 사용될 수 있지만 일단 빠른 개발을 위해 여기서 구현하였음.
@@ -90,8 +93,25 @@ func _format_mass(mg: int) -> String:
 		var g := float(mg) / MG_PER_G
 		return _trim_zeros(g, mass_decimals) + " g"
 	else:
-		# mg는 정수로 그대로 표기(원하면 천단위 구분자 사용도 가능)
 		return "%d mg" % mg
+
+func _format_temperature(ck: int) -> String:
+	const CK_PER_K := 100
+	const CK_0C := 27315
+
+	if ck <= 0:
+		return "—"
+
+	if use_celsius:
+		var cc := ck - CK_0C
+		cc /= 100
+		return _trim_zeros(cc, temperature_decimals) + " °C"
+	else:
+		if ck >= CK_PER_K:
+			var k := float(ck) / CK_PER_K
+			return _trim_zeros(k, temperature_decimals) + " K"
+		else:
+			return "%d cK" % ck
 
 ## 소수부 불필요한 0 제거 (예: 12.340 → 12.34, 10.000 → 10)
 func _trim_zeros(val: float, decimals: int) -> String:
@@ -103,9 +123,6 @@ func _trim_zeros(val: float, decimals: int) -> String:
 	if s.ends_with("."):
 		s = s.substr(0, s.length() - 1)
 	return s
-
-func _format_temperature() -> String:
-	return "-1"
 
 func _process(delta: float) -> void:
 	if not visible:

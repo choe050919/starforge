@@ -80,7 +80,7 @@ func _safe_sum(arr: PackedInt32Array) -> int:
 			overflow = true
 		s = ns
 	if overflow:
-		push_warning("[MassStore] potential int32 overflow detected while summing")
+		push_warning("[TemperatureStore] potential int32 overflow detected while summing")
 	return s
 
 func _clamp_negatives_on_write() -> int: # ??????????????
