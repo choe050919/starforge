@@ -15,8 +15,8 @@ const SID = { "VACUUM":0, "ICE":1, "GROUND":2, "URANIUM":3, "WATER":4 }
 #  - 융해(melt_up): SOLID→LIQUID는  T >= melt_up[sid]
 #  - 응고(freeze_down): LIQUID→SOLID는 T <= freeze_down[sid]
 #  - (지금은 ICE/WATER만 사용. 나머지는 불가능값으로 차단)
-var melt_up: PackedFloat32Array
-var freeze_down: PackedFloat32Array
+var melt_up: PackedInt32Array
+var freeze_down: PackedInt32Array
 
 # 선택: 전이 카운터(틱 통계)
 var last_tick_transitions_ice_to_water := 0
@@ -25,13 +25,13 @@ var last_tick_transitions_water_to_ice := 0
 # ─────────────────────────────────────────────────────────
 # 규칙 셋업: 히스테리시스 포함
 func setup_rules(
-	hyst_c: float = 2.0,   # ICE/WATER 공용 히스테리시스 폭
-	melt_c: float = 0.0,   # 얼음(고체)의 융해 기준 온도(상향 문턱의 중심)
-	freeze_c: float = -1.0 # 물(액체)의 응고 기준 온도(하향 문턱의 중심)
+	hyst_c := 1,   # ICE/WATER 공용 히스테리시스 폭
+	melt_c := 27315,   # 얼음(고체)의 융해 기준 온도(상향 문턱의 중심)
+	freeze_c := 27314 # 물(액체)의 응고 기준 온도(하향 문턱의 중심)
 	) -> void:
 	# sid 최대치 고려해 배열 준비(간단히 5칸)
-	melt_up = PackedFloat32Array([0, 0, 0, 0, 0])
-	freeze_down = PackedFloat32Array([0, 0, 0, 0, 0])
+	melt_up = PackedInt32Array([0, 0, 0, 0, 0])
+	freeze_down = PackedInt32Array([0, 0, 0, 0, 0])
 
 	# 불가능값(충분히 큰 ±1e9)로 초기화
 	for i in melt_up.size():
@@ -39,11 +39,15 @@ func setup_rules(
 		freeze_down[i] = -1.0e9
 
 	# ICE(고체 물): SOLID→LIQUID를 허용 (WATER로 물질 전환 예정)
-	# 히스테리시스: 상향 문턱을 melt_c + (hyst/2)로 잡고, 하향 문턱은 WATER 쪽에 둔다.
-	melt_up[SID.ICE] = melt_c + (hyst_c * 0.5)
+	# 히스테리시스: 상향 문턱을 melt_c + (hyst)로 잡고, 하향 문턱은 WATER 쪽에 둔다.
+	melt_up[SID.ICE] = melt_c + hyst_c
 
 	# WATER(액체 물): LIQUID→SOLID를 허용 (ICE로 물질 전환 예정)
-	freeze_down[SID.WATER] = freeze_c - (hyst_c * 0.5)
+	freeze_down[SID.WATER] = freeze_c - hyst_c
+
+	print(melt_up)
+	print(melt_c)
+	print(hyst_c)
 
 	# GROUND/URANIUM: 불가능값 유지 → 상전이 차단
 	# (명시적 주석으로 의도 남김)
@@ -74,15 +78,14 @@ func tick_fullscan(phase_store, substance_store, temperature_store, index) -> Di
 		var sid = substance_store.get_by_index(i)
 		var ph = phase_store.get_by_index(i)
 
-		print(i, ph, sid)
-		print(temperature_store._read.size())
-		print(temperature_store.get_by_index(540))
 		# 빠른 배제: 현재 phase별로 단일 비교만 수행
 		if ph == PH.SOLID:
 			# 고체가 액체로 융해 가능한지(ICE만 실질적으로 허용)
 			var t = temperature_store.get_by_index(i)
-			print(t)
 			if t >= melt_up[sid]:
+				print(sid)
+				print(t)
+				print(melt_up[sid])
 				# ICE → WATER 로 substance 전환 + phase LIQUID
 				if sid == SID.ICE:
 					substance_store.set_by_index(i, SID.WATER)
@@ -92,7 +95,6 @@ func tick_fullscan(phase_store, substance_store, temperature_store, index) -> Di
 		elif ph == PH.LIQUID:
 			# 액체가 고체로 응고 가능한지(WATER만 실질적으로 허용)
 			var t2 = temperature_store.get_by_index(i)
-			print(t2)
 			if t2 <= freeze_down[sid]:
 				if sid == SID.WATER:
 					substance_store.set_by_index(i, SID.ICE)

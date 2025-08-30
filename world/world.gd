@@ -10,7 +10,7 @@ class_name World
 @onready var systems = %Systems
 @onready var worldgen: WorldGen =          %Systems/WorldGen
 @onready var durability: Durability =      %Systems/Durability
-@onready var temp: Temperature2 =           %Systems/Temperature2
+@onready var temp: Temperature =           %Systems/Temperature
 @onready var clock: SimClock =             %Systems/SimClock
 @onready var tchange: TileChange =         %Systems/TileChange
 @onready var liquid: Liquid =              %Systems/Liquid
@@ -49,8 +49,6 @@ func _ready() -> void:
 	#temp.temperature_updated.connect(_on_temperature_updated) !!!!!!!!!
 
 	worldgen.generate()
-
-	clock.tick_sim.connect(_on_tick_sim)
 
 	tchange.tile_destroyed.connect(_on_tile_destroyed)
 	tchange.tile_replaced.connect(_on_tile_replaced)
@@ -100,6 +98,8 @@ func _on_world_generated(
 	phase_change.setup(data_layer.phase, data_layer.substance, data_layer.temperature, data_layer.index, clock)
 
 	tile_info_hud.setup(hover_service, data_layer.index, data_layer.substance, data_layer.phase, data_layer.mass, data_layer.temperature)
+
+	clock.tick_sim.connect(_on_tick_sim)
 
 func _on_tick_sim(dt: float) -> void:
 	temp._on_sim_tick(dt)

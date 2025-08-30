@@ -9,9 +9,9 @@ class_name PhaseChange
 @export var debug_log := false
 
 # 히스테리시스/임계값 규칙 파라미터 (Core로 전달)
-@export var hyst_c := 2.0        # ICE/WATER 공용 히스테리시스 폭
-@export var melt_c := 0.0        # ICE 쪽 융해 기준(상향)
-@export var freeze_c := -1.0     # WATER 쪽 응고 기준(하향)
+@export var hyst_c := 1        # ICE/WATER 공용 히스테리시스 폭
+@export var melt_c := 27315        # ICE 쪽 융해 기준(상향)
+@export var freeze_c := 27314     # WATER 쪽 응고 기준(하향)
 
 # 의존성
 var _phase_store: PhaseStore

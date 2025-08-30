@@ -1,4 +1,4 @@
-[gd_scene load_steps=32 format=3 uid="uid://c5gv3n6byiin7"]
+[gd_scene load_steps=31 format=3 uid="uid://c5gv3n6byiin7"]
 
 [ext_resource type="Script" uid="uid://dgppaejvd18y0" path="res://world/world.gd" id="1_j7vgi"]
 [ext_resource type="Script" uid="uid://dsrbjd0kmv17k" path="res://world/terrain/terrain.gd" id="2_inp7a"]
@@ -14,8 +14,7 @@
 [ext_resource type="Shader" uid="uid://bqtbrwxs4stbe" path="res://shaders/gray_scale.gdshader" id="12_hnpqp"]
 [ext_resource type="Script" uid="uid://dfoy07ausxoqo" path="res://scripts/world_gen.gd" id="13_33qpb"]
 [ext_resource type="Script" uid="uid://d1vx7d5vanhpq" path="res://scripts/durability.gd" id="14_ifjjt"]
-[ext_resource type="Script" uid="uid://bxaqs1pu0ncum" path="res://scripts/temperature.gd" id="15_behgl"]
-[ext_resource type="Script" uid="uid://cio8nk8elsdnr" path="res://scripts/temperature_2.gd" id="16_inp7a"]
+[ext_resource type="Script" uid="uid://cio8nk8elsdnr" path="res://scripts/temperature.gd" id="16_inp7a"]
 [ext_resource type="Script" uid="uid://dtjuedvsbwjng" path="res://scripts/sim_clock.gd" id="16_k83x5"]
 [ext_resource type="Script" uid="uid://dl4jofyiuxsbc" path="res://scripts/tile_change.gd" id="17_b8tmp"]
 [ext_resource type="Script" uid="uid://db07wrr6kyq4v" path="res://scripts/liquid.gd" id="18_en1oy"]
@@ -104,10 +103,6 @@ t_uranium_init_cc = 12000
 script = ExtResource("14_ifjjt")
 
 [node name="Temperature" type="Node" parent="Systems"]
-script = ExtResource("15_behgl")
-k_ground = 10.0
-
-[node name="Temperature2" type="Node" parent="Systems"]
 script = ExtResource("16_inp7a")
 uranium_power_c_per_s = 300.0
 
@@ -126,7 +121,7 @@ script = ExtResource("19_pfbnl")
 
 [node name="PhaseChange" type="Node" parent="Systems"]
 script = ExtResource("20_gwdna")
-enabled = false
+debug_log = true
 
 [node name="InputController" type="Node" parent="Systems"]
 script = ExtResource("21_h4vgh")
