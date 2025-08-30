@@ -19,7 +19,7 @@
 [ext_resource type="Script" uid="uid://dl4jofyiuxsbc" path="res://scripts/tile_change.gd" id="17_b8tmp"]
 [ext_resource type="Script" uid="uid://db07wrr6kyq4v" path="res://scripts/liquid.gd" id="18_en1oy"]
 [ext_resource type="Script" uid="uid://by6y82yoenlkc" path="res://scripts/gas.gd" id="19_pfbnl"]
-[ext_resource type="Script" uid="uid://n7d0orcaljj3" path="res://scripts/phase_change.gd" id="20_gwdna"]
+[ext_resource type="Script" uid="uid://n7d0orcaljj3" path="res://scripts/phase_change/phase_change.gd" id="20_gwdna"]
 [ext_resource type="Script" uid="uid://dou5of5j8rehy" path="res://scripts/input_controller.gd" id="21_h4vgh"]
 [ext_resource type="Script" uid="uid://dcuvrt05007wb" path="res://scripts/hover_service.gd" id="22_kvuv0"]
 [ext_resource type="Script" uid="uid://dsk25alr21kno" path="res://scripts/tool_manager.gd" id="23_sg5c8"]
@@ -97,7 +97,6 @@ unique_name_in_owner = true
 [node name="WorldGen" type="Node" parent="Systems"]
 script = ExtResource("13_33qpb")
 size = Vector2i(32, 32)
-t_uranium_init_cc = 12000
 
 [node name="Durability" type="Node" parent="Systems"]
 script = ExtResource("14_ifjjt")
@@ -121,7 +120,11 @@ script = ExtResource("19_pfbnl")
 
 [node name="PhaseChange" type="Node" parent="Systems"]
 script = ExtResource("20_gwdna")
-debug_log = true
+enabled = null
+debug_log = null
+hyst_ck = null
+melt_ck = null
+freeze_ck = null
 
 [node name="InputController" type="Node" parent="Systems"]
 script = ExtResource("21_h4vgh")

@@ -101,15 +101,20 @@ func _on_world_generated(
 
 	clock.tick_sim.connect(_on_tick_sim)
 
+var sim_time := 0.0
+
 func _on_tick_sim(dt: float) -> void:
+	sim_time += dt
 	temp._on_sim_tick(dt)
+	phase_change._on_sim_tick(dt, sim_time)
 	liquid.tick_liquid(dt)
-	liquid_overlay.render(liquid.get_amounts())
-	phase_change._on_sim_tick(dt)
 	var events := event_queue.pop_all()
 	if events.size() > 0:
 		tchange.apply_events(events)
-	_on_temperature_updated() # 이름이 부적절한 함수 사용중
+
+	liquid_overlay.render(liquid.get_amounts())
+
+	_on_temperature_updated() # TODO: 이름 나중에 변경
 
 func _on_temperature_updated() -> void: # 이름이 부적절함.
 	var T_ck: PackedInt32Array = data_layer.temperature.get_read()

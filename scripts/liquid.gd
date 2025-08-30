@@ -2,7 +2,7 @@ extends Node
 class_name Liquid
 
 # 여기도 있고 liquid_overlay에도 있음. 문제!!!!
-@export var water_capacity_mg_per_cell: int = 1_000_000
+@export var water_capacity_mg_per_cell: int = 1_000_000_000
 
 var data: DataLayer
 var springs: PackedVector2Array = PackedVector2Array()
@@ -15,14 +15,15 @@ func setup(layer: DataLayer, spring_cells: PackedVector2Array) -> void:
 
 func tick_liquid(_dt: float) -> void:
 	var idx := data.index
-	var phases := data.phase
+	var substance := data.substance
+	var phase := data.phase
 	var mass := data.mass
 	var w := idx.size.x
 	var h := idx.size.y
 
 	# ── 스냅샷 잡기 ──────────────────────────────────────
 	var read_mass := mass.get_read()          # 질량 읽기 버퍼 스냅샷
-	var ph_read := phases.get_raw_read()      # phase 읽기 버퍼 스냅샷
+	var ph_read := phase.get_raw_read()      # phase 읽기 버퍼 스냅샷
 
 	# ── 쓰기 시작 ────────────────────────────────────────
 	mass.begin_write()
@@ -93,19 +94,29 @@ func tick_liquid(_dt: float) -> void:
 	# --- 질량 쓰기 반영 ---
 	mass.commit()
 
-	# --- 최종 질량 기준으로 Phase 일괄 정리 (트랜잭션 사용) ---
+	# --- 최종 질량 기준으로 Phase/Substance 일괄 정리 ---
 	var final := mass.get_read()    # 읽기 스냅샷
-	ph_read = phases.get_raw_read() # 현재 확정된 phase 스냅샷(배치 비교용)
+	ph_read = phase.get_raw_read() # 현재 확정된 phase 스냅샷(배치 비교용)
 
-	phases.begin_write()
+	substance.begin_write()
+	phase.begin_write()
+
 	for i in final.size():
 		if ph_read[i] == PhaseStore.Phase.SOLID:
 			continue
-		var want := (PhaseStore.Phase.LIQUID if final[i] > 0 else PhaseStore.Phase.VACUUM)
-		if ph_read[i] != want:
-			# 인덱스 기반이 빠름
-			phases.set_by_index(i, want)
-	phases.commit()
+		var has := final[i] > 0
+		var want_ph = PhaseStore.Phase.LIQUID if has else PhaseStore.Phase.VACUUM
+		if ph_read[i] != want_ph:
+			phase.set_by_index(i, want_ph)
+
+		# Substance도 동기화 (물만 다룸)
+		var cur_sid := substance.get_by_index(i)
+		var want_sid = SubstanceStore.SubstanceId.WATER if has else SubstanceStore.SubstanceId.VACUUM
+		if cur_sid != want_sid:
+			substance.set_by_index(i, want_sid)
+
+	substance.commit()
+	phase.commit()
 
 func get_amounts() -> PackedInt64Array:
 	if data == null:
@@ -119,6 +130,7 @@ func get_amounts() -> PackedInt64Array:
 	return out
 
 func on_tile_destroyed(cell: Vector2i, from_tile: int, reason: StringName) -> void:
+	print("[Liquid.on_tile_destroyed]")
 	if data == null: return
 
 	# 질량 0으로
@@ -132,6 +144,7 @@ func on_tile_destroyed(cell: Vector2i, from_tile: int, reason: StringName) -> vo
 	data.phase.commit()
 
 func on_tile_replaced(cell: Vector2i, from_tile: int, to_tile: int, reason: StringName) -> void:
+	print("[Liquid.on_tile_replaced]")
 	if data == null: return
 
 	data.mass.begin_write()

@@ -1,6 +1,6 @@
+## 순수 상전이 로직만 담당.
 extends RefCounted
 class_name PhaseChangeCore
-## 순수 상전이 로직만 담당. 씬 트리와 무관.
 
 # ─────────────────────────────────────────────────────────
 # 외부 enum과 일치해야 함 (프로젝트 기준)
@@ -33,10 +33,10 @@ func setup_rules(
 	melt_up = PackedInt32Array([0, 0, 0, 0, 0])
 	freeze_down = PackedInt32Array([0, 0, 0, 0, 0])
 
-	# 불가능값(충분히 큰 ±1e9)로 초기화
+	# 불가능값(충분히 큰 1000000000)로 초기화
 	for i in melt_up.size():
-		melt_up[i] = 1.0e9
-		freeze_down[i] = -1.0e9
+		melt_up[i] = 1000000000
+		freeze_down[i] = -1000000000
 
 	# ICE(고체 물): SOLID→LIQUID를 허용 (WATER로 물질 전환 예정)
 	# 히스테리시스: 상향 문턱을 melt_c + (hyst)로 잡고, 하향 문턱은 WATER 쪽에 둔다.
@@ -44,10 +44,6 @@ func setup_rules(
 
 	# WATER(액체 물): LIQUID→SOLID를 허용 (ICE로 물질 전환 예정)
 	freeze_down[SID.WATER] = freeze_c - hyst_c
-
-	print(melt_up)
-	print(melt_c)
-	print(hyst_c)
 
 	# GROUND/URANIUM: 불가능값 유지 → 상전이 차단
 	# (명시적 주석으로 의도 남김)
@@ -83,9 +79,6 @@ func tick_fullscan(phase_store, substance_store, temperature_store, index) -> Di
 			# 고체가 액체로 융해 가능한지(ICE만 실질적으로 허용)
 			var t = temperature_store.get_by_index(i)
 			if t >= melt_up[sid]:
-				print(sid)
-				print(t)
-				print(melt_up[sid])
 				# ICE → WATER 로 substance 전환 + phase LIQUID
 				if sid == SID.ICE:
 					substance_store.set_by_index(i, SID.WATER)

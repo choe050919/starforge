@@ -14,7 +14,7 @@ signal generated(
 @export var size: Vector2i = Vector2i(256, 128)
 
 # 초기 온도(°cC)
-@export var t_ice_init_cc: int = -800
+@export var t_ice_init_cc: int = -500
 @export var t_ground_init_cc: int = 1200
 @export var t_uranium_init_cc: int = 1200
 @export var t_water_init_cc: int = 800
