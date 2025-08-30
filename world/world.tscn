@@ -39,6 +39,7 @@ script = ExtResource("1_j7vgi")
 
 [node name="Terrain" type="Node2D" parent="."]
 script = ExtResource("2_inp7a")
+sid = 1
 
 [node name="Ground" type="TileMapLayer" parent="Terrain"]
 tile_set = ExtResource("3_bwxdu")
@@ -97,7 +98,7 @@ unique_name_in_owner = true
 
 [node name="WorldGen" type="Node" parent="Systems"]
 script = ExtResource("13_33qpb")
-size = Vector2i(128, 96)
+size = Vector2i(256, 64)
 ice_freq = 0.04
 ice_threshold = 0.65
 
