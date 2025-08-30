@@ -28,12 +28,15 @@ var tile_info_tracker: TileInfoTracker
 
 var tile_store: TileStore = TileStore.new()
 var event_queue: EventQueue = EventQueue.new()
-var material_db: MaterialDB = MaterialDB.new()
 var data_layer: DataLayer = DataLayer.new()
+
+var substance_loader: SubstanceLoader = SubstanceLoader.new()
 
 @onready var camera: Camera2D = $Camera2D
 
 func _ready() -> void:
+	substance_loader.load_materials()
+
 	hover_service.setup(data_layer)
 
 	input.setup(data_layer, hover_service)

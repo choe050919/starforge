@@ -107,7 +107,6 @@ script = ExtResource("14_ifjjt")
 
 [node name="Temperature" type="Node" parent="Systems"]
 script = ExtResource("16_inp7a")
-debug_log = true
 
 [node name="SimClock" type="Node" parent="Systems"]
 script = ExtResource("16_k83x5")

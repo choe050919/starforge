@@ -1,0 +1,29 @@
+{
+	"phase":{
+		"solid": {
+			"ice": {
+				"id": 10001,
+				"melting_point": 0,
+			},
+			"ground": {
+				"id": 10002,
+			},
+			"uranium": {
+				"id": 10003,
+			}
+		},
+		"liquid": {
+			"water": {
+				"id": 20001,
+				"freezing_point": 0,
+				"boiling_point": 100,
+			}
+		},
+		"gas": {
+			"steam": {
+				"id": 30001,
+				"boiling_point": 100,
+			}
+		}
+	}
+}
