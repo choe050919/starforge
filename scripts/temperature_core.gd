@@ -17,7 +17,6 @@ const DIRS := [Vector2i(0,-1), Vector2i(0,1), Vector2i(-1,0), Vector2i(1,0)]
 # init_c_per_sid: 초기 온도(°C)
 # heat_ckps_per_sid: 발열( cK/s )
 var alpha_per_sid: PackedFloat32Array
-var init_c_per_sid: PackedFloat32Array
 var heat_ckps_per_sid: PackedFloat32Array
 
 # 통계
@@ -27,33 +26,12 @@ var last_max_abs_delta_c := 0.0
 # ─────────────────────────────────────────────────────────
 # 규칙 셋업: 기본값 제공 (GROUND/ICE/URANIUM만 사용)
 func setup_rules(
-	alpha_ground := 0.9, alpha_ice := 0.4, alpha_uranium := 0.8,
-	c_ground := 1.0, c_ice := 0.8, c_uranium := 1.0,
-	t_ground_init_c := 12.0, t_ice_init_c := -5.0, t_uranium_init_c := 12.0,
+	alpha_ground := 0.9, alpha_ice := 0.4, alpha_uranium := 0.8, alpha_water := 0.6,
+	c_ground := 1.0, c_ice := 0.8, c_uranium := 1.0, c_water := 4.18,
 	uranium_power_c_per_s := 3.0 # °C/s → 내부에서 cK/s로 환산
 ) -> void:
-	alpha_per_sid     = PackedFloat32Array([0, alpha_ice / max(0.0001, c_ice), alpha_ground / max(0.0001, c_ground), alpha_uranium / max(0.0001, c_uranium), 0])
-	init_c_per_sid    = PackedFloat32Array([0, t_ice_init_c, t_ground_init_c, t_uranium_init_c, 0])
+	alpha_per_sid     = PackedFloat32Array([0, alpha_ice / max(0.0001, c_ice), alpha_ground / max(0.0001, c_ground), alpha_uranium / max(0.0001, c_uranium), alpha_water / max(0.0001, c_water)])
 	heat_ckps_per_sid = PackedFloat32Array([0, 0, 0, uranium_power_c_per_s * 100.0, 0])
-
-# ─────────────────────────────────────────────────────────
-# 초기 온도 세팅:
-# - temp_store: TemperatureStore (cK)
-# - substance_store: sid 조회에 사용
-# - index: GridIndex(size)
-# - overwrite_if_zero: true면 0K(미사용값)에만 초기값 기입
-func initialize_from_substances(temp_store, substance_store, index, overwrite_if_zero := true) -> void:
-	var n: int = index.size.x * index.size.y
-	temp_store.begin_write()
-	for i in n:
-		var sid: int = substance_store.get_by_index(i)
-		var tgt_ck := _c_to_ck(init_c_per_sid[sid])
-		if overwrite_if_zero:
-			if temp_store.get_by_index(i) == 0:
-				temp_store.set_by_index(i, tgt_ck)
-		else:
-			temp_store.set_by_index(i, tgt_ck)
-	temp_store.commit()
 
 # ─────────────────────────────────────────────────────────
 # 한 틱 풀스캔(확산 + 발열):
@@ -81,11 +59,8 @@ func tick_fullscan(substance_store, phase_store, temp_store, index, dt: float) -
 		for x in w:
 			var i := y * w + x
 			var ph: int = phase_store.get_by_index(i)
-			if ph != PhaseStore.Phase.SOLID:
-				# 전달 비활성: 그대로 유지
-				var t_keep: int = temp_store.get_by_index(i) # read
-				temp_store.set_by_index(i, t_keep)       # write
-				continue
+			if ph == PhaseStore.Phase.VACUUM:
+				continue # VACCUM 상태는 무시
 
 			var sid: int = substance_store.get_by_index(i)
 			var alpha := alpha_per_sid[sid]
@@ -99,12 +74,12 @@ func tick_fullscan(substance_store, phase_store, temp_store, index, dt: float) -
 				var nx := clampi(x + d.x, 0, w - 1)
 				var ny := clampi(y + d.y, 0, h - 1)
 				var j := ny * w + nx
-				if phase_store.get_by_index(j) == PhaseStore.Phase.SOLID:
+				if phase_store.get_by_index(j) != PhaseStore.Phase.VACUUM:
 					sum_n_ck += float(temp_store.get_by_index(j))
 					cnt += 1
 
 			var t_new_ck := t_center_ck
-			if cnt > 0 and alpha > 0.0:
+			if cnt > 0:
 				var avg_n_ck := sum_n_ck / float(cnt)
 				var blend := clampf(dt * alpha * float(cnt), 0.0, 1.0)
 				t_new_ck = lerpf(t_center_ck, avg_n_ck, blend)

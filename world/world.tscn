@@ -98,13 +98,15 @@ unique_name_in_owner = true
 [node name="WorldGen" type="Node" parent="Systems"]
 script = ExtResource("13_33qpb")
 size = Vector2i(128, 96)
+ice_freq = 0.04
+ice_threshold = 0.65
 
 [node name="Durability" type="Node" parent="Systems"]
 script = ExtResource("14_ifjjt")
 
 [node name="Temperature" type="Node" parent="Systems"]
 script = ExtResource("16_inp7a")
-uranium_power_c_per_s = 300.0
+debug_log = true
 
 [node name="SimClock" type="Node" parent="Systems"]
 script = ExtResource("16_k83x5")
