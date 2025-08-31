@@ -1,0 +1,167 @@
+[gd_scene load_steps=32 format=3 uid="uid://c5gv3n6byiin7"]
+
+[ext_resource type="Script" uid="uid://dgppaejvd18y0" path="res://world/world.gd" id="1_j7vgi"]
+[ext_resource type="Script" uid="uid://dsrbjd0kmv17k" path="res://world/terrain/terrain.gd" id="2_inp7a"]
+[ext_resource type="TileSet" uid="uid://dnn0uacxq48mh" path="res://tilesets/world.tres" id="3_bwxdu"]
+[ext_resource type="Script" uid="uid://da160trn2ljp2" path="res://world/terrain/liquid_overlay.gd" id="4_lwhbe"]
+[ext_resource type="TileSet" uid="uid://dyepojxtr2r7l" path="res://tilesets/cracks.tres" id="5_ftqqi"]
+[ext_resource type="Script" uid="uid://374ii1yhg7u8" path="res://world/terrain/crack_overlay.gd" id="6_avd5l"]
+[ext_resource type="Texture2D" uid="uid://drcw3d5sjondu" path="res://icon.svg" id="7_ll3gq"]
+[ext_resource type="Script" uid="uid://dwqjgykotlorq" path="res://scripts/corner_highlight.gd" id="8_jgi7c"]
+[ext_resource type="Script" uid="uid://c7wi2g2m2x6vj" path="res://scripts/overlay_manager.gd" id="9_cqwbg"]
+[ext_resource type="Script" uid="uid://cheovfjbqki2h" path="res://scripts/heatmap_overlay.gd" id="10_q3kex"]
+[ext_resource type="Script" uid="uid://bbb78kl6w5u70" path="res://scripts/heat_source_overlay.gd" id="11_hm5b2"]
+[ext_resource type="Shader" uid="uid://bqtbrwxs4stbe" path="res://shaders/gray_scale.gdshader" id="12_hnpqp"]
+[ext_resource type="Script" uid="uid://dfoy07ausxoqo" path="res://scripts/world_gen.gd" id="13_33qpb"]
+[ext_resource type="Script" uid="uid://d1vx7d5vanhpq" path="res://scripts/durability.gd" id="14_ifjjt"]
+[ext_resource type="Script" uid="uid://bxaqs1pu0ncum" path="res://scripts/temperature.gd" id="16_inp7a"]
+[ext_resource type="Script" uid="uid://dtjuedvsbwjng" path="res://scripts/sim_clock.gd" id="16_k83x5"]
+[ext_resource type="Script" uid="uid://dl4jofyiuxsbc" path="res://systems/tile_change.gd" id="17_b8tmp"]
+[ext_resource type="Script" uid="uid://db07wrr6kyq4v" path="res://systems/liquid/liquid.gd" id="18_en1oy"]
+[ext_resource type="Script" uid="uid://by6y82yoenlkc" path="res://scripts/gas.gd" id="19_pfbnl"]
+[ext_resource type="Script" uid="uid://n7d0orcaljj3" path="res://systems/phase_change/phase_change.gd" id="20_gwdna"]
+[ext_resource type="Script" uid="uid://dou5of5j8rehy" path="res://scripts/input_controller.gd" id="21_h4vgh"]
+[ext_resource type="Script" uid="uid://dcuvrt05007wb" path="res://scripts/hover_service.gd" id="22_kvuv0"]
+[ext_resource type="Script" uid="uid://dsk25alr21kno" path="res://systems/tool_manager.gd" id="23_sg5c8"]
+[ext_resource type="Script" uid="uid://0y3dr3nwo17m" path="res://systems/visual_sync.gd" id="24_inp7a"]
+[ext_resource type="Script" uid="uid://b2776qmf4l0o" path="res://scripts/critter_spawner.gd" id="24_vu62d"]
+[ext_resource type="PackedScene" uid="uid://dvfaso5evvyd" path="res://scenes/critter_breaker.tscn" id="25_58wjt"]
+[ext_resource type="PackedScene" uid="uid://b3cc58761avvp" path="res://scenes/critter_builder.tscn" id="26_dp8ul"]
+[ext_resource type="Script" uid="uid://cqchm53g3n0d1" path="res://scripts/pan_zoom.gd" id="27_o7xkw"]
+[ext_resource type="PackedScene" uid="uid://balj4m27d4euf" path="res://scenes/tile_info_hud.tscn" id="28_bfrib"]
+[ext_resource type="Script" uid="uid://j3edpypdb7d7" path="res://scripts/fps_mem_monitor.gd" id="29_mip0j"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_7iits"]
+shader = ExtResource("12_hnpqp")
+
+[node name="World" type="Node2D"]
+script = ExtResource("1_j7vgi")
+
+[node name="Terrain" type="Node2D" parent="."]
+script = ExtResource("2_inp7a")
+sid = 1
+
+[node name="Ground" type="TileMapLayer" parent="Terrain"]
+tile_set = ExtResource("3_bwxdu")
+
+[node name="LiquidOverlay" type="Node2D" parent="Terrain"]
+script = ExtResource("4_lwhbe")
+
+[node name="Map" type="Sprite2D" parent="Terrain/LiquidOverlay"]
+
+[node name="CrackOverlay" type="TileMapLayer" parent="Terrain"]
+tile_set = ExtResource("5_ftqqi")
+script = ExtResource("6_avd5l")
+
+[node name="CornerHighlight" type="Sprite2D" parent="Terrain"]
+texture = ExtResource("7_ll3gq")
+centered = false
+script = ExtResource("8_jgi7c")
+
+[node name="OverlayManager" type="Node" parent="."]
+unique_name_in_owner = true
+script = ExtResource("9_cqwbg")
+
+[node name="OverlayLayer" type="CanvasLayer" parent="OverlayManager"]
+layer = 2
+follow_viewport_enabled = true
+
+[node name="HeatmapOverlay" type="Node2D" parent="OverlayManager/OverlayLayer"]
+visible = false
+z_index = 2
+script = ExtResource("10_q3kex")
+
+[node name="Map" type="Sprite2D" parent="OverlayManager/OverlayLayer/HeatmapOverlay"]
+
+[node name="HeatSourceOverlay" type="Node2D" parent="OverlayManager/OverlayLayer"]
+visible = false
+z_index = 2
+script = ExtResource("11_hm5b2")
+
+[node name="Map" type="Sprite2D" parent="OverlayManager/OverlayLayer/HeatSourceOverlay"]
+
+[node name="FXLayer" type="CanvasLayer" parent="OverlayManager"]
+
+[node name="GrayscaleOverlay" type="ColorRect" parent="OverlayManager/FXLayer"]
+visible = false
+z_index = 1
+material = SubResource("ShaderMaterial_7iits")
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="Systems" type="Node" parent="."]
+unique_name_in_owner = true
+
+[node name="WorldGen" type="Node" parent="Systems"]
+script = ExtResource("13_33qpb")
+size = Vector2i(256, 64)
+ice_freq = 0.04
+ice_threshold = 0.65
+
+[node name="Durability" type="Node" parent="Systems"]
+script = ExtResource("14_ifjjt")
+
+[node name="Temperature" type="Node" parent="Systems"]
+script = ExtResource("16_inp7a")
+
+[node name="SimClock" type="Node" parent="Systems"]
+script = ExtResource("16_k83x5")
+
+[node name="TileChange" type="Node" parent="Systems"]
+script = ExtResource("17_b8tmp")
+terrain_node_path = NodePath("../../Terrain")
+
+[node name="Liquid" type="Node" parent="Systems"]
+script = ExtResource("18_en1oy")
+
+[node name="Gas" type="Node" parent="Systems"]
+script = ExtResource("19_pfbnl")
+
+[node name="PhaseChange" type="Node" parent="Systems"]
+script = ExtResource("20_gwdna")
+
+[node name="InputController" type="Node" parent="Systems"]
+script = ExtResource("21_h4vgh")
+
+[node name="HoverService" type="Node" parent="Systems"]
+script = ExtResource("22_kvuv0")
+
+[node name="ToolManager" type="Node" parent="Systems"]
+script = ExtResource("23_sg5c8")
+
+[node name="VisualSync" type="Node" parent="Systems"]
+script = ExtResource("24_inp7a")
+terrain_path = NodePath("../../Terrain")
+liquid_overlay_path = NodePath("../../Terrain/LiquidOverlay")
+
+[node name="Actors" type="Node2D" parent="."]
+
+[node name="Spawner" type="Node2D" parent="Actors"]
+script = ExtResource("24_vu62d")
+critter_scene = ExtResource("25_58wjt")
+builder_scene = ExtResource("26_dp8ul")
+ground_path = NodePath("../../Terrain/Ground")
+tile_change_path = NodePath("../../Systems/TileChange")
+durability_path = NodePath("../../Systems/Durability")
+
+[node name="Managers" type="Node" parent="."]
+
+[node name="ChunkManager" type="Node" parent="Managers"]
+
+[node name="Camera2D" type="Camera2D" parent="."]
+script = ExtResource("27_o7xkw")
+pan_speed = 1.5
+
+[node name="UIFXLayer" type="CanvasLayer" parent="."]
+layer = 3
+
+[node name="TileInfoHUD" parent="UIFXLayer" instance=ExtResource("28_bfrib")]
+
+[node name="FpsMemMonitor" type="Control" parent="UIFXLayer"]
+layout_mode = 3
+anchors_preset = 0
+script = ExtResource("29_mip0j")

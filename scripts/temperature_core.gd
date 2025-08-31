@@ -55,88 +55,25 @@ func tick_fullscan(
 	var T := temp_store.get_raw_read()
 	var S := substance_store.get_raw_read()
 	var M := mass_store.get_raw_read()
-	var K # TODO
+	var K # TODO 열전도율
+	var C # TODO 비열
 
-	if T.size() != n or S.size() != n:
+	if T.size() != n or S.size() != n or M.size() != n:
 		push_error("[TemperatureCore.tick_fullscan] Size mismatch")
 		return {} # TODO 에러 시 반환값 임시조치
 
 	var deltaQ := compute_deltaQ(w, h, n, T, S, K, dt)
-
-	#apply_deltaQ_to_T()
+	var T_new := apply_deltaQ_to_T(n, T, S, M, C, deltaQ)
 
 	return {}
-
-"""
-
-	#if n <= 0 or dt <= 0.0:
-		#last_avg_delta_c = 0.0
-		#last_max_abs_delta_c = 0.0
-		#return { "avg_delta_c": 0.0, "max_abs_delta_c": 0.0 }
-
-	#temp_store.begin_write()
-
-	var sum_delta_c := 0.0
-	var max_abs_delta_c := 0.0
-
-	for y in h:
-		for x in w:
-			var i := y * w + x
-			var ph: int = phase_store.get_by_index(i)
-			if ph == PhaseStore.Phase.VACUUM:
-				continue # VACCUM 상태는 무시
-
-			var sid: int = substance_store.get_by_index(i)
-			var alpha := alpha_per_sid[sid]
-
-			# 중심 및 이웃 읽기(모두 SOLID만 전달)
-			var t_center_ck := float(temp_store.get_by_index(i))
-			var sum_n_ck := 0.0
-			var cnt := 0
-
-			for d in DIRS:
-				var nx := clampi(x + d.x, 0, w - 1)
-				var ny := clampi(y + d.y, 0, h - 1)
-				var j := ny * w + nx
-				if phase_store.get_by_index(j) != PhaseStore.Phase.VACUUM:
-					sum_n_ck += float(temp_store.get_by_index(j))
-					cnt += 1
-
-			var t_new_ck := t_center_ck
-			if cnt > 0:
-				var avg_n_ck := sum_n_ck / float(cnt)
-				var blend := clampf(dt * alpha * float(cnt), 0.0, 1.0)
-				t_new_ck = lerpf(t_center_ck, avg_n_ck, blend)
-
-			# 발열 적용(동일 틱 내에 합산)
-			var heat_ck := heat_ckps_per_sid[sid] * dt
-			if heat_ck != 0.0:
-				t_new_ck += heat_ck
-
-			# 기록 및 통계(°C 기준)
-			temp_store.set_by_index(i, int(round(t_new_ck)))
-			var delta_c := _ck_to_c(int(round(t_new_ck)) - int(t_center_ck))
-			sum_delta_c += delta_c
-			var absd := absf(delta_c)
-			if absd > max_abs_delta_c:
-				max_abs_delta_c = absd
-
-
-	#temp_store.commit()
-
-	last_avg_delta_c = sum_delta_c / float(n)
-	last_max_abs_delta_c = max_abs_delta_c
-	return { "avg_delta_c": last_avg_delta_c, "max_abs_delta_c": last_max_abs_delta_c }
-
-"""
 
 ## 타일별로 열량 변화량을 계산하고 결과를 PackedFloat64Array로 반환한다.
 static func compute_deltaQ(
 	w: int, h: int, n: int,
-	T: PackedInt32Array, S: PackedInt32Array, K,
+	T: PackedInt32Array, S: PackedInt32Array,
+	K,
 	dt: float
 ) -> PackedFloat64Array:
-
 	var deltaQ := PackedFloat64Array()
 	deltaQ.resize(n)
 	for i in n: deltaQ[i] = 0.0
@@ -146,7 +83,7 @@ static func compute_deltaQ(
 			var i := y * w + x
 
 			var si := S[i]
-			if si == 0: # VACCUM일시 스킵
+			if si == 0: # VACCUM인 경우 스킵
 				continue
 			var Ti := float(T[i])
 			var ki := float(K[si])
@@ -161,7 +98,7 @@ static func compute_deltaQ(
 				var j := ny * w + nx
 
 				var sj := S[j]
-				if sj == 0: # VACCUM일시 스킵
+				if sj == 0: # VACCUM인 경우 스킵
 					continue
 
 				var kj := float(K[sj])
@@ -176,18 +113,35 @@ static func compute_deltaQ(
 			deltaQ[i] += sum_Q
 	return deltaQ
 
+## deltaQ를 비열(cp)과 질량(m)으로 나눠 ΔT를 구하고,
+## 기존 온도 배열(T_read)에 적용해 새로운 온도 배열을 반환한다.
 static func apply_deltaQ_to_T(
-	w: int, h: int, n: int,
-	T: PackedInt32Array, S: PackedInt32Array, K,
-
-	temp: TemperatureStore,
-	substance: SubstanceStore,
-	mass: MassStore,
-	phase: PhaseStore,
-
+	n: int,
+	T: PackedInt32Array, S: PackedInt32Array, M: PackedInt64Array,
+	C: PackedFloat64Array,
 	deltaQ: PackedFloat64Array
-):
-	pass
+) -> PackedInt32Array:
+	var T_new := T.duplicate()
+
+	for i in n:
+		var si: int = S[i]
+		if si == 0: # VACCUM인 경우 스킵
+			continue
+
+		var ci: float = float(C[si])
+		if ci <= 0.0: # 비열이 없는 경우 스킵
+			continue
+
+		var mi: int = int(M[i]) # warning! 64bit를 32bit로 변환중. TODO
+		if mi <= 0: # 질량이 없는 경우 스킵
+			continue
+
+		# ΔT[cK] = ΔQ * 1e8 / (mi[mg] * ci[J/kg·K])
+		var deltaT_cK := int(round(deltaQ[i] * 1e8 / (mi * ci)))
+
+		T_new[i] += deltaT_cK
+
+	return T_new
 
 # ─────────────────────────────────────────
 # 유틸(단위 변환)

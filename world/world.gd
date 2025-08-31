@@ -102,7 +102,7 @@ func _on_world_generated(
 
 	liquid_overlay.render(mass)
 
-	temp.setup(data_layer.substance, data_layer.phase, data_layer.temperature, data_layer.index, clock)
+	temp.setup(data_layer.substance, data_layer.phase, data_layer.temperature, data_layer.mass, data_layer.index, clock)
 
 	phase_change.setup(data_layer.phase, data_layer.substance, data_layer.temperature, data_layer.index, visual_sync, clock, rule_cache)
 

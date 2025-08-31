@@ -12,6 +12,7 @@ class_name Temperature
 var _substance_store: SubstanceStore
 var _phase_store: PhaseStore
 var _temperature_store: TemperatureStore
+var _mass_store: MassStore
 var _index: GridIndex
 var _clock : SimClock
 
@@ -32,17 +33,19 @@ func setup(
 	ss: SubstanceStore,
 	ps: PhaseStore,
 	ts: TemperatureStore,
+	ms: MassStore,
 	index: GridIndex,
 	clock: SimClock
 ) -> void:
 	_substance_store = ss
 	_phase_store = ps
 	_temperature_store = ts
+	_mass_store = ms
 	_index = index
 	_clock = clock
 
 	@warning_ignore("shadowed_variable_base_class")
-	for name in ["_substance_store", "_phase_store", "_temperature_store", "_index", "_clock"]:
+	for name in ["_substance_store", "_phase_store", "_temperature_store", "_mass_store", "_index", "_clock"]:
 		var value = get(name)
 		if value == null:
 			push_error("[Temperature.setup]%s is null" % name)
@@ -54,7 +57,7 @@ func _on_sim_tick(dt: float) -> void:
 	if not enabled:
 		return
 
-	var stats = _core.tick_fullscan(_temperature_store, _substance_store, _index, dt)
+	var stats = _core.tick_fullscan(_temperature_store, _substance_store, _mass_store, _index, dt)
 	if debug_log and stats:
 		var avg := float(stats.get("avg_delta_c", 0.0))
 		var mx  := float(stats.get("max_abs_delta_c", 0.0))
