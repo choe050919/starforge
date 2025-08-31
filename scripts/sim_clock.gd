@@ -17,10 +17,10 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	_accum_sim += delta
 	_accum_temp += delta
-	while _accum_sim >= _step_sim:
-		_accum_sim -= _step_sim
-		emit_signal("tick_sim", "sim", _step_sim)  # 기본 시뮬레이션 신호
 
 	while _accum_temp >= _step_temp:
 		_accum_temp -= _step_temp
 		emit_signal("tick_sim", "temp", _step_temp)  # 온도 신호
+	while _accum_sim >= _step_sim:
+		_accum_sim -= _step_sim
+		emit_signal("tick_sim", "sim", _step_sim)  # 기본 시뮬레이션 신호

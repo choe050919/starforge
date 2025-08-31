@@ -1,15 +1,15 @@
+## 순수 온도 로직만 담당.
 extends RefCounted
 class_name TemperatureCore
-## 순수 온도 로직만 담당. 씬 트리와 무관.
 ## - 저장은 TemperatureStore(cK, int32)를 사용
 ## - 읽기/쓰기 모두 인덱스 기반 I/O
 ## - 규칙(전도율/초기온도/발열)은 SID 테이블로 관리
 
 # 외부 enum과 일치해야 함: SubstanceId Legacy !!!!!
-const SID = { "VACUUM":0, "ICE":1, "GROUND":2, "URANIUM":3, "WATER":4 }
+const SID = { "VACUUM":0, "ICE":10001, "GROUND":10002, "URANIUM":10003, "WATER":20001 }
 
 # 4방 탐색
-const DIRS := [Vector2i(0,-1), Vector2i(0,1), Vector2i(-1,0), Vector2i(1,0)]
+const DIRS := [Vector2i(1,0), Vector2i(-1,0), Vector2i(0,1), Vector2i(0,-1)]
 
 # ─────────────────────────────────────────────────────────
 # 규칙 테이블 (sid 인덱스 접근)
@@ -41,17 +41,41 @@ func setup_rules(
 # - index: GridIndex
 # - dt: float(초)
 # 반환: 간단 통계(평균 ΔT, 최대 |ΔT| in °C)
-func tick_fullscan(substance_store, phase_store, temp_store, index, dt: float) -> Dictionary:
-	var n: int = index.size.x * index.size.y
-	if n <= 0 or dt <= 0.0:
-		last_avg_delta_c = 0.0
-		last_max_abs_delta_c = 0.0
-		return { "avg_delta_c": 0.0, "max_abs_delta_c": 0.0 }
+func tick_fullscan(
+	temp_store: TemperatureStore,
+	substance_store: SubstanceStore,
+	mass_store: MassStore,
+	index: GridIndex,
+	dt: float
+) -> Dictionary:
+	var w := index.size.x
+	var h := index.size.y
+	var n := w * h
 
-	temp_store.begin_write()
+	var T := temp_store.get_raw_read()
+	var S := substance_store.get_raw_read()
+	var M := mass_store.get_raw_read()
+	var K # TODO
 
-	var w: int= index.size.x
-	var h: int = index.size.y
+	if T.size() != n or S.size() != n:
+		push_error("[TemperatureCore.tick_fullscan] Size mismatch")
+		return {} # TODO 에러 시 반환값 임시조치
+
+	var deltaQ := compute_deltaQ(w, h, n, T, S, K, dt)
+
+	#apply_deltaQ_to_T()
+
+	return {}
+
+"""
+
+	#if n <= 0 or dt <= 0.0:
+		#last_avg_delta_c = 0.0
+		#last_max_abs_delta_c = 0.0
+		#return { "avg_delta_c": 0.0, "max_abs_delta_c": 0.0 }
+
+	#temp_store.begin_write()
+
 	var sum_delta_c := 0.0
 	var max_abs_delta_c := 0.0
 
@@ -97,11 +121,73 @@ func tick_fullscan(substance_store, phase_store, temp_store, index, dt: float) -
 			if absd > max_abs_delta_c:
 				max_abs_delta_c = absd
 
-	temp_store.commit()
+
+	#temp_store.commit()
 
 	last_avg_delta_c = sum_delta_c / float(n)
 	last_max_abs_delta_c = max_abs_delta_c
 	return { "avg_delta_c": last_avg_delta_c, "max_abs_delta_c": last_max_abs_delta_c }
+
+"""
+
+## 타일별로 열량 변화량을 계산하고 결과를 PackedFloat64Array로 반환한다.
+static func compute_deltaQ(
+	w: int, h: int, n: int,
+	T: PackedInt32Array, S: PackedInt32Array, K,
+	dt: float
+) -> PackedFloat64Array:
+
+	var deltaQ := PackedFloat64Array()
+	deltaQ.resize(n)
+	for i in n: deltaQ[i] = 0.0
+
+	for y in h:
+		for x in w:
+			var i := y * w + x
+
+			var si := S[i]
+			if si == 0: # VACCUM일시 스킵
+				continue
+			var Ti := float(T[i])
+			var ki := float(K[si])
+
+			var sum_Q := 0.0
+			for d in DIRS:
+				var nx: int = x + d.x
+				var ny: int = y + d.y
+				# 경계 밖은 스킵 (clamp 금지)
+				if nx < 0 or nx >= w or ny < 0 or ny >= h:
+					continue
+				var j := ny * w + nx
+
+				var sj := S[j]
+				if sj == 0: # VACCUM일시 스킵
+					continue
+
+				var kj := float(K[sj])
+				# 유효 전도율: 조화평균
+				var kij = _harmonic_mean(ki, kj)
+				if kij <= 0.0:
+					continue
+
+				var Tj := float(T[j])
+				sum_Q += kij * (Tj - Ti) * dt
+			# 이 셀에 들어온 열량(순합)
+			deltaQ[i] += sum_Q
+	return deltaQ
+
+static func apply_deltaQ_to_T(
+	w: int, h: int, n: int,
+	T: PackedInt32Array, S: PackedInt32Array, K,
+
+	temp: TemperatureStore,
+	substance: SubstanceStore,
+	mass: MassStore,
+	phase: PhaseStore,
+
+	deltaQ: PackedFloat64Array
+):
+	pass
 
 # ─────────────────────────────────────────
 # 유틸(단위 변환)
@@ -111,3 +197,10 @@ static func _c_to_ck(c: float) -> int:
 static func _ck_to_c(ck_delta: int) -> float:
 	# 입력은 '차이' 사용이 많아서 0점(0K) 기준 델타로 처리
 	return float(ck_delta) / 100.0
+
+## a와 b의 조화평균을 출력한다.
+static func _harmonic_mean(a: float, b: float) -> float:
+	# a==0 or b==0이면 유효 전도율 0
+	if a <= 0.0 or b <= 0.0:
+		return 0.0
+	return 2.0 / ((1.0 / a) + (1.0 / b))
