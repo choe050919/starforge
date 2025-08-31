@@ -32,7 +32,7 @@ signal generated(
 @export var mass_ice_mg_per_cell: int = 900_000_000       # 900 kg
 @export var mass_ground_mg_per_cell: int = 1_200_000_000  # 1200 kg
 @export var mass_uranium_mg_per_cell: int = 1_900_000_000 # 1900 kg
-@export var water_capacity_mg_per_cell: int = 1_000_000
+@export var water_capacity_mg_per_cell: int = 1_000_000_000
 
 # 우라늄 분포 파라미터
 @export var uranium_seed: int = 24680
