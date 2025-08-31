@@ -16,9 +16,9 @@ class_name Terrain
 @export var alt_uranium: int = 0
 
 const TILE_AIR: int = 0
-const TILE_ICE: int = 1
-const TILE_GROUND: int = 2
-const TILE_URANIUM: int = 3
+const TILE_ICE: int = 10001
+const TILE_GROUND: int = 10002
+const TILE_URANIUM: int = 10003
 
 func apply_tiles(tile_types: PackedInt32Array, size: Vector2i) -> void:
 	if ground.tile_set == null:

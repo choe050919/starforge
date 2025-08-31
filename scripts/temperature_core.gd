@@ -5,7 +5,7 @@ class_name TemperatureCore
 ## - 읽기/쓰기 모두 인덱스 기반 I/O
 ## - 규칙(전도율/초기온도/발열)은 SID 테이블로 관리
 
-# 외부 enum과 일치해야 함: SubstanceId
+# 외부 enum과 일치해야 함: SubstanceId Legacy !!!!!
 const SID = { "VACUUM":0, "ICE":1, "GROUND":2, "URANIUM":3, "WATER":4 }
 
 # 4방 탐색

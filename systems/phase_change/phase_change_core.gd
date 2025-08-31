@@ -8,96 +8,94 @@ var _rules: SubstanceRuleCache
 func bind_rule_cache(cache: SubstanceRuleCache) -> void:
 	_rules = cache
 
-# ─────────────────────────────────────────────────────────
-# 외부 enum과 일치해야 함 (프로젝트 기준)
-# Phase: 0=VACUUM, 1=SOLID, 2=LIQUID, 3=GAS
-const PH = { "VACUUM":0, "SOLID":1, "LIQUID":2, "GAS":3 }
-# SubstanceId: 0=VACUUM, 1=ICE, 2=GROUND, 3=URANIUM, 4=WATER
-const SID = { "VACUUM":0, "ICE":1, "GROUND":2, "URANIUM":3, "WATER":4 }
-
-# ─────────────────────────────────────────────────────────
-# 임계값 테이블 (sid 인덱스 접근)
-# 방향성 규칙:
-#  - 융해(melt_up): SOLID→LIQUID는  T >= melt_up[sid]
-#  - 응고(freeze_down): LIQUID→SOLID는 T <= freeze_down[sid]
-#  - (지금은 ICE/WATER만 사용. 나머지는 불가능값으로 차단)
-var melt_up: PackedInt32Array
-var freeze_down: PackedInt32Array
-
-# 선택: 전이 카운터(틱 통계)
-var last_tick_transitions_ice_to_water := 0
-var last_tick_transitions_water_to_ice := 0
-
-# ─────────────────────────────────────────────────────────
-# 규칙 셋업: 히스테리시스 포함
-func setup_rules(
-	hyst_c := 1,   # ICE/WATER 공용 히스테리시스 폭
-	melt_c := 27315,   # 얼음(고체)의 융해 기준 온도(상향 문턱의 중심)
-	freeze_c := 27314 # 물(액체)의 응고 기준 온도(하향 문턱의 중심)
-	) -> void:
-	# sid 최대치 고려해 배열 준비(간단히 5칸)
-	melt_up = PackedInt32Array([0, 0, 0, 0, 0])
-	freeze_down = PackedInt32Array([0, 0, 0, 0, 0])
-
-	# 불가능값(충분히 큰 1000000000)로 초기화
-	for i in melt_up.size():
-		melt_up[i] = 1000000000
-		freeze_down[i] = -1000000000
-
-	# ICE(고체 물): SOLID→LIQUID를 허용 (WATER로 물질 전환 예정)
-	# 히스테리시스: 상향 문턱을 melt_c + (hyst)로 잡고, 하향 문턱은 WATER 쪽에 둔다.
-	melt_up[SID.ICE] = melt_c + hyst_c
-
-	# WATER(액체 물): LIQUID→SOLID를 허용 (ICE로 물질 전환 예정)
-	freeze_down[SID.WATER] = freeze_c - hyst_c
-
-	# GROUND/URANIUM: 불가능값 유지 → 상전이 차단
-	# (명시적 주석으로 의도 남김)
-	# melt_up[SID.GROUND]  = 1e9
-	# freeze_down[SID.GROUND] = -1e9
-	# melt_up[SID.URANIUM] = 1e9
-	# freeze_down[SID.URANIUM] = -1e9
-
-	# 기본 통계 리셋
-	last_tick_transitions_ice_to_water = 0
-	last_tick_transitions_water_to_ice = 0
+	if _rules != null:
+		var keys := _rules.rules_by_sid.keys()
+		print("[PCore][dbg] rules_by_sid.size=", keys.size())
+		# 앞 몇 개만 미리보기
+		for i in min(5, keys.size()):
+			var k = keys[i]
+			print("  - sid=", k, " phase=", _rules.phase_of_sid.get(k, -1), " rules=", _rules.rules_by_sid[k].size())
 
 # ─────────────────────────────────────────────────────────
 # 풀 스캔 실행:
-# - phase_store: get_phase_i(i), set_phase_i(i), begin_write(), commit()
-# - substance_store: get_sid_i(i), set_sid_i(i), begin_write(), commit()
-# - temperature: get_celsius_i(i) !!!!!!!!!!!!
-# - index: GridIndex(size)
+# 반환 형식 변경:
+# {
+#   "changes": Array[{ "cell": Vector2i, "from_sid": int, "to_sid": int }],
+#   "stats": Dictionary # (optional) ( (from_sid<<32)|to_sid : count )
+# }
 func tick_fullscan(phase_store, substance_store, temp_store, index: GridIndex) -> Dictionary:
 	var n := index.size.x * index.size.y
-	if n <= 0:
-		return { "ice_to_water": PackedVector2Array(), "water_to_ice": PackedVector2Array(), "total": 0 }
+	if n <= 0 or _rules == null:
+		return { "changes": [], "stats": {} }
 
-	# 가능한 한 직접 배열로 빠르게 읽기 (프로젝트 API에 맞춰 변경)
-	var P: PackedByteArray = phase_store.get_raw_read()
-	var S: PackedInt32Array= substance_store.get_raw_read()
-	var T: PackedInt32Array = temp_store.get_raw_read()
+	var P: PackedByteArray   = phase_store.get_raw_read()
+	var S: PackedInt32Array  = substance_store.get_raw_read()
+	var T: PackedInt32Array  = temp_store.get_raw_read()
 
-	var melt := PackedVector2Array()      # ICE -> WATER
-	var freeze := PackedVector2Array()    # WATER -> ICE
+	var changes: Array = []
+	var stats: Dictionary = {}
 
+	# 고정 스캔 순서 유지(결정성)
 	for i in n:
-		# 빠른 필터: 해당 물질/상만 본다
-		var ph: int = P[i]
-		var sid: int = S[i]
-		if sid == SID.ICE and ph == PH.SOLID:
-			# 얼음이 충분히 따뜻하면 녹임
-			if int(T[i]) >= melt_up[sid]:
-				melt.push_back(index.cell(i))
-		elif sid == SID.WATER and ph == PH.LIQUID:
-			# 물이 충분히 차가우면 언다
-			if int(T[i]) <= freeze_down[sid]:
-				freeze.push_back(index.cell(i))
-		# 그 외 물질은 무시 (확장 시 여기에 케이스 추가)
+		var from_sid: int = S[i]
+		# 룰이 없으면 스킵
+		if not _rules.rules_by_sid.has(from_sid):
+			continue
 
-	var total := melt.size() + freeze.size()
-	return {
-		"ice_to_water": melt,
-		"water_to_ice": freeze,
-		"total": total
-	}
+		var rules_for_sid: Array = _rules.rules_by_sid[from_sid]
+		if rules_for_sid.is_empty():
+			continue
+
+		var t_ck: int = int(T[i])
+
+		# JSON 기재 순서 = 우선순위
+		for rule in rules_for_sid:
+			var to_sid: int = rule["to_sid"]
+			if _rule_triggers(t_ck, from_sid, to_sid, rule):
+				var cell := index.cell(i)
+				changes.append({ "cell": cell, "from_sid": from_sid, "to_sid": to_sid })
+				var key := (int(from_sid) << 32) | int(to_sid)
+				stats[key] = int(stats.get(key, 0)) + 1
+				break # 한 틱, 한 셀, 첫 매칭만
+			# 매칭 실패면 다음 룰 검사
+
+	return { "changes": changes, "stats": stats }
+
+# ─────────────────────────────────────────────────────────
+# 룰 만족 판정(히스테리시스 적용 포함)
+# 규칙:
+# - 상향(phase(from) < phase(to))  : t_ck_min → (min + hyst), t_ck_max(있다면 그대로 ≤)
+# - 하향(phase(from) > phase(to))  : t_ck_max → (max - hyst), t_ck_min(있다면 그대로 ≥)
+# - 양쪽 키가 모두 있으면 두 조건을 모두 만족해야 함(구간)
+func _rule_triggers(t_ck: int, from_sid: int, to_sid: int, rule: Dictionary) -> bool:
+	var from_ph := int(_rules.phase_of_sid.get(from_sid, 0))
+	var to_ph   := int(_rules.phase_of_sid.get(to_sid,   0))
+	var hyst    := int(rule.get("hyst_ck", 0))
+
+	var has_min := rule.has("t_ck_min")
+	var has_max := rule.has("t_ck_max")
+
+	var min_thr := int(rule["t_ck_min"]) if has_min else 0
+	var max_thr := int(rule["t_ck_max"]) if has_max else 0
+
+	# 방향에 따른 히스테리시스 보정
+	if to_ph > from_ph:
+		# 상향: min에 +hyst
+		if has_min:
+			min_thr += hyst
+	elif to_ph < from_ph:
+		# 하향: max에 -hyst
+		if has_max:
+			max_thr -= hyst
+	# 같은 phase 이동은 히스테리시스 보정 없음
+
+	# 조건 판정
+	if has_min and has_max:
+		return (t_ck >= min_thr) and (t_ck <= max_thr)
+	elif has_min:
+		return (t_ck >= min_thr)
+	elif has_max:
+		return (t_ck <= max_thr)
+	else:
+		# 둘 다 없으면 무시(2단계에서는 조용히 실패 처리)
+		return false

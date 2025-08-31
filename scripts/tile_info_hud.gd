@@ -22,10 +22,10 @@ class_name TileInfoHUD
 const SUBSTANCE_TEXT := {
 	-1: "—",
 	 0: "VACUUM",
-	 1: "ICE",
-	 2: "GROUND",
-	 3: "URANIUM",
-	 4: "WATER",
+	 10001: "ICE",
+	 10002: "GROUND",
+	 10003: "URANIUM",
+	 20001: "WATER",
 }
 const PHASE_TEXT := {
 	-1: "—",

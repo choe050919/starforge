@@ -39,7 +39,7 @@ func render(amounts: PackedInt64Array) -> void:
 				img.set_pixel(x, y, Color(0,0,0,0))
 			else:
 				var c: Color = color
-				c.a = a * color.a
+				c.a = a
 				img.set_pixel(x, y, c)
 	var tex: ImageTexture = ImageTexture.create_from_image(img)
 	sprite.texture = tex

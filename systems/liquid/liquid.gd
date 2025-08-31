@@ -1,15 +1,22 @@
 extends Node
 class_name Liquid
 
-## ── 설정 ───────────────────────────────────────────────────────────
+# ── 설정 ───────────────────────────────────────────────────────────
 @export var enabled: bool = true
 @export var debug_log: bool = false
 @export var water_capacity_mg_per_cell: int = 1_000_000_000
 
-## ── 의존성 ─────────────────────────────────────────────────────────
+# JSON sid 주입
+var _sid_water: int
+var _sid_vacuum: int
+
+## 1회 경고 방지용
+var _warned_missing_sid_once := false
+
+# ── 의존성 ─────────────────────────────────────────────────────────
 var data: DataLayer
 var core: LiquidCore = LiquidCore.new()
-var springs: PackedVector2Array = PackedVector2Array() # 사용 중이면 그대로 유지
+var springs: PackedVector2Array = PackedVector2Array()
 
 func setup(layer: DataLayer, spring_cells: PackedVector2Array = PackedVector2Array()) -> void:
 	data = layer
@@ -17,7 +24,12 @@ func setup(layer: DataLayer, spring_cells: PackedVector2Array = PackedVector2Arr
 		push_error("[Liquid.setup] DataLayer is null")
 	springs = PackedVector2Array(spring_cells)
 
-## ── 틱 ─────────────────────────────────────────────────────────────
+## 외부에서 JSON 기준 sid를 주입
+func set_liquid_sids(water_sid: int = 20001, vacuum_sid: int = 0) -> void:
+	_sid_water = water_sid
+	_sid_vacuum = vacuum_sid
+
+# ── 틱 ─────────────────────────────────────────────────────────────
 func tick_liquid(dt: float) -> void:
 	if not enabled or data == null:
 		return
@@ -80,6 +92,11 @@ func _sync_liquid_vs_vacuum():
 	var wrote_ph := false
 	var wrote_sid := false
 
+	var can_sync_sid := _sid_water >= 0 and _sid_vacuum >= 0
+	if not can_sync_sid and not _warned_missing_sid_once:
+		_warned_missing_sid_once = true
+		push_warning("[Liquid] WATER/VACUUM sid not set. Call set_liquid_sids(water_sid, vacuum_sid). Substance sync skipped (phase sync continues).")
+
 	for i in m.size():
 		# 고체면 패스 (PhaseChange 관할)
 		if ph[i] == PhaseStore.Phase.SOLID:
@@ -94,12 +111,13 @@ func _sync_liquid_vs_vacuum():
 				phase.begin_write(); wrote_ph = true
 			phase.set_by_index(i, want_ph)
 
-		# Substance 동기화 (WATER ↔ VACUUM)
-		var want_sid := SubstanceStore.SubstanceId.WATER if has else SubstanceStore.SubstanceId.VACUUM
-		if sid[i] != want_sid:
-			if not wrote_sid:
-				subs.begin_write(); wrote_sid = true
-			subs.set_by_index(i, want_sid)
+		# Substance 동기화 (WATER ↔ VACUUM) — sid가 설정된 경우에만
+		if can_sync_sid:
+			var want_sid := _sid_water if has else _sid_vacuum
+			if sid[i] != want_sid:
+				if not wrote_sid:
+					subs.begin_write(); wrote_sid = true
+				subs.set_by_index(i, want_sid)
 
 	if wrote_ph:
 		phase.commit()
@@ -107,9 +125,8 @@ func _sync_liquid_vs_vacuum():
 		subs.commit()
 
 
-## ── 타일 이벤트 ───────────────────────────────────────────────────
+# ── 타일 이벤트 ───────────────────────────────────────────────────
 # PhaseChange가 보낸 이유(reason)인지 구분하여 충돌 회피
-
 func on_tile_destroyed(cell: Vector2i, from_tile: int, reason: StringName) -> void:
 	# 상변화: 얼음→물로 녹는 과정에서 타일 파괴 이벤트가 올 수 있음.
 	# 이 경우 Liquid가 phase/mass를 다시 만지지 않도록 무시.

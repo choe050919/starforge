@@ -33,25 +33,6 @@ func commit_all() -> void:
 	phase.commit()
 	mass.commit()
 	substance.commit()
-# ───────────────────────────────────────────────────────────────
-
-# 단일 쓰기 API: 물질 교체 → SubstanceDef로 phase/mass 동기화
-func replace_substance(cell: Vector2i, id: int, opts: Dictionary = {}) -> void:
-	# 호출자는 반드시 begin_frame_write()를 먼저 호출해야 함
-	substance.set_substance(cell, id)
-
-	# phase 동기화
-	phase.set_phase(cell, SubstanceDef.phase_of(id))
-
-	# mass 동기화: 기본값 또는 보존/오버라이드
-	if opts.get("preserve_mass", false):
-		# 아무 것도 하지 않음 (기존 질량 유지)
-		pass
-	else:
-		var m := SubstanceDef.default_mass_of(id)
-		if opts.has("override_mass_mg"):
-			m = int(opts["override_mass_mg"])
-		mass.set_cell(cell, m)
 
 # ───────────────────────────────────────────────────────────────
 # 각 phase 수 집계

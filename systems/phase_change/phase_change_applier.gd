@@ -5,46 +5,63 @@ var _index: GridIndex
 var _phase_store: PhaseStore
 var _substance_store: SubstanceStore
 var _visual: VisualSync
+var _rules: SubstanceRuleCache
 
-const PH_SOLID  := 1
-const PH_LIQUID := 2
-const SID_ICE   := 1
-const SID_WATER := 4
-
-func setup(index: GridIndex, phase_store: PhaseStore, substance_store: SubstanceStore, visual_sync: VisualSync) -> void:
+func setup(
+	index: GridIndex,
+	phase_store: PhaseStore,
+	substance_store: SubstanceStore,
+	visual_sync: VisualSync,
+	rule_cache: SubstanceRuleCache
+) -> void:
 	_index = index
 	_phase_store = phase_store
 	_substance_store = substance_store
 	_visual = visual_sync
+	_rules = rule_cache
 
-## diff: { "ice_to_water": PackedVector2Array, "water_to_ice": PackedVector2Array }
+## diff: { "changes": Array[{cell, from_sid, to_sid}], "stats": Dictionary }
 func apply(diff: Dictionary, _sim_time: float = 0.0) -> void:
 	if diff.is_empty(): return
-
-	var melt: PackedVector2Array = diff.get("ice_to_water", PackedVector2Array())
-	var freeze: PackedVector2Array = diff.get("water_to_ice", PackedVector2Array())
+	var changes: Array = diff.get("changes", [])
+	if changes.is_empty(): return
 
 	_phase_store.begin_write()
 	_substance_store.begin_write()
 
-	for cell in melt:
-		var i := _index.idx(cell)
-		_phase_store.set_by_index(i, PH_LIQUID)
-		#_substance_store.set_by_index(i, SID_WATER)
+	# 도착지별 묶음(비주얼 라우팅 편의)
+	var by_pair: Dictionary = {} # key: (from_sid<<32)|to_sid -> PackedVector2Array
 
-	for cell in freeze:
-		var i := _index.idx(cell)
-		_phase_store.set_by_index(i, PH_SOLID)
-		#_substance_store.set_by_index(i, SID_ICE)
+	for ch in changes:
+		var cell: Vector2i = ch["cell"]
+		var from_sid: int = ch["from_sid"]
+		var to_sid: int = ch["to_sid"]
 
+		var i := _index.idx(cell)
+
+
+		# 1) Substance 교체 (반드시)
+		_substance_store.set_by_index(i, to_sid)
+
+		# 2) Phase 동기화 (to_sid의 소속 phase로)
+		var to_ph: int = int(_rules.phase_of_sid.get(to_sid, 0))
+		if to_ph != 0:
+			_phase_store.set_by_index(i, to_ph)
+
+		# 3) 비주얼용 묶음
+		var key := (int(from_sid) << 32) | int(to_sid)
+		if not by_pair.has(key):
+			by_pair[key] = PackedVector2Array()
+		by_pair[key].push_back(cell)
+
+	# 커밋
 	_phase_store.commit()
 	_substance_store.commit()
 
-	# 시각화: 도착지 기준 라우팅
+	# 4) 비주얼 라우팅(최소 구현)
 	if _visual:
-		if melt.size() > 0:
-			_visual.to_terrain_destroy_ice(melt, &"phase_change:ice_to_water")
-			_visual.to_liquid_add(melt) # 현재는 no-op
-		if freeze.size() > 0:
-			_visual.to_terrain_place_ice(freeze, &"phase_change:water_to_ice")
-			_visual.to_liquid_remove(freeze) # 현재는 no-op
+		for key in by_pair.keys():
+			var cells: PackedVector2Array = by_pair[key]
+			var from_sid := int(key >> 32)
+			var to_sid   := int(key & 0xFFFFFFFF)
+			_visual.route_phase_change(from_sid, to_sid, cells)

@@ -42,10 +42,13 @@ signal generated(
 @export var uranium_depth_min: int = 6          # 지표선 아래 최소 깊이
 @export var uranium_depth_max: int = 24         # 지표선 아래 최대 깊이
 
-const TILE_AIR: int = 0
-const TILE_ICE: int = 1
-const TILE_GROUND: int = 2
-const TILE_URANIUM: int = 3
+var _rule_cache: SubstanceRuleCache
+
+var _sid_water : int
+var _sid_ice   : int
+var _sid_ground: int
+var _sid_uran  : int
+var _sid_vac   : int = 0   # VACUUM은 보통 0 고정
 
 # 초기 액체 배치 파라미터
 @export var water_level_ratio: float = 0.4
@@ -58,7 +61,17 @@ const CK_0C := 27315
 static func _cc_to_ck(c: int) -> int:
 	return int(c + CK_0C)
 
+func bind_rule_cache(cache: SubstanceRuleCache) -> void:
+	_rule_cache = cache
+
 func generate() -> void:
+	if _rule_cache == null:
+		push_error("[WorldGen] rule_cache not bound")
+		return
+	_sid_water  = _rule_cache.sid_of("liquid/water")
+	_sid_ice    = _rule_cache.sid_of("solid/ice")
+	_sid_ground = _rule_cache.sid_of("solid/ground")
+	_sid_uran   = _rule_cache.sid_of("solid/uranium")
 	var hmap := generate_heightmap()
 	var tiles := classify_tiles(hmap)
 	place_uranium(tiles, hmap)
@@ -78,30 +91,30 @@ func generate() -> void:
 		if liq > 0:
 			phases[i] = PhaseStore.Phase.LIQUID
 			mass[i] = liq
-			substances[i] = SubstanceId.ID.WATER
+			substances[i] = _sid_water
 			temperatures[i] = _cc_to_ck(t_water_init_cc)
 			continue
 
 		# 2) 액체가 없으면 고체/진공 판정
-		if tile == TILE_GROUND:
+		if tile == _sid_ground:
 			phases[i] = PhaseStore.Phase.SOLID
 			mass[i] = mass_ground_mg_per_cell
-			substances[i] = SubstanceId.ID.GROUND
+			substances[i] = _sid_ground
 			temperatures[i] = _cc_to_ck(t_ground_init_cc)
-		elif tile == TILE_ICE:
+		elif tile == _sid_ice:
 			phases[i] = PhaseStore.Phase.SOLID
 			mass[i] = mass_ice_mg_per_cell
-			substances[i] = SubstanceId.ID.ICE
+			substances[i] = _sid_ice
 			temperatures[i] = _cc_to_ck(t_ice_init_cc)
-		elif tile == TILE_URANIUM:
+		elif tile == _sid_uran:
 			phases[i] = PhaseStore.Phase.SOLID
 			mass[i] = mass_uranium_mg_per_cell
-			substances[i] = SubstanceId.ID.URANIUM
+			substances[i] = _sid_uran
 			temperatures[i] = _cc_to_ck(t_uranium_init_cc)
 		else:
 			phases[i] = PhaseStore.Phase.VACUUM
 			mass[i] = 0
-			substances[i] = SubstanceId.ID.VACUUM
+			substances[i] = _sid_vac
 			temperatures[i] = 0
 
 	emit_signal("generated", size, substances, phases, mass, temperatures, tiles, liquid.springs)
@@ -124,7 +137,7 @@ func generate_heightmap() -> PackedInt32Array:
 	return hmap
 
 func classify_tiles(hmap: PackedInt32Array) -> PackedInt32Array:
-	# Assign AIR/ICE/GROUND based on height and ice noise
+	# Assign VACCUM/ICE/GROUND based on height and ice noise
 	var n_ice := FastNoiseLite.new()
 	n_ice.seed = seed_ice
 	n_ice.noise_type = FastNoiseLite.TYPE_SIMPLEX
@@ -137,7 +150,7 @@ func classify_tiles(hmap: PackedInt32Array) -> PackedInt32Array:
 		for x in size.x:
 			var idx:int = y * size.x + x
 			if y < hmap[x]:
-				tiles[idx] = TILE_AIR
+				tiles[idx] = _sid_vac
 				continue
 
 			var depth:int = y - hmap[x]
@@ -148,7 +161,7 @@ func classify_tiles(hmap: PackedInt32Array) -> PackedInt32Array:
 
 			var m: float = (n_ice.get_noise_2d(float(x), float(y)) + 1.0) * 0.5 # [0,1]
 			var score: float = m + surface_bonus
-			tiles[idx] = TILE_ICE if score >= ice_threshold else TILE_GROUND
+			tiles[idx] = _sid_ice if score >= ice_threshold else _sid_ground
 
 	return tiles
 
@@ -165,7 +178,7 @@ func place_uranium(tiles: PackedInt32Array, hmap: PackedInt32Array) -> void:
 	for y in size.y:
 		for x in size.x:
 			var idx2: int = y * size.x + x
-			if tiles[idx2] != TILE_GROUND:
+			if tiles[idx2] != _sid_ground:
 				continue # skip non-ground tiles
 
 			var depth2: int = y - hmap[x]
@@ -178,7 +191,7 @@ func place_uranium(tiles: PackedInt32Array, hmap: PackedInt32Array) -> void:
 			var hit_rand: bool = (rng.randf() < uranium_density)    # 희귀 난수
 
 			if hit_noise or hit_rand:
-				tiles[idx2] = TILE_URANIUM
+				tiles[idx2] = _sid_uran
 
 func generate_liquids(hmap: PackedInt32Array) -> Dictionary:
 	var amount := PackedInt64Array()

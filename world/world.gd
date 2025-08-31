@@ -31,11 +31,13 @@ var event_queue: EventQueue = EventQueue.new()
 var data_layer: DataLayer = DataLayer.new()
 
 var substance_loader: SubstanceLoader = SubstanceLoader.new()
+var rule_cache := SubstanceRuleCache.new()
 
 @onready var camera: Camera2D = $Camera2D
 
 func _ready() -> void:
 	substance_loader.load_materials()
+	rule_cache.load_from_file("res://substance/substance.json")
 
 	hover_service.setup(data_layer)
 
@@ -51,6 +53,8 @@ func _ready() -> void:
 	# connect signals
 	worldgen.generated.connect(_on_world_generated)
 	#temp.temperature_updated.connect(_on_temperature_updated) !!!!!!!!!
+
+	worldgen.bind_rule_cache(rule_cache)
 
 	worldgen.generate()
 
@@ -94,12 +98,13 @@ func _on_world_generated(
 	tchange.setup(tile_store, size, event_queue)
 
 	liquid.setup(data_layer, springs)
+	liquid.set_liquid_sids()
 
 	liquid_overlay.render(mass)
 
 	temp.setup(data_layer.substance, data_layer.phase, data_layer.temperature, data_layer.index, clock)
 
-	phase_change.setup(data_layer.phase, data_layer.substance, data_layer.temperature, data_layer.index, visual_sync, clock)
+	phase_change.setup(data_layer.phase, data_layer.substance, data_layer.temperature, data_layer.index, visual_sync, clock, rule_cache)
 
 	tile_info_hud.setup(hover_service, data_layer.index, data_layer.substance, data_layer.phase, data_layer.mass, data_layer.temperature)
 

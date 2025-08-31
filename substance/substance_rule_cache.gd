@@ -5,6 +5,9 @@ class_name SubstanceRuleCache
 var rules_by_sid: Dictionary = {}   # sid -> Array[ {to_sid:int, t_ck_min?:int, t_ck_max?:int, hyst_ck:int} ]
 var phase_of_sid: Dictionary = {}   # sid -> PH enum(int)
 
+var path_to_sid: Dictionary = {}    # "phase/name" -> sid
+var sid_to_path: Dictionary = {}    # (디버그용) sid -> "phase/name"
+
 # 내부 상수: 문자열 phase -> enum 값
 const PH_SOLID  := 1
 const PH_LIQUID := 2
@@ -24,6 +27,9 @@ func load_from_text(json_text: String) -> void:
 # ─────────────────────────────────────────────────────────
 
 func _load_from_text(text: String) -> void:
+	path_to_sid.clear()
+	sid_to_path.clear()
+
 	# 가정: JSON은 정상. (검증/경고 없음)
 	var j := JSON.new()
 	if j.parse(text) != OK:
@@ -32,7 +38,6 @@ func _load_from_text(text: String) -> void:
 	var phases: Dictionary = root["phase"]
 
 	# 패스1: "phase/name" -> sid, 그리고 sid -> phase_kind
-	var path_map: Dictionary = {}  # "phase/name" -> sid
 	phase_of_sid.clear()
 	for phase_str in phases.keys():
 		var phase_dict: Dictionary = phases[phase_str]
@@ -40,7 +45,11 @@ func _load_from_text(text: String) -> void:
 		for name in phase_dict.keys():
 			var sdata: Dictionary = phase_dict[name]
 			var sid: int = int(sdata["id"])
-			path_map["%s/%s" % [phase_str, name]] = sid
+			var path := "%s/%s" % [phase_str, name]
+
+			# 멤버에 등록
+			path_to_sid[path] = sid
+			sid_to_path[sid] = path
 			phase_of_sid[sid] = phase_kind
 
 	# 패스2: 전이 컴파일 → sid -> rules[]
@@ -54,7 +63,7 @@ func _load_from_text(text: String) -> void:
 			if sdata.has("transition") and typeof(sdata["transition"]) == TYPE_ARRAY:
 				for trans in sdata["transition"]:
 					var to_path = trans.get("to", "")
-					var to_sid = path_map.get(to_path, null)
+					var to_sid = path_to_sid.get(to_path, null)
 					if to_sid == null:
 						continue
 
@@ -79,3 +88,14 @@ func _phase_kind(phase_str: String) -> int:
 		"liquid": return PH_LIQUID
 		"gas":    return PH_GAS
 		_:        return 0  # VACUUM 등은 여기선 미사용(최소 구현)
+
+# 헬퍼 함수들
+func sid_of(path: String, default_val: int = -1) -> int:
+	# 정확한 "phase/name" 경로를 sid로 변환. 없으면 default 반환.
+	return int(path_to_sid.get(path, default_val))
+
+func has_sid(sid: int) -> bool:
+	return phase_of_sid.has(sid)
+
+func path_of_sid(sid: int, default_val: String = "") -> String:
+	return String(sid_to_path.get(sid, default_val))
