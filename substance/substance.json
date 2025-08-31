@@ -3,7 +3,13 @@
 		"solid": {
 			"ice": {
 				"id": 10001,
-				"melting_point": 0,
+				"transition": [
+					{
+						"to": "liquid/water",
+						"when": { "t_ck_min": 27315 },
+						"hyst_ck": 50
+					}
+				]
 			},
 			"ground": {
 				"id": 10002,
@@ -15,14 +21,30 @@
 		"liquid": {
 			"water": {
 				"id": 20001,
-				"freezing_point": 0,
-				"boiling_point": 100,
+				"transition": [
+					{
+						"to": "solid/ice",
+						"when": { "t_ck_max": 27315 },
+						"hyst_ck": 50
+					},
+					{
+						"to": "gas/steam",
+						"when": { "t_ck_min": 37315 },
+						"hyst_ck": 50
+					}
+				]
 			}
 		},
 		"gas": {
 			"steam": {
 				"id": 30001,
-				"boiling_point": 100,
+				"transition": [
+					{
+						"to": "liquid/water",
+						"when": { "t_ck_max": 37315 },
+						"hyst_ck": 50
+					}
+				]
 			}
 		}
 	}

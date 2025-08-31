@@ -14,12 +14,8 @@ func setup(dl: DataLayer, hover: HoverService) -> void:
 	hover_service = hover
 	if dl == null:
 		push_warning("[InputController] DataLayer injected as null")
-	else:
-		print("[InputController] DataLayer injected: SUCCESS")
 	if hover == null:
 		push_warning("[InputController] HoverService injected as null")
-	else:
-		print("[InputController] HoverService injected: SUCCESS")
 
 func set_cell_size(size: Vector2) -> void:
 		cell_size = size

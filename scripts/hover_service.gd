@@ -10,8 +10,6 @@ func setup(dl: DataLayer) -> void:
 	data_layer = dl
 	if dl == null:
 		push_warning("[HoverService] DataLayer injected as null")
-	else:
-		print("[HoverService] DataLayer injected: SUCCESS")
 
 func update_hover(cell: Vector2i) -> void:
 	if not data_layer.index.in_bounds_cell(cell): # 범위 밖의 셀 무효값으로 처리

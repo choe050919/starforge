@@ -2,6 +2,12 @@
 extends RefCounted
 class_name PhaseChangeCore
 
+# 룰 공급자
+var _rules: SubstanceRuleCache
+
+func bind_rule_cache(cache: SubstanceRuleCache) -> void:
+	_rules = cache
+
 # ─────────────────────────────────────────────────────────
 # 외부 enum과 일치해야 함 (프로젝트 기준)
 # Phase: 0=VACUUM, 1=SOLID, 2=LIQUID, 3=GAS
