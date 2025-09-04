@@ -58,10 +58,10 @@ func apply(diff: Dictionary, _sim_time: float = 0.0) -> void:
 	_phase_store.commit()
 	_substance_store.commit()
 
-	# 4) 비주얼 라우팅(최소 구현)
-	if _visual:
-		for key in by_pair.keys():
-			var cells: PackedVector2Array = by_pair[key]
-			var from_sid := int(key >> 32)
-			var to_sid   := int(key & 0xFFFFFFFF)
-			_visual.route_phase_change(from_sid, to_sid, cells)
+	## 4) 비주얼 라우팅(최소 구현) # TODO
+	#if _visual:
+		#for key in by_pair.keys():
+			#var cells: PackedVector2Array = by_pair[key]
+			#var from_sid := int(key >> 32)
+			#var to_sid   := int(key & 0xFFFFFFFF)
+			#_visual.route_phase_change(from_sid, to_sid, cells)

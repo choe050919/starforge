@@ -15,6 +15,7 @@ var _temperature_store: TemperatureStore
 var _mass_store: MassStore
 var _index: GridIndex
 var _clock : SimClock
+var _rules: SubstanceRuleCache
 
 # 규칙 파라미터 (Core로 전달)
 # α = k/c (무차원, 상대값). 확산 블렌딩에 사용.
@@ -35,7 +36,8 @@ func setup(
 	ts: TemperatureStore,
 	ms: MassStore,
 	index: GridIndex,
-	clock: SimClock
+	clock: SimClock,
+	rule_cache: SubstanceRuleCache
 ) -> void:
 	_substance_store = ss
 	_phase_store = ps
@@ -43,6 +45,7 @@ func setup(
 	_mass_store = ms
 	_index = index
 	_clock = clock
+	_rules = rule_cache
 
 	@warning_ignore("shadowed_variable_base_class")
 	for name in ["_substance_store", "_phase_store", "_temperature_store", "_mass_store", "_index", "_clock"]:
@@ -51,14 +54,25 @@ func setup(
 			push_error("[Temperature.setup]%s is null" % name)
 
 	_core = TemperatureCore.new()
-	_core.setup_rules()
+	_core.setup_thermal_from_cache(_rules)
 
 func _on_sim_tick(dt: float) -> void:
 	if not enabled:
 		return
 
-	var stats = _core.tick_fullscan(_temperature_store, _substance_store, _mass_store, _index, dt)
+	var stats: PackedInt32Array = _core.tick_fullscan(_temperature_store, _substance_store, _mass_store, _index, dt)
+
+	_temperature_store.begin_write()
+	if stats.is_empty(): return
+
+	for i in stats.size():
+		var t: int = stats[i]
+		_temperature_store.set_by_index(i, t)
+
+	_temperature_store.commit()
+
 	if debug_log and stats:
-		var avg := float(stats.get("avg_delta_c", 0.0))
-		var mx  := float(stats.get("max_abs_delta_c", 0.0))
-		print("[Temperature] avgΔ=%.2f°C, max|Δ|=%.2f°C" % [avg, mx])
+		pass
+		#var avg := float(stats.get("avg_delta_c", 0.0))
+		#var mx  := float(stats.get("max_abs_delta_c", 0.0))
+		#print("[Temperature] avgΔ=%.2f°C, max|Δ|=%.2f°C" % [avg, mx])

@@ -17,12 +17,12 @@ func bind_rule_cache(cache: SubstanceRuleCache) -> void:
 			print("  - sid=", k, " phase=", _rules.phase_of_sid.get(k, -1), " rules=", _rules.rules_by_sid[k].size())
 
 # ─────────────────────────────────────────────────────────
-# 풀 스캔 실행:
-# 반환 형식 변경:
-# {
-#   "changes": Array[{ "cell": Vector2i, "from_sid": int, "to_sid": int }],
-#   "stats": Dictionary # (optional) ( (from_sid<<32)|to_sid : count )
-# }
+## 풀 스캔 실행:
+## 반환 형식:
+## {
+##   "changes": Array[{ "cell": Vector2i, "from_sid": int, "to_sid": int }],
+##   "stats": Dictionary ( (from_sid<<32)|to_sid : count )
+## }
 func tick_fullscan(phase_store, substance_store, temp_store, index: GridIndex) -> Dictionary:
 	var n := index.size.x * index.size.y
 	if n <= 0 or _rules == null:

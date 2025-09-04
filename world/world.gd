@@ -102,7 +102,7 @@ func _on_world_generated(
 
 	liquid_overlay.render(mass)
 
-	temp.setup(data_layer.substance, data_layer.phase, data_layer.temperature, data_layer.mass, data_layer.index, clock)
+	temp.setup(data_layer.substance, data_layer.phase, data_layer.temperature, data_layer.mass, data_layer.index, clock, rule_cache)
 
 	phase_change.setup(data_layer.phase, data_layer.substance, data_layer.temperature, data_layer.index, visual_sync, clock, rule_cache)
 
@@ -123,7 +123,7 @@ func _on_tick_sim(tag: StringName, dt: float) -> void:
 			if events.size() > 0:
 				tchange.apply_events(events)
 			liquid_overlay.render(liquid.get_amounts())
-			if not overlay_manager.current_overlay == OverlayManager.OverlayMode.NONE:
+			if overlay_manager.current_overlay == OverlayManager.OverlayMode.HEATMAP:
 				_on_temperature_updated() # TODO: 이름 변경
 		"temp":
 			temp._on_sim_tick(dt)

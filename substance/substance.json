@@ -3,12 +3,9 @@
 		"solid": {
 			"ice": {
 				"id": 10001,
+				"thermal": { "c_J_per_kgK": 2050, "k_W_per_mK": 2.2 },
 				"transition": [
-					{
-						"to": "liquid/water",
-						"when": { "t_ck_min": 27315 },
-						"hyst_ck": 50
-					}
+					{ "to": "liquid/water", "when": { "t_ck_min": 27315 }, "hyst_ck": 50 }
 				]
 			},
 			"ground": {
@@ -21,17 +18,10 @@
 		"liquid": {
 			"water": {
 				"id": 20001,
+				"thermal": { "c_J_per_kgK": 4180, "k_W_per_mK": 0.6 },
 				"transition": [
-					{
-						"to": "solid/ice",
-						"when": { "t_ck_max": 27315 },
-						"hyst_ck": 50
-					},
-					{
-						"to": "gas/steam",
-						"when": { "t_ck_min": 37315 },
-						"hyst_ck": 50
-					}
+					{ "to": "solid/ice", "when": { "t_ck_max": 27315 }, "hyst_ck": 50 },
+					{ "to": "gas/steam", "when": { "t_ck_min": 37315 }, "hyst_ck": 50 }
 				]
 			}
 		},
@@ -39,11 +29,7 @@
 			"steam": {
 				"id": 30001,
 				"transition": [
-					{
-						"to": "liquid/water",
-						"when": { "t_ck_max": 37315 },
-						"hyst_ck": 50
-					}
+					{ "to": "liquid/water", "when": { "t_ck_max": 37315 }, "hyst_ck": 50 }
 				]
 			}
 		}

@@ -49,9 +49,9 @@ func _on_sim_tick(_dt: float, sim_time: float) -> void:
 		return
 
 	var diff: Dictionary = _core.tick_fullscan(_phase_store, _substance_store, _temperature_store, _index)
+
 	var changes: Array = diff.get("changes", [])
-	if changes.is_empty():
-		return
+	if changes.is_empty(): return
 
 	_applier.apply(diff, sim_time)
 
