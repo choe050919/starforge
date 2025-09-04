@@ -24,11 +24,11 @@ func setup_thermal_from_cache(cache: SubstanceRuleCache) -> void:
 		k_per_sid[i] = 0.0
 		c_per_sid[i] = 0.0
 
-	# 🔹 핵심: k_eff = k_SI * 0.01 * (A/L)
+	# k_eff = k_SI * 0.01 * (A/L)
 	for sid in cache.phase_of_sid.keys():
 		var k_si := float(cache.k_by_sid.get(sid, 0.0)) # [W/m·K]
 		var c_si := float(cache.c_by_sid.get(sid, 0.0)) # [J/kg·K]
-		k_per_sid[sid] = k_si * 0.01 # ΔT[cK]와 곱해도 J 나오도록 보정
+		k_per_sid[sid] = k_si # * 0.01 TODO ?? # ΔT[cK]와 곱해도 J 나오도록 보정
 		c_per_sid[sid] = c_si        # apply_deltaQ_to_T는 SI 그대로 사용
 
 	if false: # 디버그
@@ -150,7 +150,7 @@ static func apply_deltaQ_to_T(
 		if ci <= 0.0: # 비열이 없는 경우 스킵
 			continue
 
-		var mi: int = int(M[i]) # warning! 64bit를 32bit로 변환중. TODO
+		var mi := M[i]
 		if mi <= 0: # 질량이 없는 경우 스킵
 			continue
 
