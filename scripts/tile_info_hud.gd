@@ -23,7 +23,7 @@ const SUBSTANCE_TEXT := {
 	-1: "—",
 	 0: "VACUUM",
 	 10001: "ICE",
-	 10002: "GROUND",
+	 10002: "SOIL",
 	 10003: "URANIUM",
 	 10004: "COPPER",
 	 20001: "WATER",

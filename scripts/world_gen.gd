@@ -41,15 +41,15 @@ signal generated(
 @export var uranium_freq: float = 0.06          # 클러스터 크기(작을수록 더 큰 덩어리)
 @export var uranium_threshold: float = 0.72     # 노이즈 임계(낮출수록 많아짐)
 @export var uranium_density: float = 0.006      # 추가 난수 확률(전역 희귀도; 0.6%)
-@export var uranium_depth_min: int = 6          # 지표선 아래 최소 깊이
+@export var uranium_depth_min: int = 8          # 지표선 아래 최소 깊이
 @export var uranium_depth_max: int = 24         # 지표선 아래 최대 깊이
 
 # 구리 분포 파라미터
 @export var copper_seed: int = 13579
 @export var copper_freq: float = 0.05
-@export var copper_threshold: float = 0.55
+@export var copper_threshold: float = 0.65
 @export var copper_density: float = 0.01
-@export var copper_depth_min: int = 0
+@export var copper_depth_min: int = 3
 @export var copper_depth_max: int = 15
 
 var _rule_cache: SubstanceRuleCache
@@ -81,7 +81,7 @@ func generate() -> void:
 		return
 	_sid_water  = _rule_cache.sid_of("liquid/water")
 	_sid_ice    = _rule_cache.sid_of("solid/ice")
-	_sid_ground = _rule_cache.sid_of("solid/ground")
+	_sid_ground = _rule_cache.sid_of("solid/soil")
 	_sid_uran   = _rule_cache.sid_of("solid/uranium")
 	_sid_copper = _rule_cache.sid_of("solid/copper")
 	var hmap := generate_heightmap()
