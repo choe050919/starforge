@@ -23,16 +23,16 @@ func _ready() -> void:
 			push_error("[VisualSync.setup]%s is null" % name)
 
 # ── Terrain 목적지 ────────────────────────────────────────
-func to_terrain_destroy_ice(cells: PackedVector2Array, reason: StringName = &"") -> void:
+func to_terrain_destroy_ice(cells: PackedVector2Array, _reason: StringName = &"") -> void:
 	for c in cells:
 		_terrain.apply_cell_change(c, Terrain.TILE_AIR)
 
-func to_terrain_place_ice(cells: PackedVector2Array, reason: StringName = &"") -> void:
+func to_terrain_place_ice(cells: PackedVector2Array, _reason: StringName = &"") -> void:
 	for c in cells:
 		_terrain.apply_cell_change(c, Terrain.TILE_ICE)
 
 # 필요시 범용 교체도 사용할 수 있게 한 줄
-func to_terrain_replace(cells: PackedVector2Array, to_tile: int, reason: StringName = &"") -> void:
+func to_terrain_replace(cells: PackedVector2Array, to_tile: int, _reason: StringName = &"") -> void:
 	for c in cells:
 		_terrain.apply_cell_change(c, to_tile)
 

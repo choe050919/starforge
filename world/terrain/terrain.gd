@@ -4,7 +4,7 @@ class_name Terrain
 @onready var ground: TileMapLayer = get_node("Ground")
 
 # 현재 프로젝트의 타일 매핑 (인스펙터에서 조정 가능)
-@export var sid: int = 0
+@export var sid: int = 2
 
 @export var atlas_ice: Vector2i = Vector2i(0, 0)
 @export var alt_ice: int = 0
@@ -15,10 +15,14 @@ class_name Terrain
 @export var atlas_uranium: Vector2i = Vector2i(2, 0)
 @export var alt_uranium: int = 0
 
+@export var atlas_copper: Vector2i = Vector2i(4, 0)
+@export var alt_copper: int = 0
+
 const TILE_AIR: int = 0
 const TILE_ICE: int = 10001
 const TILE_GROUND: int = 10002
 const TILE_URANIUM: int = 10003
+const TILE_COPPER: int = 10004
 
 func apply_tiles(tile_types: PackedInt32Array, size: Vector2i) -> void:
 	if ground.tile_set == null:
@@ -36,6 +40,8 @@ func apply_tiles(tile_types: PackedInt32Array, size: Vector2i) -> void:
 				ground.set_cell(Vector2i(x, y), sid, atlas_ice, alt_ice)
 			elif t == TILE_URANIUM:
 				ground.set_cell(Vector2i(x, y), sid, atlas_uranium, alt_uranium)
+			elif t == TILE_COPPER:
+				ground.set_cell(Vector2i(x, y), sid, atlas_copper, alt_copper)
 			else:
 				pass # 공기는 비워두기
 

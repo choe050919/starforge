@@ -13,7 +13,12 @@
 			},
 			"uranium": {
 				"id": 10003,
+			},
+			"copper": {
+				"id": 10004,
+				"thermal": { "c_J_per_kgK": 385, "k_W_per_mK": 400 }
 			}
+
 		},
 		"liquid": {
 			"water": {

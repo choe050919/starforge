@@ -81,7 +81,7 @@ func get_max_hp(cell: Vector2i) -> float:
 		return 0.0
 	return max_hp[idx]
 
-func on_tile_replaced(cell: Vector2i, from_tile: int, to_tile: int, reason: StringName) -> void:
+func on_tile_replaced(cell: Vector2i, _from_tile: int, to_tile: int, _reason: StringName) -> void:
 	if size == Vector2i.ZERO:
 		return
 	var idx := _cell_index(cell)

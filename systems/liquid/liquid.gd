@@ -4,14 +4,11 @@ class_name Liquid
 # ── 설정 ───────────────────────────────────────────────────────────
 @export var enabled: bool = true
 @export var debug_log: bool = false
-@export var water_capacity_mg_per_cell: int = 1_000_000_000
+@export var water_capacity_mg_per_cell: int = 1_000_000
 
 # JSON sid 주입
 var _sid_water: int
 var _sid_vacuum: int
-
-## 1회 경고 방지용
-var _warned_missing_sid_once := false
 
 # ── 의존성 ─────────────────────────────────────────────────────────
 var data: DataLayer
@@ -31,8 +28,7 @@ func set_liquid_sids(water_sid: int = 20001, vacuum_sid: int = 0) -> void:
 
 # ── 틱 ─────────────────────────────────────────────────────────────
 func tick_liquid(dt: float) -> void:
-	if not enabled or data == null:
-		return
+	if not enabled or data == null: return
 	var idx   := data.index
 	var phase := data.phase
 	var subs  := data.substance
@@ -51,93 +47,99 @@ func tick_liquid(dt: float) -> void:
 
 	# 코어 계산
 	var diff := core.compute_diff(R, dt)
+	if diff.get("moved_total", 0) <= 0: return
 
-	# 적용(간단 적용기: Liquid 내부에서 트랜잭션 처리)
-	var moved_total: int = diff.get("moved_total", 0)
+	commit_liquid(diff)
 
 	# 1) 질량 적용
-	if moved_total > 0:
-		mass.begin_write()
-		var dm: PackedInt64Array = diff["mass_delta"]
-		for i in dm.size():
-			var delta := dm[i]
-			if delta != 0:
-				mass.add(i, delta)
-		mass.commit()
+	#mass.begin_write()
+	#var dm: PackedInt64Array = diff["mass_delta"]
+	#for i in dm.size():
+		#var delta := dm[i]
+		#if delta != 0:
+			#mass.add(i, delta)
+	#mass.commit()
 
 	# 2) 첫 유입 온도 계승 적용
-	var tw: Array = diff["temp_writes"]
-	if tw.size() > 0:
-		temp.begin_write()
-		for t in tw:
-			# 안전 가드(형/범위 도중 오류 방지)
-			if t.has("i") and t.has("T"):
-				temp.set_by_index(int(t["i"]), int(t["T"]))
-		temp.commit()
+	#var tw: Array = diff["temp_writes"]
+	#if tw.size() > 0:
+		#temp.begin_write()
+		#for t in tw:
+			## 안전 가드(형/범위 도중 오류 방지)
+			#if t.has("i") and t.has("T"):
+				#temp.set_by_index(int(t["i"]), int(t["T"]))
+		#temp.commit()
+#
+	#_sync_liquid_vs_vacuum()
 
-	_sync_liquid_vs_vacuum()
-
-	if debug_log and (moved_total > 0 or tw.size() > 0):
-		print("[Liquid] moved_total=%d, temp_writes=%d" % [moved_total, tw.size()])
-
-func _sync_liquid_vs_vacuum():
+func commit_liquid(core_out: Dictionary) -> void:
+	# 0) 읽기 스냅샷 (write 시작 전에!)
 	var phase := data.phase
-	var subs  := data.substance
-	var mass  := data.mass
-	var temp  := data.temperature
+	var subs  = data.substance
+	var mass  = data.mass
+	var temp  = data.temperature
+	var idx   = data.index
 
-	var m := mass.get_read()
-	var ph := phase.get_raw_read()
-	var sid := subs.get_raw_read()
-	var T := temp.get_raw_read()
+	var ph_r : PackedByteArray   = phase.get_raw_read()
+	var m_r  : PackedInt64Array  = mass.get_read()
+	var n := m_r.size()
+	var cap := water_capacity_mg_per_cell
 
-	var wrote_ph := false
-	var wrote_sid := false
-	var wrote_temp := false
+	var dM: PackedInt64Array = core_out["mass_delta"]
+	var tW: Array            = core_out["temp_writes"]
 
-	var can_sync_sid := _sid_water >= 0 and _sid_vacuum >= 0
-	if not can_sync_sid and not _warned_missing_sid_once:
-		_warned_missing_sid_once = true
-		push_warning("[Liquid] WATER/VACUUM sid not set. Call set_liquid_sids(water_sid, vacuum_sid). Substance sync skipped (phase sync continues).")
+	# 1) 새 질량/플래그 계산
+	var m_new := PackedInt64Array(); m_new.resize(n)
+	var became_vacuum := PackedByteArray(); became_vacuum.resize(n)
+	var first_inflow  := PackedByteArray(); first_inflow.resize(n)
 
-	for i in m.size():
-		# 고체면 패스 (PhaseChange 관할)
-		if ph[i] == PhaseStore.Phase.SOLID:
+	for i in n:
+		var v := m_r[i] + dM[i]
+		if v < 0: v = 0
+		elif v > cap: v = cap
+		m_new[i] = v
+		became_vacuum[i] = 1 if (m_r[i] > 0 and v == 0) else 0
+		first_inflow[i]  = 1 if (m_r[i] == 0 and v > 0) else 0
+
+	# 2) 질량 write
+	mass.begin_write()
+	for i in n:
+		mass.set_by_index(i, m_new[i])
+	mass.commit()
+
+	# 3) 상/물질 동기화 (고체 건드리지 않음)
+	phase.begin_write()
+	subs.begin_write()
+	for i in n:
+		if ph_r[i] == phase.Phase.SOLID: # 고체는 PhaseChange 관할
 			continue
+		if m_new[i] == 0:
+			phase.set_by_index(i, phase.Phase.VACUUM)
+			subs.set_by_index(i, _sid_vacuum)
+		else:
+			phase.set_by_index(i, phase.Phase.LIQUID)
+			subs.set_by_index(i, _sid_water)
+	phase.commit()
+	subs.commit()
 
-		var has := m[i] > 0
-
-		# Phase 동기화 (VACUUM ↔ LIQUID)
-		var want_ph := PhaseStore.Phase.LIQUID if has else PhaseStore.Phase.VACUUM
-		if ph[i] != want_ph:
-			if not wrote_ph:
-				phase.begin_write(); wrote_ph = true
-			phase.set_by_index(i, want_ph)
-
-		# Substance 동기화 (WATER ↔ VACUUM) — sid가 설정된 경우에만
-		if can_sync_sid:
-			var want_sid := _sid_water if has else _sid_vacuum
-			if sid[i] != want_sid:
-				if not wrote_sid:
-					subs.begin_write(); wrote_sid = true
-				subs.set_by_index(i, want_sid)
-
-		# Temprature 동기화 (VACCUM인 경우 강제로 0으로 설정)
-		if m[i] <= 0 and T[i] != 0:
-			if not wrote_temp:
-				temp.begin_write(); wrote_temp = true
+	# 4) 온도 처리
+	temp.begin_write()
+	# 4a) VACUUM으로 비워진 칸은 0으로 리셋
+	for i in n:
+		if became_vacuum[i]:
 			temp.set_by_index(i, 0)
 
-	if wrote_ph:
-		phase.commit()
-	if wrote_sid:
-		subs.commit()
-	if wrote_temp:
-		temp.commit()
+	# 4b) 최초 유입 온도 초기화 (안전하게 first_inflow 재확인)
+	for e in tW:
+		var ti: int = e["i"]
+		var t_src: int = e["T"]
+		if ti >= 0 and ti < n and first_inflow[ti] == 1:
+			temp.set_by_index(ti, t_src)
+	temp.commit()
 
 # ── 타일 이벤트 ───────────────────────────────────────────────────
 # PhaseChange가 보낸 이유(reason)인지 구분하여 충돌 회피
-func on_tile_destroyed(cell: Vector2i, from_tile: int, reason: StringName) -> void:
+func on_tile_destroyed(cell: Vector2i, _from_tile: int, reason: StringName) -> void:
 	# 상변화: 얼음→물로 녹는 과정에서 타일 파괴 이벤트가 올 수 있음.
 	# 이 경우 Liquid가 phase/mass를 다시 만지지 않도록 무시.
 	if reason == &"phase_change:ice_to_water":
@@ -148,7 +150,7 @@ func on_tile_destroyed(cell: Vector2i, from_tile: int, reason: StringName) -> vo
 	# 일반 타일 파괴에 대한 최소 처리(원한다면 확장)
 	# 현재는 '물 로직'이 별도 조치를 요구하지 않음.
 
-func on_tile_replaced(cell: Vector2i, from_tile: int, to_tile: int, reason: StringName) -> void:
+func on_tile_replaced(cell: Vector2i, _from_tile: int, _to_tile: int, reason: StringName) -> void:
 	# 상변화: 물→얼음으로 바뀌는 경우, 물 질량만 0으로 정리(phase/substance는 PhaseChange가 담당)
 	if reason == &"phase_change:water_to_ice":
 		if data == null: return

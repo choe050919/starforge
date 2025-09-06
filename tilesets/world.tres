@@ -1,7 +1,7 @@
 [gd_resource type="TileSet" load_steps=5 format=3 uid="uid://dnn0uacxq48mh"]
 
 [ext_resource type="Texture2D" uid="uid://d2rnl6umswf7l" path="res://tilesets/ImageToStl.com_merged-document.jpg" id="1_e078v"]
-[ext_resource type="Texture2D" uid="uid://c6ljcx3niqft6" path="res://tilesets/4Tiles.jpg" id="2_e078v"]
+[ext_resource type="Texture2D" uid="uid://cbjuhrqj6mhj3" path="res://tilesets/5Tiles.jpg" id="3_60jw1"]
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_60jw1"]
 texture = ExtResource("1_e078v")
@@ -10,16 +10,17 @@ texture_region_size = Vector2i(32, 32)
 1:0/0 = 0
 2:0/0 = 0
 
-[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_v72yb"]
-texture = ExtResource("2_e078v")
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_2pm11"]
+texture = ExtResource("3_60jw1")
 texture_region_size = Vector2i(32, 32)
 0:0/0 = 0
 1:0/0 = 0
 2:0/0 = 0
 3:0/0 = 0
+4:0/0 = 0
 
 [resource]
 tile_size = Vector2i(32, 32)
 physics_layer_0/collision_layer = 1
 sources/0 = SubResource("TileSetAtlasSource_60jw1")
-sources/1 = SubResource("TileSetAtlasSource_v72yb")
+sources/2 = SubResource("TileSetAtlasSource_2pm11")

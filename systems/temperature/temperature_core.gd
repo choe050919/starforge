@@ -3,8 +3,19 @@
 extends RefCounted
 class_name TemperatureCore
 
+const TILE_LEN_M := 0.1  # 1타일 = 1 m 라면
+const GEOM_ORTHO := TILE_LEN_M  # A/d = L
+
 # 4방 탐색
 const DIRS := [Vector2i(1,0), Vector2i(-1,0), Vector2i(0,1), Vector2i(0,-1)]
+
+var energy_cJ: PackedFloat64Array = PackedFloat64Array() # ΔQ 누적 버퍼(cJ)
+
+func _ensure_capacity(n: int) -> void:
+	if energy_cJ.size() != n:
+		energy_cJ.resize(n)
+		for i in n:
+			energy_cJ[i] = 0.0
 
 var k_per_sid: Dictionary[int, float] # 내부용: k_eff (이미 보정된 값)
 var c_per_sid: Dictionary[int, float] # 내부용: SI 그 자체
@@ -20,7 +31,7 @@ func setup_thermal_from_cache(cache: SubstanceRuleCache) -> void:
 
 		# TODO: ΔT[cK]와 곱해도 J 나오도록 보정 필요 여부 확인
 		k_per_sid[sid] = k_si
-		c_per_sid[sid] = c_si * 1e-6 # 1mg을 1cK 변화시키는 데 필요한 열량(cJ)
+		c_per_sid[sid] = c_si * 1e-6 # 1mg을 1cK 변화시키는 데 필요한 열량(cJ) 1e-6
 
 	# 디버그 출력
 	if true:
@@ -58,19 +69,27 @@ func tick_fullscan(
 	var h := index.size.y
 	var n := w * h
 
-	var T := temp_store.get_raw_read()      # 온도, 최초 온도 조회용. 주의!! 여기서는 값을 수정하지 않음.
-	var S := substance_store.get_raw_read() # 물질 id, K와 C 조회용.
-	var M := mass_store.get_raw_read()      # 질량, 온도 변화량 계산용.
+	var T := temp_store.get_raw_read()             # 온도, 최초 온도 조회용.
+	var S := substance_store.get_raw_read()        # 물질 id, K와 C 조회용.
+	var M := mass_store.get_raw_read().duplicate() # 질량, 온도 변화량 계산용.
 
 	if T.size() != n or S.size() != n or M.size() != n:
 		push_error("[TemperatureCore.tick_fullscan] Size mismatch")
 		return PackedInt32Array() # TODO 에러 시 반환값 임시조치
 
+	_ensure_capacity(n)
+
 	var dQ := compute_deltaQ(w, h, n, T, S, k_per_sid, dt)
 	if true: # 디버그
-		#print("[Temp] dt=", dt)
-		print("[Temp] mean|dQ|=", _mean_abs(dQ))
-	var T_new := apply_deltaQ_to_T(n, T, S, M, c_per_sid, dQ)
+		print("[TemperatureCore] mean|dQ|=", _mean_abs(dQ))
+
+	for i in n:
+		energy_cJ[i] += dQ[i]
+
+	var T_new := T.duplicate()
+	_apply_energy_to_temperature_no_latent(n, energy_cJ, T_new, S, M, c_per_sid)
+
+	#var T_new := apply_deltaQ_to_T(n, T, S, M, c_per_sid, dQ)
 	return T_new
 
 ## 타일별로 열량 변화량을 계산하고 결과를 PackedFloat64Array로 반환한다.
@@ -115,10 +134,8 @@ static func compute_deltaQ(
 					continue
 
 				var Tj := float(T[j])
-				sum_Q += kij * (Tj - Ti) * dt # T: cK(센티켈빈, Q: cJ(센티줄)
+				sum_Q += kij * GEOM_ORTHO * (Tj - Ti) * dt # T: cK(센티켈빈, Q: cJ(센티줄)
 			# 이 셀에 들어온 열량(순합)
-			if i == 1153 or i == 1198:
-				print("[compute_deltaQ] ", i, ": ", sum_Q)
 			deltaQ[i] += sum_Q
 	return deltaQ
 
@@ -154,6 +171,43 @@ static func apply_deltaQ_to_T(
 			print("셀 index: ", i, " 변화량: ", deltaT_cK, " 결과값: ", T_new[i])
 
 	return T_new
+
+# 에너지 버퍼(energy_cJ)에서 정수 cK만큼만 온도로 털고,
+# 사용된 에너지만큼 energy_cJ에서 차감. 남은 소수 에너지는 다음 틱으로 이월.
+static func _apply_energy_to_temperature_no_latent(
+	n: int,
+	E_cJ: PackedFloat64Array,
+	T_ck: PackedInt32Array,
+	S: PackedInt32Array,
+	M_mg: PackedInt64Array,
+	C_cJ_per_mg_cK: Dictionary[int, float]
+) -> void:
+	for i in n:
+		var sid: int = S[i]
+		if sid == 0: # VACUUM
+			continue
+
+		var ci: float = float(C_cJ_per_mg_cK.get(sid, 0.0))
+		if ci <= 0.0:
+			continue
+
+		var mi: int = M_mg[i]
+		if mi <= 0:
+			continue
+
+		# 1 cK 올리는 데 필요한 에너지 [cJ]
+		# (너 코드에서 c_per_sid를 이미 cJ/(mg·cK)로 세팅했으므로 단순 곱)
+		var dE_per_cK: float = float(mi) * ci
+		if dE_per_cK <= 0.0:
+			continue
+
+		# 이번 틱에 반영 가능한 cK의 '정수' 크기
+		var dT_ck_f: float = E_cJ[i] / dE_per_cK
+		var step_ck: int = int(floor(dT_ck_f)) if (dT_ck_f >= 0.0) else int(ceil(dT_ck_f))
+
+		if step_ck != 0:
+			T_ck[i] += step_ck
+			E_cJ[i] -= float(step_ck) * dE_per_cK
 
 # ─────────────────────────────────────────
 # 유틸(단위 변환)

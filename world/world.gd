@@ -26,6 +26,10 @@ class_name World
 @onready var tile_info_hud: TileInfoHUD = $UIFXLayer/TileInfoHUD
 var tile_info_tracker: TileInfoTracker
 
+@onready var hud: HUD = $HUD
+var _is_running := true
+var _speed_mult := 1.0
+
 var tile_store: TileStore = TileStore.new()
 var event_queue: EventQueue = EventQueue.new()
 var data_layer: DataLayer = DataLayer.new()
@@ -36,6 +40,13 @@ var rule_cache := SubstanceRuleCache.new()
 @onready var camera: Camera2D = $Camera2D
 
 func _ready() -> void:
+	hud.play_toggled.connect(_on_hud_play)
+	hud.speed_selected.connect(_on_hud_speed)
+	hud.overlay_toggled.connect(_on_hud_overlay)
+
+	# 초기 상태를 HUD와 동기화
+	hud.set_state(_is_running, _speed_mult, liquid_overlay.visible, heatmap.visible)
+
 	substance_loader.load_materials()
 	rule_cache.load_from_file("res://substance/substance.json")
 
@@ -167,3 +178,26 @@ func _on_overlay_toggle_requested(mode: OverlayManager.OverlayMode) -> void:
 func _on_hover_changed(cell: Vector2i) -> void:
 	corner_highlight.show_cell(cell)
 	tile_info_tracker.on_hover_changed(cell)
+
+func _on_hud_play(running: bool) -> void:
+	_is_running = running
+	# 제일 빠른 MVP: 전역 타임스케일만 조절
+	Engine.time_scale = _speed_mult if _is_running else 0.0
+
+func _on_hud_speed(mult: float) -> void:
+	_speed_mult = mult
+	# 전역 타임스케일 방식 (쉽다)
+	Engine.time_scale = _speed_mult if _is_running else 0.0
+
+	# 만약 전역이 아니라 SimClock만 빠르게 하고 싶다면:
+	# sim_clock.sim_rate_hz = int(round(sim_clock.sim_rate_hz * mult))  # 권장X: 점프됨
+	# -> 별도 설계가 필요. P0는 Engine.time_scale로 충분.
+
+func _on_hud_overlay(name: StringName, enabled: bool) -> void:
+	match name:
+		&"water":
+			if is_instance_valid(liquid_overlay):
+				liquid_overlay.visible = enabled
+		&"temp":
+			if is_instance_valid(heatmap):
+				heatmap.visible = enabled

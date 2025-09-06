@@ -1,4 +1,4 @@
-[gd_scene load_steps=32 format=3 uid="uid://c5gv3n6byiin7"]
+[gd_scene load_steps=33 format=3 uid="uid://c5gv3n6byiin7"]
 
 [ext_resource type="Script" uid="uid://dgppaejvd18y0" path="res://world/world.gd" id="1_j7vgi"]
 [ext_resource type="Script" uid="uid://dsrbjd0kmv17k" path="res://world/terrain/terrain.gd" id="2_inp7a"]
@@ -30,6 +30,7 @@
 [ext_resource type="Script" uid="uid://cqchm53g3n0d1" path="res://scripts/pan_zoom.gd" id="27_o7xkw"]
 [ext_resource type="PackedScene" uid="uid://balj4m27d4euf" path="res://scenes/tile_info_hud.tscn" id="28_bfrib"]
 [ext_resource type="Script" uid="uid://j3edpypdb7d7" path="res://scripts/fps_mem_monitor.gd" id="29_mip0j"]
+[ext_resource type="PackedScene" uid="uid://cqinatbhx3krc" path="res://hud.tscn" id="31_bwxdu"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_7iits"]
 shader = ExtResource("12_hnpqp")
@@ -39,7 +40,6 @@ script = ExtResource("1_j7vgi")
 
 [node name="Terrain" type="Node2D" parent="."]
 script = ExtResource("2_inp7a")
-sid = 1
 
 [node name="Ground" type="TileMapLayer" parent="Terrain"]
 tile_set = ExtResource("3_bwxdu")
@@ -98,7 +98,7 @@ unique_name_in_owner = true
 
 [node name="WorldGen" type="Node" parent="Systems"]
 script = ExtResource("13_33qpb")
-size = Vector2i(64, 32)
+size = Vector2i(128, 64)
 ice_freq = 0.04
 ice_threshold = 0.65
 
@@ -110,8 +110,6 @@ script = ExtResource("16_inp7a")
 
 [node name="SimClock" type="Node" parent="Systems"]
 script = ExtResource("16_k83x5")
-sim_rate_hz = 2
-temp_rate_hz = 2.0
 
 [node name="TileChange" type="Node" parent="Systems"]
 script = ExtResource("17_b8tmp")
@@ -166,4 +164,8 @@ layer = 3
 [node name="FpsMemMonitor" type="Control" parent="UIFXLayer"]
 layout_mode = 3
 anchors_preset = 0
+offset_left = 300.0
+offset_right = 300.0
 script = ExtResource("29_mip0j")
+
+[node name="HUD" parent="." instance=ExtResource("31_bwxdu")]

@@ -2,7 +2,7 @@ extends Node2D
 class_name LiquidOverlay
 
 # 여기도 있고 liquid에도 있음. 문제!!!!
-@export var water_capacity_mg_per_cell: int = 1_000_000_000 
+@export var water_capacity_mg_per_cell: int = 1_000_000
 
 @onready var sprite: Sprite2D = get_node("Map")
 

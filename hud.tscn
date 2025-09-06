@@ -1,0 +1,35 @@
+[gd_scene load_steps=2 format=3 uid="uid://cqinatbhx3krc"]
+
+[ext_resource type="Script" uid="uid://bwe4lcgh702ux" path="res://hud.gd" id="1_37p78"]
+
+[node name="HUD" type="CanvasLayer"]
+script = ExtResource("1_37p78")
+
+[node name="PanelContainer" type="PanelContainer" parent="."]
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="HBoxContainer" type="HBoxContainer" parent="PanelContainer"]
+layout_mode = 2
+
+[node name="BtnPlayPause" type="Button" parent="PanelContainer/HBoxContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "⏯"
+
+[node name="OptSpeed" type="OptionButton" parent="PanelContainer/HBoxContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="CbWater" type="CheckBox" parent="PanelContainer/HBoxContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Water"
+
+[node name="CbTemp" type="CheckBox" parent="PanelContainer/HBoxContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Temp"
+
+[connection signal="pressed" from="PanelContainer/HBoxContainer/BtnPlayPause" to="." method="_on_play_pressed"]
+[connection signal="item_selected" from="PanelContainer/HBoxContainer/OptSpeed" to="." method="_on_speed_selected"]

@@ -17,22 +17,24 @@ signal generated(
 @export var t_ice_init_cc: int = -500
 @export var t_ground_init_cc: int = 1200
 @export var t_uranium_init_cc: int = 1200
-@export var t_water_init_cc: int = 800
+@export var t_copper_init_cc: int = 800
+@export var t_water_init_cc: int = 1500
 
 # 노이즈/분포 파라미터
 @export var seed_height: int = 12345
 @export var seed_ice: int = 98765
 @export var height_freq: float = 0.02
 @export var ice_freq: float = 0.08
-@export var ice_threshold: float = 0.45
+@export var ice_threshold: float = 0.35
 @export var ice_max_depth: int = 6
 @export var ice_edge_bonus: float = 0.15
 
-# 고체 타일 질량 파라미터
-@export var mass_ice_mg_per_cell: int = 900_000_000       # 900 kg
-@export var mass_ground_mg_per_cell: int = 1_200_000_000  # 1200 kg
-@export var mass_uranium_mg_per_cell: int = 1_900_000_000 # 1900 kg
-@export var water_capacity_mg_per_cell: int = 1_000_000_000
+# 타일 질량 파라미터
+@export var mass_ice_mg_per_cell: int = 900_000         # 0.9 kg
+@export var mass_ground_mg_per_cell: int = 1_200_000    # 1.2 kg
+@export var mass_uranium_mg_per_cell: int = 1_900_000   # 1.9 kg
+@export var mass_copper_mg_per_cell: int = 1_400_000    # 1.4 kg
+@export var water_capacity_mg_per_cell: int = 1_000_000 # 1 kg
 
 # 우라늄 분포 파라미터
 @export var uranium_seed: int = 24680
@@ -42,12 +44,21 @@ signal generated(
 @export var uranium_depth_min: int = 6          # 지표선 아래 최소 깊이
 @export var uranium_depth_max: int = 24         # 지표선 아래 최대 깊이
 
+# 구리 분포 파라미터
+@export var copper_seed: int = 13579
+@export var copper_freq: float = 0.05
+@export var copper_threshold: float = 0.55
+@export var copper_density: float = 0.01
+@export var copper_depth_min: int = 0
+@export var copper_depth_max: int = 15
+
 var _rule_cache: SubstanceRuleCache
 
 var _sid_water : int
 var _sid_ice   : int
 var _sid_ground: int
 var _sid_uran  : int
+var _sid_copper: int
 var _sid_vac   : int = 0   # VACUUM은 보통 0 고정
 
 # 초기 액체 배치 파라미터
@@ -72,9 +83,11 @@ func generate() -> void:
 	_sid_ice    = _rule_cache.sid_of("solid/ice")
 	_sid_ground = _rule_cache.sid_of("solid/ground")
 	_sid_uran   = _rule_cache.sid_of("solid/uranium")
+	_sid_copper = _rule_cache.sid_of("solid/copper")
 	var hmap := generate_heightmap()
 	var tiles := classify_tiles(hmap)
 	place_uranium(tiles, hmap)
+	place_copper(tiles, hmap)
 	var liquid := generate_liquids(hmap)
 
 	var total := size.x * size.y
@@ -111,6 +124,11 @@ func generate() -> void:
 			mass[i] = mass_uranium_mg_per_cell
 			substances[i] = _sid_uran
 			temperatures[i] = _cc_to_ck(t_uranium_init_cc)
+		elif tile == _sid_copper:
+			phases[i] = PhaseStore.Phase.SOLID
+			mass[i] = mass_copper_mg_per_cell
+			substances[i] = _sid_copper
+			temperatures[i] = _cc_to_ck(t_copper_init_cc)
 		else:
 			phases[i] = PhaseStore.Phase.VACUUM
 			mass[i] = 0
@@ -192,6 +210,32 @@ func place_uranium(tiles: PackedInt32Array, hmap: PackedInt32Array) -> void:
 
 			if hit_noise or hit_rand:
 				tiles[idx2] = _sid_uran
+
+func place_copper(tiles: PackedInt32Array, hmap: PackedInt32Array) -> void:
+	var n_c := FastNoiseLite.new()
+	n_c.seed = copper_seed
+	n_c.noise_type = FastNoiseLite.TYPE_SIMPLEX
+	n_c.frequency = copper_freq
+
+	var rng := RandomNumberGenerator.new()
+	rng.seed = int(copper_seed)
+
+	for y in size.y:
+		for x in size.x:
+			var idx: int = y * size.x + x
+			if tiles[idx] != _sid_ground:
+				continue
+
+			var depth: int = y - hmap[x]
+			if depth < copper_depth_min or depth > copper_depth_max:
+				continue
+
+			var nc: float = (n_c.get_noise_2d(float(x), float(y)) + 1.0) * 0.5
+			var hit_noise: bool = (nc >= copper_threshold)
+			var hit_rand: bool = (rng.randf() < copper_density)
+
+			if hit_noise or hit_rand:
+				tiles[idx] = _sid_copper
 
 func generate_liquids(hmap: PackedInt32Array) -> Dictionary:
 	var amount := PackedInt64Array()

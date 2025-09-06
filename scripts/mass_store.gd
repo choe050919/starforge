@@ -66,18 +66,18 @@ func add(i: int, dm_mg: int) -> void:
 	_write[i] += dm_mg
 	emit_signal("mass_changed", _index.cell(i))
 
-func set_idx(i: int, m_mg: int) -> void:
+func set_by_index(i: int, m_mg: int) -> void:
 	if not _is_writing:
 		push_warning("[MassStore] write without begin_write (ignored)")
 		return
-	if not _index.in_bounds_idx(i):
+	if not _index.in_bounds_index(i):
 		push_warning("[MassStore] Out‑of‑Bounds cell ignored: idx=%d" % i)
 		return
 	_write[i] = m_mg
 	emit_signal("mass_changed", _index.cell(i))
 
 func set_cell(cell: Vector2i, m_mg: int) -> void:
-	set_idx(_index.idx(cell), m_mg)
+	set_by_index(_index.idx(cell), m_mg)
 	emit_signal("mass_changed", cell)
 
 # ===== 읽기 경로 =====

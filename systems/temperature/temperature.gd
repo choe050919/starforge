@@ -17,16 +17,6 @@ var _index: GridIndex
 var _clock : SimClock
 var _rules: SubstanceRuleCache
 
-# 규칙 파라미터 (Core로 전달)
-# α = k/c (무차원, 상대값). 확산 블렌딩에 사용.
-@export var alpha_ground := 0.9
-@export var alpha_ice := 0.4
-@export var alpha_uranium := 0.8
-@export var c_ground := 1.0
-@export var c_ice := 0.8
-@export var c_uranium := 1.0
-@export var uranium_power_c_per_s := 3.0
-
 # 코어
 var _core: TemperatureCore
 

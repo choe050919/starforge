@@ -25,6 +25,7 @@ const SUBSTANCE_TEXT := {
 	 10001: "ICE",
 	 10002: "GROUND",
 	 10003: "URANIUM",
+	 10004: "COPPER",
 	 20001: "WATER",
 }
 const PHASE_TEXT := {
