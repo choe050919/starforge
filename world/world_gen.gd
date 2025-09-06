@@ -18,7 +18,7 @@ signal generated(
 @export var t_ground_init_cc: int = 1200
 @export var t_uranium_init_cc: int = 1200
 @export var t_copper_init_cc: int = 800
-@export var t_water_init_cc: int = 1500
+@export var t_water_init_cc: int = 800
 
 # 노이즈/분포 파라미터
 @export var seed_height: int = 12345

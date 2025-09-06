@@ -51,34 +51,12 @@ func tick_liquid(dt: float) -> void:
 
 	commit_liquid(diff)
 
-	# 1) 질량 적용
-	#mass.begin_write()
-	#var dm: PackedInt64Array = diff["mass_delta"]
-	#for i in dm.size():
-		#var delta := dm[i]
-		#if delta != 0:
-			#mass.add(i, delta)
-	#mass.commit()
-
-	# 2) 첫 유입 온도 계승 적용
-	#var tw: Array = diff["temp_writes"]
-	#if tw.size() > 0:
-		#temp.begin_write()
-		#for t in tw:
-			## 안전 가드(형/범위 도중 오류 방지)
-			#if t.has("i") and t.has("T"):
-				#temp.set_by_index(int(t["i"]), int(t["T"]))
-		#temp.commit()
-#
-	#_sync_liquid_vs_vacuum()
-
 func commit_liquid(core_out: Dictionary) -> void:
 	# 0) 읽기 스냅샷 (write 시작 전에!)
 	var phase := data.phase
 	var subs  = data.substance
 	var mass  = data.mass
 	var temp  = data.temperature
-	var idx   = data.index
 
 	var ph_r : PackedByteArray   = phase.get_raw_read()
 	var m_r  : PackedInt64Array  = mass.get_read()
@@ -173,3 +151,36 @@ func get_amounts() -> PackedInt64Array:
 	for i in read_mass.size():
 		out[i] = read_mass[i] if ph_read[i] == PhaseStore.Phase.LIQUID else 0
 	return out
+
+## 외부 시스템(예: Moisture)에서 보낸 액체 질량 델타를 적용
+## d_liquid[i] < 0 : 해당 칸 액체 → 토양으로 침투
+## d_liquid[i] > 0 : 토양 → 해당 칸으로 용출
+func apply_external_delta(d_liquid: PackedInt64Array) -> void:
+	if not enabled:
+		return
+	if data == null:
+		push_warning("[Liquid.apply_external_delta] DataLayer is null (ignored)")
+		return
+
+	# 길이 검증
+	var mass_read: PackedInt64Array = data.mass.get_read()
+	var n: int = mass_read.size()
+	if d_liquid.size() != n:
+		push_warning("[Liquid.apply_external_delta] delta size mismatch. n=%d, got=%d (ignored)" % [n, d_liquid.size()])
+		return
+
+	# 전체 0이면 스킵
+	var any_nonzero: bool = false
+	for i in n:
+		if d_liquid[i] != 0:
+			any_nonzero = true
+			break
+	if not any_nonzero:
+		return
+
+	# 기존 커밋 경로 재사용 (phase/substance/온도 동기화 포함)
+	var core_out: Dictionary = {
+		"mass_delta": d_liquid,
+		"temp_writes": [],  # v0: 온도 초기화 정책 보류
+	}
+	commit_liquid(core_out)

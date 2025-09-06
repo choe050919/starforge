@@ -127,7 +127,7 @@ func _trim_zeros(val: float, decimals: int) -> String:
 		s = s.substr(0, s.length() - 1)
 	return s
 
-func _process(delta: float) -> void:
+func _process(_delta: float) -> void:
 	if not visible:
 		return
 

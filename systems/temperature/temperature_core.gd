@@ -80,7 +80,7 @@ func tick_fullscan(
 	_ensure_capacity(n)
 
 	var dQ := compute_deltaQ(w, h, n, T, S, k_per_sid, dt)
-	if true: # 디버그
+	if false: # 디버그
 		print("[TemperatureCore] mean|dQ|=", _mean_abs(dQ))
 
 	for i in n:

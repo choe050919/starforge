@@ -35,9 +35,6 @@ func begin_write() -> void:
 	_write.append_array(_read)
 
 func commit() -> void:
-	if not _is_writing:
-		push_warning("[TemperatureStore.commit] not in writing state (ignored)")
-		return
 	# 버퍼 스왑
 	var tmp := _read
 	_read = _write

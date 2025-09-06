@@ -5,10 +5,11 @@
 extends Node
 class_name Temperature
 
+# ── 설정 ───────────────────────────────────────────────────────────
 @export var enabled := true
 @export var debug_log := false
 
-# 의존성
+# ── 의존성 ─────────────────────────────────────────────────────────
 var _substance_store: SubstanceStore
 var _phase_store: PhaseStore
 var _temperature_store: TemperatureStore
@@ -46,9 +47,9 @@ func setup(
 	_core = TemperatureCore.new()
 	_core.setup_thermal_from_cache(_rules)
 
+# ── 틱 ─────────────────────────────────────────────────────────────
 func _on_sim_tick(dt: float) -> void:
-	if not enabled:
-		return
+	if not enabled: return
 
 	var stats := _core.tick_fullscan(_temperature_store, _substance_store, _mass_store, _index, dt)
 

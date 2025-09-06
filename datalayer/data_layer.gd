@@ -5,19 +5,27 @@ var substance: SubstanceStore = SubstanceStore.new()
 var phase: PhaseStore = PhaseStore.new()
 var mass: MassStore = MassStore.new()
 var temperature: TemperatureStore = TemperatureStore.new()
+var moisture: MoistureStore = MoistureStore.new()
+var soil_view: SoilViewStore = SoilViewStore.new()
+var hydro_field: HydrologyField = HydrologyField.new()
 
 func setup(
-		size: Vector2i,
-		substances: PackedInt32Array,
-		phases: PackedByteArray,
-		masses: PackedInt64Array,
-		temperatures: PackedInt32Array
-	) -> void:
+	size: Vector2i,
+	substances: PackedInt32Array,
+	phases: PackedByteArray,
+	masses: PackedInt64Array,
+	temperatures: PackedInt32Array,
+	hydro_cache: HydrologyCache
+) -> void:
 	index.setup(size)
 	substance.setup(index, substances)
 	phase.setup(index, phases)
 	mass.setup(index, masses)
 	temperature.setup(index, temperatures)
+
+	moisture.setup(index)
+	soil_view.setup(index)
+
 	_log_counts()
 	_validate()
 
