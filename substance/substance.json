@@ -10,6 +10,7 @@
 			},
 			"ground": {
 				"id": 10002,
+				"thermal": { "c_J_per_kgK": 1200, "k_W_per_mK": 1.0 },
 			},
 			"uranium": {
 				"id": 10003,
