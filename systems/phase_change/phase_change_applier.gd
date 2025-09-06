@@ -39,14 +39,12 @@ func apply(diff: Dictionary, _sim_time: float = 0.0) -> void:
 
 		var i := _index.idx(cell)
 
-
 		# 1) Substance 교체 (반드시)
 		_substance_store.set_by_index(i, to_sid)
 
 		# 2) Phase 동기화 (to_sid의 소속 phase로)
 		var to_ph: int = int(_rules.phase_of_sid.get(to_sid, 0))
-		if to_ph != 0:
-			_phase_store.set_by_index(i, to_ph)
+		_phase_store.set_by_index(i, to_ph)
 
 		# 3) 비주얼용 묶음
 		var key := (int(from_sid) << 32) | int(to_sid)

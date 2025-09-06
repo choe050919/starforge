@@ -1,7 +1,9 @@
-extends BaseStore
-class_name MassStore
 ## 셀 단위 질량 저장소 (더블 버퍼)
 ## 단위: milligram(㎎). 내부 저장/연산은 int64(mg) 기준.
+extends BaseStore
+class_name MassStore
+
+signal mass_changed(cell: Vector2i)
 
 const MG_PER_G  := 1_000
 const MG_PER_KG := 1_000_000
@@ -49,7 +51,7 @@ func commit() -> void: # read 버전을 write 버전으로 최신화(참조 스�
 	# 3) 버퍼 스왑
 	var tmp := _read
 	_read = _write
-	_write = tmp # 왜 필요하지...?
+	_write = tmp
 
 	super.commit()
 
@@ -62,6 +64,7 @@ func add(i: int, dm_mg: int) -> void:
 		push_warning("[MassStore] Out‑of‑Bounds cell ignored: idx=%d" % i)
 		return
 	_write[i] += dm_mg
+	emit_signal("mass_changed", _index.cell(i))
 
 func set_idx(i: int, m_mg: int) -> void:
 	if not _is_writing:
@@ -71,9 +74,11 @@ func set_idx(i: int, m_mg: int) -> void:
 		push_warning("[MassStore] Out‑of‑Bounds cell ignored: idx=%d" % i)
 		return
 	_write[i] = m_mg
+	emit_signal("mass_changed", _index.cell(i))
 
 func set_cell(cell: Vector2i, m_mg: int) -> void:
 	set_idx(_index.idx(cell), m_mg)
+	emit_signal("mass_changed", cell)
 
 # ===== 읽기 경로 =====
 func get_mass(i: int) -> int:

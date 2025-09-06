@@ -98,7 +98,7 @@ unique_name_in_owner = true
 
 [node name="WorldGen" type="Node" parent="Systems"]
 script = ExtResource("13_33qpb")
-size = Vector2i(256, 64)
+size = Vector2i(64, 32)
 ice_freq = 0.04
 ice_threshold = 0.65
 
@@ -110,6 +110,8 @@ script = ExtResource("16_inp7a")
 
 [node name="SimClock" type="Node" parent="Systems"]
 script = ExtResource("16_k83x5")
+sim_rate_hz = 2
+temp_rate_hz = 2.0
 
 [node name="TileChange" type="Node" parent="Systems"]
 script = ExtResource("17_b8tmp")

@@ -12,7 +12,6 @@ func _liq_at(i: int, ph_read: PackedByteArray, m_read: PackedInt64Array) -> int:
 func compute_diff(R: Dictionary, _dt: float) -> Dictionary:
 	var idx: GridIndex             = R["idx"]
 	var ph_read: PackedByteArray   = R["ph"]
-	# sid := R["sid"]  # 현재는 사용 안 함
 	var m_read: PackedInt64Array   = R["m"]
 	var T_read: PackedInt32Array   = R["T"]
 	var cap: int                   = int(R["cap"])

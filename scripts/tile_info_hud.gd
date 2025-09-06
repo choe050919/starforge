@@ -98,7 +98,10 @@ func _format_temperature(ck: int) -> String:
 	const CK_PER_K := 100
 	const CK_0C := 27315
 
-	if ck <= 0:
+	if ck < 0:
+		return "ERROR"
+
+	if ck == 0:
 		return "—"
 
 	if use_celsius:

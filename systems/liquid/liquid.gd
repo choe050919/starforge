@@ -84,13 +84,16 @@ func _sync_liquid_vs_vacuum():
 	var phase := data.phase
 	var subs  := data.substance
 	var mass  := data.mass
+	var temp  := data.temperature
 
 	var m := mass.get_read()
 	var ph := phase.get_raw_read()
 	var sid := subs.get_raw_read()
+	var T := temp.get_raw_read()
 
 	var wrote_ph := false
 	var wrote_sid := false
+	var wrote_temp := false
 
 	var can_sync_sid := _sid_water >= 0 and _sid_vacuum >= 0
 	if not can_sync_sid and not _warned_missing_sid_once:
@@ -119,11 +122,18 @@ func _sync_liquid_vs_vacuum():
 					subs.begin_write(); wrote_sid = true
 				subs.set_by_index(i, want_sid)
 
+		# Temprature 동기화 (VACCUM인 경우 강제로 0으로 설정)
+		if m[i] <= 0 and T[i] != 0:
+			if not wrote_temp:
+				temp.begin_write(); wrote_temp = true
+			temp.set_by_index(i, 0)
+
 	if wrote_ph:
 		phase.commit()
 	if wrote_sid:
 		subs.commit()
-
+	if wrote_temp:
+		temp.commit()
 
 # ── 타일 이벤트 ───────────────────────────────────────────────────
 # PhaseChange가 보낸 이유(reason)인지 구분하여 충돌 회피

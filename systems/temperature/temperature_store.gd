@@ -3,6 +3,8 @@
 extends BaseStore
 class_name TemperatureStore
 
+signal temperature_changed(cell: Vector2i)
+
 const CK_PER_K := 100
 const CK_0C := 27315 # 0 °C = 273.15 K = 27315 cK
 const MIN_CK := 0 # 0 K = -273.15 °C
@@ -67,6 +69,7 @@ func set_by_index(i: int, temp: int) -> void:
 		push_warning("[TemperatureStore.set_by_index] invalid id: %d" % temp)
 		return
 	_write[i] = temp
+	emit_signal("temperature_changed", _index.cell(i))
 
 # ── 합계/보정 ───────────────────────────────────────────
 func _safe_sum(arr: PackedInt32Array) -> int:

@@ -60,10 +60,10 @@ func _on_sim_tick(dt: float) -> void:
 	if not enabled:
 		return
 
-	var stats: PackedInt32Array = _core.tick_fullscan(_temperature_store, _substance_store, _mass_store, _index, dt)
+	var stats := _core.tick_fullscan(_temperature_store, _substance_store, _mass_store, _index, dt)
 
 	_temperature_store.begin_write()
-	if stats.is_empty(): return
+	if stats.is_empty(): push_error("[Temperature] empty array"); return
 
 	for i in stats.size():
 		var t: int = stats[i]
