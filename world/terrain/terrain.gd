@@ -26,7 +26,7 @@ const TILE_COPPER: int = 10004
 
 func apply_tiles(tile_types: PackedInt32Array, size: Vector2i) -> void:
 	if ground.tile_set == null:
-		push_error("[Terrain] Ground/TileSet missing."); return
+		push_error("[Terrain.apply_tiles] Ground/TileSet missing."); return
 
 	ground.clear()
 
@@ -47,7 +47,7 @@ func apply_tiles(tile_types: PackedInt32Array, size: Vector2i) -> void:
 
 func apply_cell_change(cell: Vector2i, tile_type: int) -> void:
 	if ground == null:
-		return
+		push_error("[Terrain] TileMapLayer is null"); return
 	match tile_type:
 		TILE_GROUND:
 			ground.set_cell(cell, sid, atlas_ground, alt_ground)

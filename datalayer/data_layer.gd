@@ -15,16 +15,12 @@ func setup(
 	phases: PackedByteArray,
 	masses: PackedInt64Array,
 	temperatures: PackedInt32Array,
-	hydro_cache: HydrologyCache
 ) -> void:
 	index.setup(size)
 	substance.setup(index, substances)
 	phase.setup(index, phases)
 	mass.setup(index, masses)
 	temperature.setup(index, temperatures)
-
-	moisture.setup(index)
-	soil_view.setup(index)
 
 	_log_counts()
 	_validate()

@@ -21,6 +21,7 @@ class_name World
 @onready var hover_service: HoverService = %Systems/HoverService
 @onready var visual_sync: VisualSync =     %Systems/VisualSync
 
+# ── Overlay Manager ──────────────────────────────────────────────
 @onready var overlay_manager: OverlayManager = %OverlayManager
 @onready var heatmap = overlay_manager.get_overlay(OverlayManager.OverlayMode.HEATMAP) as HeatmapOverlay
 @onready var heat_src = overlay_manager.get_overlay(OverlayManager.OverlayMode.HEAT_SOURCE) as HeatSourceOverlay
@@ -41,14 +42,13 @@ var data_layer: DataLayer = DataLayer.new()
 
 var substance_loader: SubstanceLoader = SubstanceLoader.new()
 var rule_cache := SubstanceRuleCache.new()
-var hydro_cache: HydrologyCache
 
 @onready var camera: Camera2D = $Camera2D
 
 func _ready() -> void:
 	# HUD 연결
 	hud.play_toggled.connect(_on_hud_play)
-	hud.speed_selected.connect(_on_hud_speed)
+	hud.speed_selected.connect(_set_speed_multiplier)
 	hud.overlay_toggled.connect(_on_hud_overlay)
 	hud.set_state(_is_running, _speed_mult, liquid_overlay.visible, heatmap.visible)
 
@@ -59,8 +59,8 @@ func _ready() -> void:
 	# 입력/호버
 	hover_service.setup(data_layer)
 	input.setup(data_layer, hover_service)
-	input.pan_requested.connect(_on_pan_requested)
-	input.zoom_requested.connect(_on_zoom_requested)
+	input.pan_requested.connect(_pan_camera)
+	input.zoom_requested.connect(_zoom_camera)
 	input.overlay_toggle_requested.connect(_on_overlay_toggle_requested)
 	hover_service.hover_changed.connect(_on_hover_changed)
 
@@ -77,7 +77,6 @@ func _ready() -> void:
 	durability.break_requested.connect(crack_overlay.on_break_requested)
 
 
-
 	tchange.tile_destroyed.connect(_on_tile_destroyed)
 	tchange.tile_replaced.connect(_on_tile_replaced)
 
@@ -90,66 +89,125 @@ func _on_world_generated(
 		tiles: PackedInt32Array,
 		springs: PackedVector2Array
 ) -> void:
-	# 타일 적용 및 카메라/오버레이 레이아웃
+	_apply_worldgen_result(size, substances, phases, mass, temperatures, tiles, springs)
+	_post_apply_worldgen(size, mass)
+
+## 월드 생성 결과를 '상태'로 적용한다.
+## - 타일, DataLayer, 시뮬 시스템들의 setup
+## - 여기까지 끝나면 '그려지기 직전의 세계'가 준비된 상태여야 한다.
+func _apply_worldgen_result(
+	size: Vector2i,
+	substances: PackedInt32Array,
+	phases: PackedByteArray,
+	mass: PackedInt64Array,
+	temperatures: PackedInt32Array,
+	tiles: PackedInt32Array,
+	springs: PackedVector2Array
+) -> void:
+	# 타일/데이터
 	terrain.apply_tiles(tiles, size)
 	tile_store.setup(tiles, size)
-	data_layer.setup(size, substances, phases, mass, temperatures, hydro_cache)
 
-	if ground_layer.tile_set != null: # 이중 검증임. 위의 apply_tiles에서 이미 검증.
-		var ts: TileSet = ground_layer.tile_set
-		var map_px: Vector2 = Vector2(size.x * ts.tile_size.x, size.y * ts.tile_size.y)
-		camera.position = map_px * 0.5
-		heatmap.set_layout(size, ts.tile_size)
-		if heat_src != null:
-			heat_src.set_layout(size, ts.tile_size)
-		if crack_overlay != null:
-			crack_overlay.set_layout(size)
-		if liquid_overlay != null:
-			liquid_overlay.set_layout(size, ts.tile_size)
-		input.set_cell_size(ts.tile_size)
-		corner_highlight.setup(ground_layer)
+	data_layer.setup(size, substances, phases, mass, temperatures)
 
+	# 시스템들 (데이터 준비 이후)
 	durability.setup_from_tiles(tiles, size)
-
 	tchange.setup(tile_store, size, event_queue)
 
 	liquid.setup(data_layer, springs)
 	liquid.set_liquid_sids()
 
-	liquid_overlay.render(mass)
+	temp.setup(
+		data_layer.substance,
+		data_layer.phase,
+		data_layer.temperature,
+		data_layer.mass,
+		data_layer.index,
+		clock,
+		rule_cache
+	)
 
-	temp.setup(data_layer.substance, data_layer.phase, data_layer.temperature, data_layer.mass, data_layer.index, clock, rule_cache)
+	phase_change.setup(
+		data_layer.phase,
+		data_layer.substance,
+		data_layer.temperature,
+		data_layer.index,
+		visual_sync,
+		clock,
+		rule_cache
+	)
 
-	phase_change.setup(data_layer.phase, data_layer.substance, data_layer.temperature, data_layer.index, visual_sync, clock, rule_cache)
+## 적용 이후 후처리:
+## - 카메라/오버레이 레이아웃(타일셋/맵 크기 필요)
+## - 초기 렌더
+## - HUD/툴 UI 동기화
+## - SimClock 배선
+func _post_apply_worldgen(size: Vector2i, initial_mass: PackedInt64Array) -> void:
+	# 레이아웃 (타일셋 크기 참조)
+	if ground_layer.tile_set != null:
+		var ts: TileSet = ground_layer.tile_set
+		var map_px := Vector2(size.x * ts.tile_size.x, size.y * ts.tile_size.y)
+		camera.position = map_px * 0.5
+		input.set_cell_size(ts.tile_size)
+		if liquid_overlay != null: liquid_overlay.set_layout(size, ts.tile_size)
+		if crack_overlay != null: crack_overlay.set_layout(size)
+		if heatmap != null: heatmap.set_layout(size, ts.tile_size)
+		if heat_src != null: heat_src.set_layout(size, ts.tile_size)
+	else:
+		push_error("[World._on_world_generated] tileset is null"); return
 
+	corner_highlight.setup(ground_layer)
 
-	var cb := Callable(liquid, "apply_external_delta")
+	# 초기 렌더
+	liquid_overlay.render(initial_mass)
 
-	tile_info_hud.setup(hover_service, data_layer.index, data_layer.substance, data_layer.phase, data_layer.mass, data_layer.temperature)
+	# HUD의 타일 정보(온도 포함) 데이터 배선
+	tile_info_hud.setup(
+		hover_service,
+		data_layer.index,
+		data_layer.substance,
+		data_layer.phase,
+		data_layer.mass,
+		data_layer.temperature
+	)
 
-	clock.tick_sim.connect(_on_tick_sim)
+	# 시뮬 배선
+	if not clock.tick_sim.is_connected(_on_sim_clock_tick):
+		clock.tick_sim.connect(_on_sim_clock_tick)
 
 var sim_time := 0.0
 
-func _on_tick_sim(tag: StringName, dt: float) -> void:
+## SimClock에서 올라오는 틱 이벤트를 처리한다.
+## 인자:
+##   tag: "sim" | "temp" (시뮬 틱 종류)
+##   dt:  해당 틱의 경과 시간(초)
+## 동작:
+##   - "sim": PhaseChange → Liquid → Event 적용 → Liquid Overlay 렌더 → (옵션)Heatmap 갱신
+##   - "temp": 온도 전용 연산 틱
+## 부가작용: data_layer 내부 상태 변경, 오버레이 렌더 호출
+func _on_sim_clock_tick(tag: StringName, dt: float) -> void:
 	sim_time += dt
 	match tag:
 		"sim":
 			# 기본 10Hz 틱
 			phase_change._on_sim_tick(dt, sim_time)
 			liquid.tick_liquid(dt)
+
 			var events := event_queue.pop_all()
 			if events.size() > 0:
 				tchange.apply_events(events)
+
 			liquid_overlay.render(liquid.get_amounts())
-			if overlay_manager.current_overlay == OverlayManager.OverlayMode.HEATMAP:
-				_on_temperature_updated() # TODO: 이름 변경
+
+			match overlay_manager.current_overlay:
+				OverlayManager.OverlayMode.HEATMAP:
+					_render_temperature_overlay()
 		"temp":
 			temp._on_sim_tick(dt)
 		_:
-			push_error("[World._on_tick_sim] wrong tag")
+			push_error("[World._on_sim_clock_tick] wrong tag")
 
-func _on_temperature_updated() -> void: # 이름이 부적절함.
+func _render_temperature_overlay() -> void:
 	var T_ck: PackedInt32Array = data_layer.temperature.get_read()
 	var mask: PackedByteArray = data_layer.phase.get_read()
 	heatmap.render_full_with_mask(T_ck, mask)
@@ -158,7 +216,8 @@ func _on_temperature_updated() -> void: # 이름이 부적절함.
 	#if heat_src != null:
 		#var dT := temp.get_last_delta()
 		#heat_src.render_heat_sources(dT)
-	
+
+# ── Tile lifecycle hooks ─────────────────────────────────────────
 func _on_tile_destroyed(cell: Vector2i, from_tile: int, reason: StringName) -> void:
 	if temp != null:
 		temp.on_tile_destroyed(cell, from_tile, reason)
@@ -173,10 +232,11 @@ func _on_tile_replaced(cell: Vector2i, from_tile: int, to_tile: int, reason: Str
 	if durability != null:
 		durability.on_tile_replaced(cell, from_tile, to_tile, reason)
 
-func _on_pan_requested(delta: Vector2) -> void:
+# ── Input / HUD ──────────────────────────────────────────────────
+func _pan_camera(delta: Vector2) -> void:
 	camera.pan(delta)
 
-func _on_zoom_requested(dir: float) -> void:
+func _zoom_camera(dir: float) -> void:
 	if camera != null:
 		camera.apply_zoom(dir)
 
@@ -192,7 +252,7 @@ func _on_hud_play(running: bool) -> void:
 	# 제일 빠른 MVP: 전역 타임스케일만 조절
 	Engine.time_scale = _speed_mult if _is_running else 0.0
 
-func _on_hud_speed(mult: float) -> void:
+func _set_speed_multiplier(mult: float) -> void:
 	_speed_mult = mult
 	# 전역 타임스케일 방식 (쉽다)
 	Engine.time_scale = _speed_mult if _is_running else 0.0

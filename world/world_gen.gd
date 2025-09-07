@@ -67,10 +67,10 @@ var _sid_vac   : int = 0   # VACUUM은 보통 0 고정
 @export var depth_scale: float = 4.0
 @export var springs_per_k: float = 1.0
 
-# °cC → cK(centiKelvin) 변환: cK = round(°C*100 + 27315)
+# °cC(= °C*100) → cK: cK = cC + 27315
 const CK_0C := 27315
-static func _cc_to_ck(c: int) -> int:
-	return int(c + CK_0C)
+static func _cc_to_ck(cC: int) -> int:
+	return cC + CK_0C
 
 func bind_rule_cache(cache: SubstanceRuleCache) -> void:
 	_rule_cache = cache
