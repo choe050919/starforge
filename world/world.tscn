@@ -105,7 +105,7 @@ unique_name_in_owner = true
 
 [node name="WorldGen" type="Node" parent="Systems"]
 script = ExtResource("13_33qpb")
-size = Vector2i(64, 64)
+size = Vector2i(128, 32)
 ice_freq = 0.04
 ice_threshold = 0.65
 

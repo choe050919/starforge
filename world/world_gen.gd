@@ -135,6 +135,8 @@ func generate() -> void:
 			substances[i] = _sid_vac
 			temperatures[i] = 0
 
+	_assert_world_arrays(substances, phases, mass, temperatures, tiles)
+
 	emit_signal("generated", size, substances, phases, mass, temperatures, tiles, liquid.springs)
 
 # Build a 1D heightmap representing surface level per column
@@ -263,6 +265,7 @@ func generate_liquids(hmap: PackedInt32Array) -> Dictionary:
 	var prob: float = springs_per_k / 1000.0
 	for x in range(1, size.x - 1):
 		var h0: int = hmap[x]
+
 		if h0 >= water_level:
 			continue
 		var slope_l: float = abs(h0 - hmap[x - 1])
@@ -297,3 +300,11 @@ func _fill_lake(amount: PackedInt64Array, hmap: PackedInt32Array, sx: int, ex: i
 			var fill: float = clamp(float(depth_from_surface) / depth_scale, 0.0, 1.0)
 			var idx: int = y * size.x + x
 			amount[idx] = int(round(fill * water_capacity_mg_per_cell))
+
+func _assert_world_arrays(
+	substances: PackedInt32Array, phases: PackedByteArray,
+	mass: PackedInt64Array, temperatures: PackedInt32Array, tiles: PackedInt32Array
+) -> void:
+	var n := size.x * size.y
+	if [substances.size(), phases.size(), mass.size(), temperatures.size(), tiles.size()].any(func(s): return s != n):
+		push_error("[WorldGen] array size mismatch")
