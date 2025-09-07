@@ -1,9 +1,9 @@
 [gd_resource type="Resource" script_class="WorldGenProfile" load_steps=2 format=3 uid="uid://birychudug5xe"]
 
-[ext_resource type="Script" uid="uid://d247l16y0ap2h" path="res://world/world_gen/world_gen_profile.gd" id="1_bvawy"]
+[ext_resource type="Script" uid="uid://d247l16y0ap2h" path="res://world/world_gen/world_gen_profile.gd" id="1_wygdk"]
 
 [resource]
-script = ExtResource("1_bvawy")
+script = ExtResource("1_wygdk")
 schema_version = 1
 id_keys = {
 "liquid/water": "liquid/water",
@@ -12,7 +12,7 @@ id_keys = {
 "solid/soil": "solid/soil",
 "solid/uranium": "solid/uranium"
 }
-size = Vector2i(256, 128)
+size = Vector2i(96, 48)
 seed_height = 12345
 height_freq = 0.02
 water_level_ratio = 0.4
@@ -22,7 +22,7 @@ ice_temp_init_cC = -500
 ice_mass_mg_per_cell = 900000
 ice_seed = 98765
 ice_freq = 0.08
-ice_threshold = 0.35
+ice_threshold = 0.55
 ice_max_depth = 6
 ice_edge_bonus = 0.15
 uranium_temp_init_cC = 1200

@@ -18,7 +18,7 @@ class_name Terrain
 @export var atlas_copper: Vector2i = Vector2i(4, 0)
 @export var alt_copper: int = 0
 
-const TILE_AIR: int = 0
+const TILE_VACCUM: int = 0
 const TILE_ICE: int = 10001
 const TILE_GROUND: int = 10002
 const TILE_URANIUM: int = 10003
@@ -56,5 +56,5 @@ func apply_cell_change(cell: Vector2i, tile_type: int) -> void:
 		TILE_URANIUM:
 			ground.set_cell(cell, sid, atlas_uranium, alt_uranium)
 		_:
-			# AIR 또는 미정의 → 지우기
+			# VACCUM 또는 미정의 → 지우기
 			ground.erase_cell(cell)

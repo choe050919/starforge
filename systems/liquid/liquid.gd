@@ -115,33 +115,7 @@ func commit_liquid(core_out: Dictionary) -> void:
 			temp.set_by_index(ti, t_src)
 	temp.commit()
 
-# ── 타일 이벤트 ───────────────────────────────────────────────────
-# PhaseChange가 보낸 이유(reason)인지 구분하여 충돌 회피
-func on_tile_destroyed(cell: Vector2i, _from_tile: int, reason: StringName) -> void:
-	# 상변화: 얼음→물로 녹는 과정에서 타일 파괴 이벤트가 올 수 있음.
-	# 이 경우 Liquid가 phase/mass를 다시 만지지 않도록 무시.
-	if reason == &"phase_change:ice_to_water":
-		if debug_log:
-			print("[Liquid] ignore on_tile_destroyed (phase_change:ice_to_water) at ", cell)
-		return
-
-	# 일반 타일 파괴에 대한 최소 처리(원한다면 확장)
-	# 현재는 '물 로직'이 별도 조치를 요구하지 않음.
-
-func on_tile_replaced(cell: Vector2i, _from_tile: int, _to_tile: int, reason: StringName) -> void:
-	# 상변화: 물→얼음으로 바뀌는 경우, 물 질량만 0으로 정리(phase/substance는 PhaseChange가 담당)
-	if reason == &"phase_change:water_to_ice":
-		if data == null: return
-		data.mass.begin_write()
-		data.mass.set_cell(cell, 0) # mg 단위
-		data.mass.commit()
-		if debug_log:
-			print("[Liquid] on_tile_replaced (phase_change:water_to_ice) mass→0 at ", cell)
-		return
-
-	# 일반 교체(맵 편집 등)일 때만 필요시 별도 처리
-
-## ── 유틸(선택) ────────────────────────────────────────────────────
+# ── 유틸(선택) ────────────────────────────────────────────────────
 func get_amounts() -> PackedInt64Array:
 	if data == null:
 		return PackedInt64Array()

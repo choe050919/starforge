@@ -65,9 +65,9 @@ func _warn_invalid_once(sid: int, where: String) -> void:
 func get_by_index(i: int) -> int:
 	return _read[i]
 
-func get_substance(cell: Vector2i) -> int:
+func get_by_cell(cell: Vector2i) -> int:
 	if not _index.in_bounds_cell(cell):
-		push_warning("[SubstanceStore.get_substance] out of bounds: %s" % [cell])
+		push_warning("[SubstanceStore.get_by_cell] out of bounds: %s" % [cell])
 		return _vacuum_sid
 	return _read[_index.idx(cell)]
 

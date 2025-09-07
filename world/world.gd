@@ -36,8 +36,6 @@ var _is_running := true
 var _speed_mult := 1.0
 
 # ── Data & Caches ────────────────────────────────────────────────
-var tile_store: TileStore = TileStore.new()
-var event_queue: EventQueue = EventQueue.new()
 var data_layer: DataLayer = DataLayer.new()
 
 var substance_loader: SubstanceLoader = SubstanceLoader.new()
@@ -76,9 +74,8 @@ func _ready() -> void:
 	durability.hp_changed.connect(crack_overlay.on_hp_changed)
 	durability.break_requested.connect(crack_overlay.on_break_requested)
 
-
-	tchange.tile_destroyed.connect(_on_tile_destroyed)
 	tchange.tile_replaced.connect(_on_tile_replaced)
+	tchange.tile_destroyed.connect(_on_tile_destroyed)
 
 func _on_world_generated(
 		size: Vector2i,
@@ -106,13 +103,12 @@ func _apply_worldgen_result(
 ) -> void:
 	# 타일/데이터
 	terrain.apply_tiles(tiles, size)
-	tile_store.setup(tiles, size)
 
 	data_layer.setup(size, substances, phases, mass, temperatures)
 
 	# 시스템들 (데이터 준비 이후)
 	durability.setup_from_tiles(tiles, size)
-	tchange.setup(tile_store, size, event_queue)
+	tchange.setup(data_layer)
 
 	liquid.setup(data_layer, springs)
 	liquid.set_liquid_sids()
@@ -193,10 +189,6 @@ func _on_sim_clock_tick(tag: StringName, dt: float) -> void:
 			phase_change._on_sim_tick(dt, sim_time)
 			liquid.tick_liquid(dt)
 
-			var events := event_queue.pop_all()
-			if events.size() > 0:
-				tchange.apply_events(events)
-
 			liquid_overlay.render(liquid.get_amounts())
 
 			match overlay_manager.current_overlay:
@@ -218,19 +210,12 @@ func _render_temperature_overlay() -> void:
 		#heat_src.render_heat_sources(dT)
 
 # ── Tile lifecycle hooks ─────────────────────────────────────────
-func _on_tile_destroyed(cell: Vector2i, from_tile: int, reason: StringName) -> void:
-	if temp != null:
-		temp.on_tile_destroyed(cell, from_tile, reason)
-	if liquid != null:
-		liquid.on_tile_destroyed(cell, from_tile, reason)
-
 func _on_tile_replaced(cell: Vector2i, from_tile: int, to_tile: int, reason: StringName) -> void:
-	if temp != null:
-		temp.on_tile_replaced(cell, from_tile, to_tile, reason)
-	if liquid != null:
-		liquid.on_tile_replaced(cell, from_tile, to_tile, reason)
-	if durability != null:
-		durability.on_tile_replaced(cell, from_tile, to_tile, reason)
+	pass
+
+func _on_tile_destroyed(cell: Vector2i, from_tile: int, reason: StringName) -> void:
+	#data_layer.apply_cells_tile_spec() # TODO
+	pass
 
 # ── Input / HUD ──────────────────────────────────────────────────
 func _pan_camera(delta: Vector2) -> void:
@@ -261,8 +246,8 @@ func _set_speed_multiplier(mult: float) -> void:
 	# sim_clock.sim_rate_hz = int(round(sim_clock.sim_rate_hz * mult))  # 권장X: 점프됨
 	# -> 별도 설계가 필요. P0는 Engine.time_scale로 충분.
 
-func _on_hud_overlay(name: StringName, enabled: bool) -> void:
-	match name:
+func _on_hud_overlay(overlay_name: StringName, enabled: bool) -> void:
+	match overlay_name:
 		&"water":
 			if is_instance_valid(liquid_overlay):
 				liquid_overlay.visible = enabled
