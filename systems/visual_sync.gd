@@ -25,7 +25,7 @@ func _ready() -> void:
 # ── Terrain 목적지 ────────────────────────────────────────
 func to_terrain_destroy_ice(cells: PackedVector2Array, _reason: StringName = &"") -> void:
 	for c in cells:
-		_terrain.apply_cell_change(c, Terrain.TILE_AIR)
+		_terrain.apply_cell_change(c, Terrain.TILE_VACCUM)
 
 func to_terrain_place_ice(cells: PackedVector2Array, _reason: StringName = &"") -> void:
 	for c in cells:

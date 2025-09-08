@@ -33,7 +33,7 @@ func _try_build_random_cell() -> void:
 				return
 
 		var center_cell: Vector2i = _world_to_cell(global_position)
-		var tiles := _sys.get_tiles()
+		#var tiles := _sys.get_tiles() FIXME
 		var size: Vector2i = _sys.size
 
 		var attempts: int = 20
@@ -47,12 +47,12 @@ func _try_build_random_cell() -> void:
 						continue
 
 				var idx: int = cell.y * size.x + cell.x
-				if tiles.is_empty():
-						return
-
-				var current: int = tiles[idx]
-				if current != TILE_AIR:
-						continue # 이미 고체가 있음
+				#if tiles.is_empty(): FIXME
+						#return FIXME
+#
+				#var current: int = tiles[idx] FIXME
+				#if current != TILE_AIR: FIXME
+						#continue # 이미 고체가 있음 FIXME
 
 				_sys.queue_replace(cell, TILE_GROUND, &"critter")
 				break

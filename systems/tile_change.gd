@@ -44,7 +44,7 @@ func replace_cell(cell: Vector2i, to_tile: int, reason: StringName = &"") -> voi
 
 ## 편의: 파괴(= VACUUM으로 교체)
 func destroy_cell(cell: Vector2i, reason: StringName = &"destroy") -> void:
-	apply_replacements([cell], TILE_VACUUM, reason)
+	_data.apply_cells_with_spec([cell], { "sid" : 0 }, reason)
 
 ## 핵심: 동기 배치 적용 (큐 없이)
 func apply_replacements(cells: Array, to_tile: int, reason: StringName = &"") -> void:

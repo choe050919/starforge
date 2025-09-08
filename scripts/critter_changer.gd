@@ -34,7 +34,7 @@ func _try_change_random_cell() -> void:
 
 	# 현재 위치 기준 중심 셀
 	var center_cell: Vector2i = _world_to_cell(global_position)
-	var tiles := _sys.get_tiles()
+	#var tiles := _sys.get_tiles() FIXME
 	var size: Vector2i = _sys.size
 
 	# 여러 번 시도해서 고체 셀 하나 찾기
@@ -49,12 +49,12 @@ func _try_change_random_cell() -> void:
 			continue
 
 		var idx: int = cell.y * size.x + cell.x
-		if tiles.is_empty():
-			return
+		#if tiles.is_empty(): FIXME
+			#return
 
-		var current: int = tiles[idx]
-		if current == TILE_AIR:
-			continue # 공기는 패스(이미 비어 있음)
+		#var current: int = tiles[idx] FIXME
+		#if current == TILE_AIR: FIXME
+			#continue # 공기는 패스(이미 비어 있음) FIXME
 
 		# 지금은 단순 파괴만 시행(AIR로)
 		_sys.queue_destroy(cell, &"critter")

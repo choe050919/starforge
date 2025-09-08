@@ -18,8 +18,8 @@ func setup(gi: GridIndex, ss: SubstanceStore, ps: PhaseStore, ms: MassStore, ts:
 	_temperature_store = ts
 
 func is_ready() -> bool:
-	if not _substance_store.has_method("get_substance"):
-		push_warning("[TileInfoProvider] Missing method: SubstanceStore.get_substance")
+	if not _substance_store.has_method("get_by_cell"):
+		push_warning("[TileInfoProvider] Missing method: SubstanceStore.get_by_cell")
 		return false
 	if not _phase_store.has_method("get_phase"):
 		push_warning("[TileInfoProvider] Missing method: PhaseStore.get_phase")
@@ -48,7 +48,7 @@ func query(cell: Vector2i):
 
 # ── 내부 유틸 ─────────────────────────────────────────────
 func _read_substance(cell: Vector2i) -> int:
-	return _substance_store.get_substance(cell)
+	return _substance_store.get_by_cell(cell)
 
 func _read_phase(cell: Vector2i) -> int:
 	return _phase_store.get_phase(cell)
