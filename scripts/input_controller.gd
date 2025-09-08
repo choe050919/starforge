@@ -5,6 +5,8 @@ signal pan_requested(delta: Vector2)
 signal zoom_requested(direction: float)
 signal overlay_toggle_requested(mode: OverlayManager.OverlayMode)
 
+signal test_requested(cell: Vector2i)
+
 var data_layer: DataLayer
 var hover_service: HoverService
 var cell_size: Vector2 = Vector2.ONE
@@ -37,6 +39,19 @@ func _unhandled_input(event: InputEvent) -> void:
 		overlay_toggle_requested.emit(OverlayManager.OverlayMode.HEATMAP)
 	elif event.is_action_pressed("overlay_toggle_heatsrc"):
 		overlay_toggle_requested.emit(OverlayManager.OverlayMode.HEAT_SOURCE)
+
+	# --- 좌클릭 테스트 트리거 ---
+	if event is InputEventMouseButton \
+	and event.button_index == MOUSE_BUTTON_LEFT \
+	and event.pressed and not event.is_echo():
+		var world_pos: Vector2 = world_canvas.get_global_mouse_position()
+
+		const TILE_PX := Vector2(32, 32)
+		var cell := Vector2i(floor(world_pos.x / TILE_PX.x), floor(world_pos.y / TILE_PX.y))
+
+		test_requested.emit(cell)
+
+@export var world_canvas: CanvasItem
 
 func _update_hover() -> void:
 	if hover_service == null:

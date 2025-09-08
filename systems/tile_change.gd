@@ -41,11 +41,14 @@ func setup(data: DataLayer) -> void:
 ## 편의: 단일 셀 교체
 func replace_cell(cell: Vector2i, to_tile: int, reason: StringName = &"") -> void:
 	apply_replacements([cell], to_tile, reason)
+	# TODO 아래와 같은 형식으로 바꿔야 함.
+	#_data.apply_cells_with_spec([cell], { "sid" : 0 }, reason)
 
 ## 편의: 파괴(= VACUUM으로 교체)
 func destroy_cell(cell: Vector2i, reason: StringName = &"destroy") -> void:
 	_data.apply_cells_with_spec([cell], { "sid" : 0 }, reason)
 
+# TODO DataLayer에서 하기로 결정함. 아래 함수 처분 결정 필요. 또한 유틸들도.
 ## 핵심: 동기 배치 적용 (큐 없이)
 func apply_replacements(cells: Array, to_tile: int, reason: StringName = &"") -> void:
 	if _data == null or _size == Vector2i.ZERO:

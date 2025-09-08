@@ -62,6 +62,8 @@ func _ready() -> void:
 	input.overlay_toggle_requested.connect(_on_overlay_toggle_requested)
 	hover_service.hover_changed.connect(_on_hover_changed)
 
+	input.test_requested.connect(_test_by_left_click)
+
 	tile_info_tracker = tile_info_hud.get_node("TileInfoTracker") as TileInfoTracker
 
 	# 월드 생성
@@ -254,3 +256,6 @@ func _on_hud_overlay(overlay_name: StringName, enabled: bool) -> void:
 		&"temp":
 			if is_instance_valid(heatmap):
 				heatmap.visible = enabled
+
+func _test_by_left_click(cell: Vector2i):
+	tchange.destroy_cell(cell)

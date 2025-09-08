@@ -130,8 +130,9 @@ script = ExtResource("19_pfbnl")
 [node name="PhaseChange" type="Node" parent="Systems"]
 script = ExtResource("20_gwdna")
 
-[node name="InputController" type="Node" parent="Systems"]
+[node name="InputController" type="Node" parent="Systems" node_paths=PackedStringArray("world_canvas")]
 script = ExtResource("21_h4vgh")
+world_canvas = NodePath("../..")
 
 [node name="HoverService" type="Node" parent="Systems"]
 script = ExtResource("22_kvuv0")
