@@ -19,7 +19,7 @@ class_name World
 @onready var phase_change: PhaseChange =   %Systems/PhaseChange
 @onready var input: InputController =      %Systems/InputController
 @onready var hover_service: HoverService = %Systems/HoverService
-@onready var visual_sync: VisualSync =     %Systems/VisualSync
+#@onready var visual_sync: VisualSync =     %Systems/VisualSync
 
 # ── Overlay Manager ──────────────────────────────────────────────
 @onready var overlay_manager: OverlayManager = %OverlayManager
@@ -130,7 +130,7 @@ func _apply_worldgen_result(
 		data_layer.substance,
 		data_layer.temperature,
 		data_layer.index,
-		visual_sync,
+		#visual_sync,
 		clock,
 		rule_cache
 	)

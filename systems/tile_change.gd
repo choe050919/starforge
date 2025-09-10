@@ -46,7 +46,8 @@ func replace_cell(cell: Vector2i, to_tile: int, reason: StringName = &"") -> voi
 
 ## 편의: 파괴(= VACUUM으로 교체)
 func destroy_cell(cell: Vector2i, reason: StringName = &"destroy") -> void:
-	_data.apply_cells_with_spec([cell], { "sid" : 0 }, reason)
+	_data.set_cell_with_spec(cell, { "sid" : 0 , "phase" : 0 , "mass" : 0 , "temp" : 0 }, reason)
+	#_data.apply_cells_with_spec([cell], { "sid" : 0 }, reason)
 
 # TODO DataLayer에서 하기로 결정함. 아래 함수 처분 결정 필요. 또한 유틸들도.
 ## 핵심: 동기 배치 적용 (큐 없이)

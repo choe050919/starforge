@@ -41,6 +41,11 @@ shader = ExtResource("12_hnpqp")
 [node name="World" type="Node2D"]
 script = ExtResource("1_j7vgi")
 
+[node name="VisualSync" type="Node" parent="."]
+script = ExtResource("24_inp7a")
+terrain_path = NodePath("../Terrain")
+liquid_overlay_path = NodePath("../Terrain/LiquidOverlay")
+
 [node name="Terrain" type="Node2D" parent="."]
 script = ExtResource("2_inp7a")
 
@@ -129,6 +134,8 @@ script = ExtResource("19_pfbnl")
 
 [node name="PhaseChange" type="Node" parent="Systems"]
 script = ExtResource("20_gwdna")
+enabled = null
+debug_log = null
 
 [node name="InputController" type="Node" parent="Systems" node_paths=PackedStringArray("world_canvas")]
 script = ExtResource("21_h4vgh")
@@ -139,11 +146,6 @@ script = ExtResource("22_kvuv0")
 
 [node name="ToolManager" type="Node" parent="Systems"]
 script = ExtResource("23_sg5c8")
-
-[node name="VisualSync" type="Node" parent="Systems"]
-script = ExtResource("24_inp7a")
-terrain_path = NodePath("../../Terrain")
-liquid_overlay_path = NodePath("../../Terrain/LiquidOverlay")
 
 [node name="Moisture" type="Node" parent="Systems"]
 script = ExtResource("25_lwhbe")

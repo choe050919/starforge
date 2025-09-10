@@ -24,8 +24,8 @@ func is_ready() -> bool:
 	if not _phase_store.has_method("get_phase"):
 		push_warning("[TileInfoProvider] Missing method: PhaseStore.get_phase")
 		return false
-	if not _mass_store.has_method("get_mass"):
-		push_warning("[TileInfoProvider] Missing method: MassStore.get_mass")
+	if not _mass_store.has_method("get_by_index"):
+		push_warning("[TileInfoProvider] Missing method: MassStore.get_by_index")
 		return false
 	else: return true
 
@@ -54,7 +54,7 @@ func _read_phase(cell: Vector2i) -> int:
 	return _phase_store.get_phase(cell)
 
 func _read_mass(cell: Vector2i) -> int:
-	return _mass_store.get_mass(_grid_index.idx(cell))
+	return _mass_store.get_by_index(_grid_index.idx(cell))
 
 func _read_temperature(cell: Vector2i) -> int:
 	return _temperature_store.get_temperature(cell)

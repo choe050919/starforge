@@ -81,14 +81,14 @@ func set_cell(cell: Vector2i, m_mg: int) -> void:
 	emit_signal("mass_changed", cell)
 
 # ===== 읽기 경로 =====
-func get_mass(i: int) -> int:
+func get_by_index(i: int) -> int:
 	if not _index.in_bounds_index(i):
 		push_warning("[MassStore] Out‑of‑Bounds cell ignored: idx=%d" % i)
 		return 0
 	return _read[i]
 
-func get_mass_g(i: int) -> float:  return float(get_mass(i)) / MG_PER_G
-func get_mass_kg(i: int) -> float: return float(get_mass(i)) / MG_PER_KG
+func get_mass_g(i: int) -> float:  return float(get_by_index(i)) / MG_PER_G
+func get_mass_kg(i: int) -> float: return float(get_by_index(i)) / MG_PER_KG
 
 func get_read() -> PackedInt64Array:      return _read
 func get_raw_read() -> PackedInt64Array:  return _read

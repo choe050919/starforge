@@ -11,13 +11,13 @@ func setup(
 	index: GridIndex,
 	phase_store: PhaseStore,
 	substance_store: SubstanceStore,
-	visual_sync: VisualSync,
+	#visual_sync: VisualSync,
 	rule_cache: SubstanceRuleCache
 ) -> void:
 	_index = index
 	_phase_store = phase_store
 	_substance_store = substance_store
-	_visual = visual_sync
+	#_visual = visual_sync
 	_rules = rule_cache
 
 ## diff: { "changes": Array[{cell, from_sid, to_sid}], "stats": Dictionary }
@@ -56,7 +56,10 @@ func apply(diff: Dictionary, _sim_time: float = 0.0) -> void:
 	_phase_store.commit()
 	_substance_store.commit()
 
-	## 4) 비주얼 라우팅(최소 구현) # TODO
+	## 4) 비주얼 라우팅(최소 구현) TODO
+	# VisualSync 클래스의 완전 변경.
+	# 윗부분도, DataLayer의 내부에 직접 접근하는 게 아니라,
+	# DataLayer 자체의 함수에만 접근하게 수정 필요.
 	#if _visual:
 		#for key in by_pair.keys():
 			#var cells: PackedVector2Array = by_pair[key]

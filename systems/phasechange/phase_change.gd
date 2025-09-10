@@ -22,7 +22,7 @@ func setup(
 	substance_store: SubstanceStore,
 	temperature_store: TemperatureStore,
 	index: GridIndex,
-	visual_sync: VisualSync,
+	#visual_sync: VisualSync,
 	clock: SimClock,
 	rule_cache: SubstanceRuleCache
 ) -> void:
@@ -42,7 +42,7 @@ func setup(
 	_core.bind_rule_cache(_rules)
 
 	_applier = PhaseChangeApplier.new()
-	_applier.setup(_index, _phase_store, _substance_store, visual_sync, _rules)
+	_applier.setup(_index, _phase_store, _substance_store, _rules)
 
 func _on_sim_tick(_dt: float, sim_time: float) -> void:
 	if not enabled:
