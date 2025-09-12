@@ -188,34 +188,11 @@ func _on_sim_clock_tick(tag: StringName, dt: float) -> void:
 			# 기본 10Hz 틱
 			phase_change._on_sim_tick(dt, sim_time)
 			liquid.tick_liquid(dt)
-
 			liquid_overlay.render(liquid.get_amounts())
-
-			# DEPRECATED
-			match overlay_manager.current_overlay:
-				OverlayManager.OverlayMode.HEATMAP:
-					_render_temperature_overlay()
 		"temp":
 			temp._on_sim_tick(dt)
 		_:
 			push_error("[World._on_sim_clock_tick] wrong tag")
-
-func _render_temperature_overlay() -> void:
-	var T_ck: PackedInt32Array = data_layer.temperature.get_read()
-	var mask: PackedByteArray = data_layer.phase.get_read()
-	heatmap.render_full_with_mask(T_ck, mask)
-
-	# ΔT 기반 열원 오버레이 렌더
-	#if heat_src != null:
-		#var dT := temp.get_last_delta()
-		#heat_src.render_heat_sources(dT)
-
-# ── Tile lifecycle hooks ─────────────────────────────────────────
-#func _on_tile_replaced(cell: Vector2i, from_tile: int, to_tile: int, reason: StringName) -> void:
-	#pass
-#func _on_tile_destroyed(cell: Vector2i, from_tile: int, reason: StringName) -> void:
-	##data_layer.apply_cells_tile_spec() # TODO
-	#pass
 
 # ── Input / HUD ──────────────────────────────────────────────────
 func _pan_camera(delta: Vector2) -> void:

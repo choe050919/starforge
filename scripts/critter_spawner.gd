@@ -22,15 +22,6 @@ func _ready() -> void:
 		_dur = get_node(durability_path) as Durability
 	_rng.randomize()
 
-# TODO
-#func _unhandled_input(e: InputEvent) -> void: # 테스트용 임시 코드이기에 input_controller 밖에서 처리 중
-	#if e is InputEventKey:
-		#var kb := e as InputEventKey
-		#if kb.pressed and kb.keycode == KEY_Q:
-			#_spawn_at_mouse(critter_scene)
-		#elif kb.pressed and kb.keycode == KEY_W:
-			#_spawn_at_mouse(builder_scene)
-
 func _spawn_at_mouse(scene: PackedScene) -> void:
 	if scene == null or _ground == null:
 		push_warning("[Spawner] Missing critter_scene or ground reference.")

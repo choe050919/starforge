@@ -181,8 +181,8 @@ static func apply_deltaQ_to_T(
 
 		T_new[i] += deltaT_cK
 
-		if T_new[i] <= 0: # TODO
-			print("셀 index: ", i, " 변화량: ", deltaT_cK, " 결과값: ", T_new[i])
+		if T_new[i] <= 0:
+			push_error("[TemperatureCore] 비정상 온도. 셀 index: ", i, " 변화량: ", deltaT_cK, " 결과값: ", T_new[i])
 
 	return T_new
 
