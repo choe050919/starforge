@@ -7,6 +7,7 @@ var phase: PhaseStore
 var mass: MassStore
 var temp: TemperatureStore
 
+@onready var ground: Ground = %Ground
 @export var heatmap_overlay: HeatmapOverlay
 
 func setup(data_layer: DataLayer) -> void:
@@ -32,10 +33,11 @@ func _on_tiles_changed(
 
 	# 2) 부분 업데이트 경로
 	if idxs.is_empty():
-		push_error("[VisualSync] not full_refresh and idxs is empty"); return
 		print("something") # DEBUG HACK
+		push_error("[VisualSync] not full_refresh and idxs is empty"); return
 	_refresh_indices(idxs, payload)
 
+## 전체 갱신. 어떤 정보를 동기화하느냐에 대한 입력만 받으며, 구체적 갱신은 직접 한다.
 func _refresh_all(payload: Dictionary) -> void:
 	var ch_sid   : bool = payload.get("sid_changed", false)
 	var ch_phase : bool = payload.get("phase_changed", false)
@@ -60,18 +62,18 @@ func _refresh_indices(idxs: PackedInt32Array, payload: Dictionary) -> void:
 	for i in idxs:
 		var cell := _data_layer.index.cell(i)
 
-		## ── Substance/Phase 변경 → Terrain 쪽 갱신
-		#if ch_sid or ch_phase:
-			#var sid   := substance.get_by_index(i)
-			#var phase := phase.get_by_index(i)
-			#_terrain.update_tile(cell, sid, phase)
-#
-		## ── Mass 변경 → 액체 오버레이
+		# ── Substance/Phase 변경 → Terrain 쪽 갱신
+		if ch_sid or ch_phase:
+			var sid   := substance.get_by_index(i)
+			var phase := phase.get_by_index(i)
+			ground.apply_cell_change(cell, sid)
+
+		# ── Mass 변경 → 액체 오버레이
 		#if ch_mass:
 			#var m := mass.get_by_index(i)
 			#_lo.update_cell(cell, m)
-#
-		## ── Temperature 변경 → 히트맵 오버레이
+
+		# ── Temperature 변경 → 히트맵 오버레이
 		#if ch_temp:
 			#var t := temp.get_by_index(i)
 			#_lo.update_heat(cell, t)

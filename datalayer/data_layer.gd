@@ -230,7 +230,7 @@ func get_spec(tile_id: int) -> Dictionary:
 	return _schema[tile_id].duplicate(true) # 복사본 리턴 (원본 보호)
 
 ## 규칙 해석 헬퍼: 없음=보존 / null=기본 / 값=설정
-func _resolve_field(field: String, current: Variant, default_spec: Dictionary, spec: Dictionary) -> Variant:
+func _resolve_field(field: String,current: Variant, default_spec: Dictionary, spec: Dictionary) -> Variant:
 	if not spec.has(field):
 		return current
 	var v = spec[field]

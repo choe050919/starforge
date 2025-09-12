@@ -3,6 +3,7 @@ class_name World
 
 # ── VisualSync ───────────────────────────────────────────────────
 @onready var visual_sync: VisualSync = %VisualSync
+@onready var ground: Ground = %Ground
 
 # ── Terrain & Overlays ───────────────────────────────────────────
 @onready var terrain = $Terrain
@@ -108,6 +109,7 @@ func _apply_worldgen_result(
 ) -> void:
 	# 시각화/데이터
 	terrain.apply_tiles(tiles, size)
+	ground.apply_tiles(tiles, size)
 
 	visual_sync.setup(data_layer)
 

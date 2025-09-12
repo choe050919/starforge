@@ -1,8 +1,9 @@
-[gd_scene load_steps=36 format=3 uid="uid://c5gv3n6byiin7"]
+[gd_scene load_steps=37 format=3 uid="uid://c5gv3n6byiin7"]
 
 [ext_resource type="Script" uid="uid://dgppaejvd18y0" path="res://world/world.gd" id="1_j7vgi"]
 [ext_resource type="Script" uid="uid://dsrbjd0kmv17k" path="res://world/terrain/terrain.gd" id="2_inp7a"]
 [ext_resource type="TileSet" uid="uid://dnn0uacxq48mh" path="res://tilesets/world.tres" id="3_bwxdu"]
+[ext_resource type="Script" uid="uid://ov5own12ue54" path="res://visualsync/ground.gd" id="4_ll3gq"]
 [ext_resource type="Script" uid="uid://da160trn2ljp2" path="res://world/terrain/liquid_overlay.gd" id="4_lwhbe"]
 [ext_resource type="Script" uid="uid://8fqfln7lbt0r" path="res://world/terrain/moisture_overlay.gd" id="5_avd5l"]
 [ext_resource type="TileSet" uid="uid://dyepojxtr2r7l" path="res://tilesets/cracks.tres" id="5_ftqqi"]
@@ -25,7 +26,7 @@
 [ext_resource type="Script" uid="uid://dou5of5j8rehy" path="res://scripts/input_controller.gd" id="21_h4vgh"]
 [ext_resource type="Script" uid="uid://dcuvrt05007wb" path="res://scripts/hover_service.gd" id="22_kvuv0"]
 [ext_resource type="Script" uid="uid://dsk25alr21kno" path="res://systems/tool_manager.gd" id="23_sg5c8"]
-[ext_resource type="Script" uid="uid://0y3dr3nwo17m" path="res://systems/visual_sync.gd" id="24_inp7a"]
+[ext_resource type="Script" uid="uid://0y3dr3nwo17m" path="res://visualsync/visual_sync.gd" id="24_inp7a"]
 [ext_resource type="Script" uid="uid://b2776qmf4l0o" path="res://scripts/critter_spawner.gd" id="24_vu62d"]
 [ext_resource type="PackedScene" uid="uid://dvfaso5evvyd" path="res://scenes/critter_breaker.tscn" id="25_58wjt"]
 [ext_resource type="Script" uid="uid://chsk6sttjcten" path="res://systems/hydrology/moisture.gd" id="25_lwhbe"]
@@ -47,6 +48,11 @@ script = ExtResource("24_inp7a")
 heatmap_overlay = NodePath("OverlayManager/OverlayLayer/HeatmapOverlay")
 terrain_path = NodePath("../Terrain")
 liquid_overlay_path = NodePath("../Terrain/LiquidOverlay")
+
+[node name="Ground" type="TileMapLayer" parent="VisualSync"]
+unique_name_in_owner = true
+tile_set = ExtResource("3_bwxdu")
+script = ExtResource("4_ll3gq")
 
 [node name="OverlayManager" type="Node" parent="VisualSync"]
 unique_name_in_owner = true
@@ -87,6 +93,7 @@ mouse_filter = 2
 script = ExtResource("2_inp7a")
 
 [node name="Ground" type="TileMapLayer" parent="Terrain"]
+visible = false
 tile_set = ExtResource("3_bwxdu")
 
 [node name="LiquidOverlay" type="Node2D" parent="Terrain"]
