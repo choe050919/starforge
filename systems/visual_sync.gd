@@ -1,6 +1,19 @@
 extends Node
 class_name VisualSync
-## 목적지(도착지) 기준 라우터. TileChange 경유 없음.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 @export_node_path("Node") var terrain_path: NodePath
 @export_node_path("Node") var liquid_overlay_path: NodePath
