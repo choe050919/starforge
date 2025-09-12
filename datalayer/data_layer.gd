@@ -24,6 +24,7 @@ func setup(
 	mass.setup(index, masses)
 	temperature.setup(index, temperatures)
 
+	# 로깅 및 검증 단계
 	_log_counts()
 	_validate()
 
@@ -43,116 +44,126 @@ var _schema := { # sid 값을 기준으로 찾을 수 있다.
 }
 
 # ───────────────────────────────────────────────────────────────
-## 단일? 진입점(Write-API)
+## 단일 진입점(Write-API) → 복수 셀 배치 버전
+## 받는 키: "sid" | "phase" | "mass" | "temp"
+## 키가 없음 → 보존(preserve)
+## 키가 있고 값이 not null → 새 값으로 설정(set)
+## 키가 있고 값이 null → 스키마 기본값(default)으로 설정
+func set_cells_with_spec(cells: Array[Vector2i], spec: Dictionary, reason: StringName = &"") -> void:
+	if cells.is_empty():
+		return
+
+	# ── Pass 1: 타깃 계산 & 변경 여부 수집 ────────────────────────────────
+	var idxs: Array[int] = []
+	var tgt_sids  : Array[int] = []
+	var tgt_phases: Array[int] = []
+	var tgt_masses: Array[int] = []
+	var tgt_temps : Array[int] = []
+
+	var ch_sid_arr  : Array[bool] = []
+	var ch_phase_arr: Array[bool] = []
+	var ch_mass_arr : Array[bool] = []
+	var ch_temp_arr : Array[bool] = []
+
+	var any_ch_sid   := false
+	var any_ch_phase := false
+	var any_ch_mass  := false
+	var any_ch_temp  := false
+
+	for cell in cells:
+		if not index.in_bounds_cell(cell):
+			push_error("[DataLayer.set_cells_with_spec] invalid cell: %s" % [cell])
+			continue
+		var i := index.idx(cell)
+
+		# 현재값
+		var cur_sid   : int = substance.get_by_index(i)
+		var cur_phase : int = phase.get_by_index(i)
+		var cur_mass  : int = mass.get_by_index(i)
+		var cur_temp  : int = temperature.get_by_index(i)
+
+		# 타깃 sid
+		var tgt_sid := cur_sid
+		if spec.has("sid"):
+			if spec["sid"] == null:
+				push_error("[DataLayer.set_cells_with_spec] sid cannot be null"); 
+				continue
+			tgt_sid = int(spec["sid"])
+
+		# 해당 sid 기준 기본 스펙
+		var default_spec := get_spec(tgt_sid)
+
+		# 타깃 필드 해석
+		var tgt_phase : int = int(_resolve_field("phase", cur_phase, default_spec, spec))
+		var tgt_mass  : int = int(_resolve_field("mass",  cur_mass,  default_spec, spec))
+		var tgt_temp  : int = int(_resolve_field("temp",  cur_temp,  default_spec, spec))
+
+		# 변경 여부
+		var ch_sid   : bool = spec.has("sid") and (tgt_sid != cur_sid)
+		var ch_phase : bool = (tgt_phase != cur_phase)
+		var ch_mass  : bool = (tgt_mass  != cur_mass)
+		var ch_temp  : bool = (tgt_temp  != cur_temp)
+
+		if not (ch_sid or ch_phase or ch_mass or ch_temp):
+			continue
+
+		# accumulate
+		idxs.append(i)
+		tgt_sids.append(tgt_sid)
+		tgt_phases.append(tgt_phase)
+		tgt_masses.append(tgt_mass)
+		tgt_temps.append(tgt_temp)
+
+		ch_sid_arr.append(ch_sid)
+		ch_phase_arr.append(ch_phase)
+		ch_mass_arr.append(ch_mass)
+		ch_temp_arr.append(ch_temp)
+
+		any_ch_sid   = any_ch_sid   or ch_sid
+		any_ch_phase = any_ch_phase or ch_phase
+		any_ch_mass  = any_ch_mass  or ch_mass
+		any_ch_temp  = any_ch_temp  or ch_temp
+
+	# 변경된 셀이 하나도 없으면 종료
+	if idxs.is_empty():
+		return
+
+	# ── Pass 2: 스토어별 일괄 begin/set/commit ────────────────────────────
+	if any_ch_sid:   substance.begin_write()
+	if any_ch_phase: phase.begin_write()
+	if any_ch_mass:  mass.begin_write()
+	if any_ch_temp:  temperature.begin_write()
+
+	for k in idxs.size():
+		var ii := idxs[k]
+		if any_ch_sid and ch_sid_arr[k]:
+			substance.set_by_index(ii, tgt_sids[k])
+		if any_ch_phase and ch_phase_arr[k]:
+			phase.set_by_index(ii, tgt_phases[k])
+		if any_ch_mass and ch_mass_arr[k]:
+			mass.set_by_index(ii, tgt_masses[k])
+		if any_ch_temp and ch_temp_arr[k]:
+			temperature.set_by_index(ii, tgt_temps[k])
+
+	if any_ch_sid:   substance.commit()
+	if any_ch_phase: phase.commit()
+	if any_ch_mass:  mass.commit()
+	if any_ch_temp:  temperature.commit()
+
+	emit_signal(
+		"tiles_changed",
+		PackedInt32Array(idxs),
+		(reason if reason != &"" else &"apply_spec_cells"),
+		{"sid_changed": any_ch_sid}
+	)
+
+## 하위 호환/편의를 위한 단수 래퍼
 ## 받는 키: "sid" | "phase" | "mass" | "temp"
 ## 키가 없음 → 보존(preserve)
 ## 키가 있고 값이 not null → 새 값으로 설정(set)
 ## 키가 있고 값이 null → 스키마 기본값(default)으로 설정
 func set_cell_with_spec(cell: Vector2i, spec: Dictionary, reason: StringName = &"") -> void:
-	# 0) 인덱스 & 범위 체크
-	if not index.in_bounds_cell(cell):
-		push_error("[DataLayer.set_cell_with_spec] invalid cell: %s" % [cell])
-		return
-	var i := index.idx(cell)
-
-	# 1) 현재값
-	var cur_sid   : int = substance.get_by_index(i)
-	var cur_phase : int = phase.get_by_index(i)
-	var cur_mass  : int = mass.get_by_index(i)
-	var cur_temp  : int = temperature.get_by_index(i)
-
-	# 2) 타겟 sid 결정
-	var tgt_sid := cur_sid
-	if spec.has("sid"):
-		if spec["sid"] == null:
-			push_error("[DataLayer.set_cell_with_spec] sid cannot be null"); return
-		tgt_sid = int(spec["sid"])
-
-	# 3) 기본값 테이블 준비 (항상 최종 sid 기준)
-	var default_spec := get_spec(tgt_sid)
-
-	# 4) 타겟값 해석 (없음=보존 / null=기본 / 값=설정)
-	var tgt_phase : int = int(_resolve_field("phase", cur_phase, default_spec, spec))
-	var tgt_mass  : int = int(_resolve_field("mass",  cur_mass,  default_spec, spec)) # 키 이름이 mass_mg이면 바꿔주세요
-	var tgt_temp  : int = int(_resolve_field("temp",  cur_temp,  default_spec, spec)) # 키 이름이 temp_ck이면 바꿔주세요
-
-	print("[Debug.set_cell_with_spec] ", tgt_phase, tgt_mass, tgt_temp)
-
-	# 5) 실제 변경 여부
-	var ch_sid   : bool = spec.has("sid") and (tgt_sid != cur_sid)
-	var ch_phase : bool = (tgt_phase != cur_phase)
-	var ch_mass  : bool = (tgt_mass  != cur_mass)
-	var ch_temp  : bool = (tgt_temp  != cur_temp)
-
-	print("[Debug.set_cell_with_spec] ", ch_sid, ch_phase, ch_mass, ch_temp)
-
-	if not (ch_sid or ch_phase or ch_mass or ch_temp):
-		return
-
-	# 6) 바뀌는 스토어만 begin
-	if ch_sid:   substance.begin_write()
-	if ch_phase: phase.begin_write()
-	if ch_mass:  mass.begin_write()
-	if ch_temp:  temperature.begin_write()
-
-	# 7) set_by_index (바뀌는 항목만)
-	if ch_sid:   substance.set_by_index(i, tgt_sid)
-	if ch_phase: phase.set_by_index(i, tgt_phase)
-	if ch_mass:  mass.set_by_index(i, tgt_mass)
-	if ch_temp:  temperature.set_by_index(i, tgt_temp)
-
-	# 8) commit
-	if ch_sid:   substance.commit()
-	if ch_phase: phase.commit()
-	if ch_mass:  mass.commit()
-	if ch_temp:  temperature.commit()
-
-	emit_signal(
-		"tiles_changed",
-		PackedInt32Array([i]),
-		reason if reason != &"" else &"apply_spec_cell",
-		{"sid_changed": ch_sid}
-	)
-
-# 재작성 필요. TODO
-func apply_cells_with_spec(cells: Array[Vector2i], tile_spec: Dictionary, reason: StringName = &"") -> void:
-	if not tile_spec.has(SID):
-		push_error("[DataLayer] tile_spec must include 'sid'")
-
-	# 1) 스키마에서 기본 스펙 가져오기 (tile-> {sid, phase, mass, temp})
-	## 스키마에 저장된 기본 스펙
-	var spec = get_spec(tile_spec["sid"])  # {sid, phase, mass, temp}
-
-	# 2) 오버라이드 적용
-	for k in tile_spec.keys():
-		if k != "sid":
-			spec[k] = tile_spec[k]
-
-	# 3) 자동 보정
-	if spec["mass"] <= 0:
-		spec["mass"] = 0
-		spec["sid"] = 0
-		spec["phase"] = 0
-		spec["temp"] = 0
-
-	# 4) 필요한 스토어만 begin
-	var to_begin := []
-	to_begin.append(substance)
-	to_begin.append(phase)
-	to_begin.append(mass)
-	to_begin.append(temperature)
-	for s: BaseStore in to_begin: s.begin_write()
-
-	# 5) 배치 set
-	for c in cells:
-		var i := index.idx(c)
-		substance.set_by_index(i, spec["sid"])
-		phase.set_by_index(i, spec["phase"])
-		mass.set_by_index(i, spec["mass"])
-		temperature.set_by_index(i, spec["temp"])
-
-	# 6) commit
-	for s: BaseStore in to_begin: s.commit()
+	set_cells_with_spec([cell], spec, reason)
 
 func get_spec(tile_id: int) -> Dictionary:
 	if not _schema.has(tile_id):
@@ -170,7 +181,7 @@ func _resolve_field(field: String, current: Variant, default_spec: Dictionary, s
 	return v
 
 # ───────────────────────────────────────────────────────────────
-# 각 phase 수 집계
+## 각 phase 수 집계
 func _log_counts() -> void:
 	var counts := [0, 0, 0, 0]
 	var data := phase.get_read()
@@ -178,7 +189,7 @@ func _log_counts() -> void:
 		counts[data[i]] += 1
 	print("[DataLayer] SOLID=%d LIQUID=%d GAS=%d VACUUM=%d" % [counts[PhaseStore.Phase.SOLID], counts[PhaseStore.Phase.LIQUID], counts[PhaseStore.Phase.GAS], counts[PhaseStore.Phase.VACUUM]])
 
-# 무결성 검증(기존 + 물질/phase 일관성 체크 옵션)
+## 무결성 검증(기존 + 물질/phase 일관성 체크 옵션)
 func _validate() -> void:
 	var p := phase.get_read()
 	var m := mass.get_read()

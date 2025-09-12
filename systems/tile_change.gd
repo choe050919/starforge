@@ -1,4 +1,4 @@
-## TileChange # (Refactored, no TileStore/EventQueue)
+## TileChange
 ## - DataLayer에 직접 접근하여 타일을 동기 배치로 변경
 ## - Terrain 적용 & 시그널 발행만 담당
 ## - 최소 책임: 경계검사, 타일 타입 쓰기, 가시화 반영, 시그널

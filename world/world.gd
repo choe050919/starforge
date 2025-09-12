@@ -76,8 +76,8 @@ func _ready() -> void:
 	durability.hp_changed.connect(crack_overlay.on_hp_changed)
 	durability.break_requested.connect(crack_overlay.on_break_requested)
 
-	tchange.tile_replaced.connect(_on_tile_replaced)
-	tchange.tile_destroyed.connect(_on_tile_destroyed)
+	#tchange.tile_replaced.connect(_on_tile_replaced)
+	#tchange.tile_destroyed.connect(_on_tile_destroyed)
 
 func _on_world_generated(
 		size: Vector2i,
@@ -212,12 +212,11 @@ func _render_temperature_overlay() -> void:
 		#heat_src.render_heat_sources(dT)
 
 # ── Tile lifecycle hooks ─────────────────────────────────────────
-func _on_tile_replaced(cell: Vector2i, from_tile: int, to_tile: int, reason: StringName) -> void:
-	pass
-
-func _on_tile_destroyed(cell: Vector2i, from_tile: int, reason: StringName) -> void:
-	#data_layer.apply_cells_tile_spec() # TODO
-	pass
+#func _on_tile_replaced(cell: Vector2i, from_tile: int, to_tile: int, reason: StringName) -> void:
+	#pass
+#func _on_tile_destroyed(cell: Vector2i, from_tile: int, reason: StringName) -> void:
+	##data_layer.apply_cells_tile_spec() # TODO
+	#pass
 
 # ── Input / HUD ──────────────────────────────────────────────────
 func _pan_camera(delta: Vector2) -> void:
