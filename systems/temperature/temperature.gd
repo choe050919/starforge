@@ -10,6 +10,7 @@ class_name Temperature
 @export var debug_log := false
 
 # ── 의존성 ─────────────────────────────────────────────────────────
+var _data: DataLayer
 var _substance_store: SubstanceStore
 var _phase_store: PhaseStore
 var _temperature_store: TemperatureStore
@@ -22,27 +23,23 @@ var _rules: SubstanceRuleCache
 var _core: TemperatureCore
 
 func setup(
-	ss: SubstanceStore,
-	ps: PhaseStore,
-	ts: TemperatureStore,
-	ms: MassStore,
-	index: GridIndex,
+	data: DataLayer,
 	clock: SimClock,
 	rule_cache: SubstanceRuleCache
 ) -> void:
-	_substance_store = ss
-	_phase_store = ps
-	_temperature_store = ts
-	_mass_store = ms
-	_index = index
+	_data = data
+	_substance_store = _data.substance
+	_phase_store = _data.phase
+	_temperature_store = _data.temperature
+	_mass_store = _data.mass
+	_index = _data.index
 	_clock = clock
 	_rules = rule_cache
 
-	@warning_ignore("shadowed_variable_base_class")
-	for name in ["_substance_store", "_phase_store", "_temperature_store", "_mass_store", "_index", "_clock"]:
-		var value = get(name)
+	for _name in ["_substance_store", "_phase_store", "_temperature_store", "_mass_store", "_index", "_clock"]:
+		var value = get(_name)
 		if value == null:
-			push_error("[Temperature.setup]%s is null" % name)
+			push_error("[Temperature.setup]%s is null" % _name)
 
 	_core = TemperatureCore.new()
 	_core.setup_thermal_from_cache(_rules)
@@ -53,17 +50,16 @@ func _on_sim_tick(dt: float) -> void:
 
 	var stats := _core.tick_fullscan(_temperature_store, _substance_store, _mass_store, _index, dt)
 
-	_temperature_store.begin_write()
-	if stats.is_empty(): push_error("[Temperature] empty array"); return
+	# TODO write-commit은 DataLayer에서 하도록 수정필요.
 
-	for i in stats.size():
-		var t: int = stats[i]
-		_temperature_store.set_by_index(i, t)
+	_data.set_bulk_temp(stats)
 
-	_temperature_store.commit()
-
-	if debug_log and stats:
-		pass
-		#var avg := float(stats.get("avg_delta_c", 0.0))
-		#var mx  := float(stats.get("max_abs_delta_c", 0.0))
-		#print("[Temperature] avgΔ=%.2f°C, max|Δ|=%.2f°C" % [avg, mx])
+	# DEPRECATED
+	#_temperature_store.begin_write()
+	#if stats.is_empty(): print("[Temperature] empty array"); return
+#
+	#for i in stats.size():
+		#var t: int = stats[i]
+		#_temperature_store.set_by_index(i, t)
+#
+	#_temperature_store.commit()

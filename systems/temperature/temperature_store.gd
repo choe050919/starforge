@@ -68,6 +68,24 @@ func set_by_index(i: int, temp: int) -> void:
 	_write[i] = temp
 	emit_signal("temperature_changed", _index.cell(i))
 
+func replace_all(values: PackedInt32Array, reason: StringName = &"bulk_replace") -> void:
+	var n := _index.size.x * _index.size.y
+	if values.size() != n:
+		push_error("[TemperatureStore.replace_all] size mismatch: need=%d, got=%d" % [n, values.size()])
+		return
+
+	# 대량 교체: per-cell temperature_changed를 쏘지 않음 (성능)
+	var was_writing := _is_writing
+	if not was_writing:
+		begin_write()
+	# _write를 통째로 교체(복제하여 외부 참조 차단)
+	_write = values.duplicate()
+	if not was_writing:
+		commit()
+	else:
+		# 이미 외부에서 begin_write() 중이면 호출자가 commit()을 할 것으로 가정
+		pass
+
 # ── 합계/보정 ───────────────────────────────────────────
 func _safe_sum(arr: PackedInt32Array) -> int:
 	var s: int = 0

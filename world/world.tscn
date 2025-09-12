@@ -136,8 +136,6 @@ script = ExtResource("19_pfbnl")
 
 [node name="PhaseChange" type="Node" parent="Systems"]
 script = ExtResource("20_gwdna")
-enabled = null
-debug_log = null
 
 [node name="InputController" type="Node" parent="Systems" node_paths=PackedStringArray("world_canvas")]
 script = ExtResource("21_h4vgh")

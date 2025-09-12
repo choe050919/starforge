@@ -52,7 +52,7 @@ var last_max_abs_delta_c := 0.0
 
 # ─────────────────────────────────────────────────────────
 # 한 틱 풀스캔(확산 + 발열):
-# - temp_store: TemperatureStore (cK). begin_write/commit은 내부에서 처리.
+# - temp_store: TemperatureStore (cK).
 # - phase_store: 전도 가능 여부 판정(기본: SOLID만 전달).
 # - substance_store: sid → α/발열 룰 조회.
 # - index: GridIndex

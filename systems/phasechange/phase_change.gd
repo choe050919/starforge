@@ -33,10 +33,9 @@ func setup(
 	_clock = clock
 	_rules = rule_cache
 
-	@warning_ignore("shadowed_variable_base_class")
-	for name in ["_phase_store", "_substance_store", "_temperature_store", "_index", "_clock", "_rules"]:
-		if get(name) == null:
-			push_error("[PhaseChange.setup]%s is null" % name)
+	for _name in ["_phase_store", "_substance_store", "_temperature_store", "_index", "_clock", "_rules"]:
+		if get(_name) == null:
+			push_error("[PhaseChange.setup]%s is null" % _name)
 
 	_core = PhaseChangeCore.new()
 	_core.bind_rule_cache(_rules)

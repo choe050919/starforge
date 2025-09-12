@@ -123,11 +123,7 @@ func _apply_worldgen_result(
 	liquid.set_liquid_sids()
 
 	temp.setup(
-		data_layer.substance,
-		data_layer.phase,
-		data_layer.temperature,
-		data_layer.mass,
-		data_layer.index,
+		data_layer,
 		clock,
 		rule_cache
 	)

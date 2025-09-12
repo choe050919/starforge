@@ -170,6 +170,59 @@ func set_cells_with_spec(cells: Array[Vector2i], spec: Dictionary, reason: Strin
 func set_cell_with_spec(cell: Vector2i, spec: Dictionary, reason: StringName = &"") -> void:
 	set_cells_with_spec([cell], spec, reason)
 
+# 스토어 전체 교체 (개별 스토어 전용)
+func set_bulk_sid(arr: PackedInt32Array, reason: StringName = &"") -> void:
+	var n := index.size.x * index.size.y
+	if arr.size() != n:
+		push_error("[DataLayer.set_bulk_sid] size mismatch: need=%d, got=%d" % [n, arr.size()]); return
+	substance.replace_all(arr, reason if reason != &"" else &"bulk_sid")
+	emit_signal("tiles_changed", PackedInt32Array(), &"bulk_sid",
+		{"sid_changed": true, "full_refresh": true})
+
+func set_bulk_phase(arr: PackedByteArray, reason: StringName = &"") -> void:
+	var n := index.size.x * index.size.y
+	if arr.size() != n:
+		push_error("[DataLayer.set_bulk_phase] size mismatch: need=%d, got=%d" % [n, arr.size()]); return
+	phase.replace_all(arr, reason if reason != &"" else &"bulk_phase")
+	emit_signal("tiles_changed", PackedInt32Array(), &"bulk_phase",
+		{"phase_changed": true, "full_refresh": true})
+
+func set_bulk_mass(arr: PackedInt64Array, reason: StringName = &"") -> void:
+	var n := index.size.x * index.size.y
+	if arr.size() != n:
+		push_error("[DataLayer.set_bulk_mass] size mismatch: need=%d, got=%d" % [n, arr.size()]); return
+	mass.replace_all(arr, reason if reason != &"" else &"bulk_mass")
+	emit_signal("tiles_changed", PackedInt32Array(), &"bulk_mass",
+		{"mass_changed": true, "full_refresh": true})
+
+func set_bulk_temp(arr: PackedInt32Array, reason: StringName = &"") -> void:
+	var n := index.size.x * index.size.y
+	if arr.size() != n:
+		push_error("[DataLayer.set_bulk_temp] size mismatch: need=%d, got=%d" % [n, arr.size()]); return
+	temperature.replace_all(arr, reason if reason != &"" else &"bulk_temp")
+	emit_signal("tiles_changed", PackedInt32Array(), &"bulk_temp",
+		{"temp_changed": true, "full_refresh": true})
+
+## 제네릭 버전
+## target: "sid" | "phase" | "mass" | "temp"
+func set_store_bulk(target: StringName, values: Variant, reason: StringName = &"") -> void:
+	match String(target):
+		"sid":
+			if values is PackedInt32Array: set_bulk_sid(values, reason)
+			else: push_error("[DataLayer.set_store_bulk] sid expects PackedInt32Array")
+		"phase":
+			if values is PackedByteArray: set_bulk_phase(values, reason)
+			else: push_error("[DataLayer.set_store_bulk] phase expects PackedByteArray")
+		"mass":
+			if values is PackedInt64Array: set_bulk_mass(values, reason)
+			else: push_error("[DataLayer.set_store_bulk] mass expects PackedInt64Array")
+		"temp":
+			if values is PackedInt32Array: set_bulk_temp(values, reason)
+			else: push_error("[DataLayer.set_store_bulk] temp expects PackedInt32Array")
+		_:
+			push_error("[DataLayer.set_store_bulk] unknown target: %s" % [target])
+
+
 func get_spec(tile_id: int) -> Dictionary:
 	if not _schema.has(tile_id):
 		push_error("[DataLayer] Unknown tile id %s" % tile_id)

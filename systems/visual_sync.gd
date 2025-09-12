@@ -20,21 +20,40 @@ func setup(data_layer: DataLayer) -> void:
 ## payload 키:
 ## "sid_changed" | "phase_changed" | "mass_changed" | "temp_changed"
 func _on_tiles_changed(
-	changed_by_index: PackedInt32Array,
+	idxs: PackedInt32Array,
 	reason: StringName,
 	payload: Dictionary
 ) -> void:
-	if changed_by_index.is_empty(): push_error("[VisualSync] nothing changed"); return
+	# 1) 전체 무효화 신호면 풀 리프레시
+	if payload.get("full_refresh", false):
+		print("all")
+		_refresh_all(payload) # ← 내부에서 각 레이어/텍스처 전체 재생성
+		return
 
-	if payload["sid_changed"] == true:
-		pass
+	# 2) 부분 업데이트 경로
+	if idxs.is_empty():
+		push_error("[VisualSync] not full_refresh and idxs is empty");
+		return
+		print("something")
+	_refresh_indices(idxs, payload)
 
-	if payload["temp_changed"] == true:
-		print("dd")
+func _refresh_all(payload: Dictionary) -> void:
+	var ch_sid  : bool = payload.get("sid_changed", false)
+	var ch_phase: bool = payload.get("phase_changed", false)
+	var ch_mass : bool = payload.get("mass_changed", false)
+	var ch_temp : bool = payload.get("temp_changed", false)
+
+	if ch_temp:
 		heatmap_overlay.render_full_with_mask(temp.get_raw_read(), phase.get_raw_read())
+	# 예시:
+	#if ch_sid:
+		#terrain.rebuild_all()      # 타일 아틀라스/메시 등 전체 재구성
+	#if ch_mass:
+		#liquid_overlay.rebuild_all()
+	# ... 필요 노드만 호출
 
-
-
+func _refresh_indices(idxs: PackedInt32Array, payload: Dictionary) -> void:
+	pass
 
 @export_node_path("Node") var terrain_path: NodePath
 @export_node_path("Node") var liquid_overlay_path: NodePath
@@ -50,11 +69,10 @@ func _ready() -> void:
 
 	# LiquidOverlay는 매 틱 render(amounts)로 동기화되므로 없어도 작동함.
 
-	@warning_ignore("shadowed_variable_base_class")
-	for name in ["_terrain", "_lo"]:
-		var value = get(name)
+	for _name in ["_terrain", "_lo"]:
+		var value = get(_name)
 		if value == null:
-			push_error("[VisualSync.setup]%s is null" % name)
+			push_error("[VisualSync.setup]%s is null" % _name)
 
 # ── Terrain 목적지 ────────────────────────────────────────
 func to_terrain_destroy_ice(cells: PackedVector2Array, _reason: StringName = &"") -> void:
