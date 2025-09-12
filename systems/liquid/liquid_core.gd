@@ -1,6 +1,9 @@
 extends RefCounted
 class_name LiquidCore
 
+## 표면장력에 의해 옆으로 완전히 흐르지 않고 남는 액체의 질량 값
+const RESIDUAL_SURFACE_MASS := 1000
+
 const PH_VACUUM := 0
 const PH_SOLID  := 1
 const PH_LIQUID := 2
@@ -73,7 +76,7 @@ func compute_diff(R: Dictionary, _dt: float) -> Dictionary:
 			# ── 2) 좌/우 평형
 			var remain := m_here - sent
 			if remain > 0:
-				if remain < 1000:
+				if remain < RESIDUAL_SURFACE_MASS:
 					continue
 				# ← 왼쪽
 				var left := Vector2i(x - 1, y)

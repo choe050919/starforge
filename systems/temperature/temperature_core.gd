@@ -3,8 +3,11 @@
 extends RefCounted
 class_name TemperatureCore
 
-const TILE_LEN_M := 0.1  # 1타일 = 1 m 라면
+const TILE_LEN_M := 0.1  # 0.1이라면 한 변의 길이가 0.1m
 const GEOM_ORTHO := TILE_LEN_M  # A/d = L
+
+## 저질량 처리의 기준값 (mg)
+const MIN_MASS_FOR_CONDUCTION := 1000
 
 # 4방 탐색
 const DIRS := [Vector2i(1,0), Vector2i(-1,0), Vector2i(0,1), Vector2i(0,-1)]
@@ -79,7 +82,7 @@ func tick_fullscan(
 
 	_ensure_capacity(n)
 
-	var dQ := compute_deltaQ(w, h, n, T, S, k_per_sid, dt)
+	var dQ := compute_deltaQ(w, h, n, T, S, M, k_per_sid, dt)
 	if false: # 디버그
 		print("[TemperatureCore] mean|dQ|=", _mean_abs(dQ))
 
@@ -96,7 +99,7 @@ func tick_fullscan(
 ## 반환하는 열량값의 단위는 cJ(센티줄)이다.
 static func compute_deltaQ(
 	w: int, h: int, n: int,
-	T: PackedInt32Array, S: PackedInt32Array,
+	T: PackedInt32Array, S: PackedInt32Array, M:PackedInt64Array,
 	K: Dictionary[int, float],
 	dt: float
 ) -> PackedFloat64Array:
@@ -134,7 +137,18 @@ static func compute_deltaQ(
 					continue
 
 				var Tj := float(T[j])
-				sum_Q += kij * GEOM_ORTHO * (Tj - Ti) * dt # T: cK(센티켈빈, Q: cJ(센티줄)
+
+				var dq = kij * GEOM_ORTHO * (Tj - Ti) * dt
+
+				# 저질량 선형 스로틀
+				var mi := float(M[i])
+				var mj := float(M[j])
+				var min_m = min(mi, mj)
+				var t = min(1.0, min_m / MIN_MASS_FOR_CONDUCTION) # [0,1]
+				dq *= t
+
+				sum_Q += dq
+
 			# 이 셀에 들어온 열량(순합)
 			deltaQ[i] += sum_Q
 	return deltaQ
