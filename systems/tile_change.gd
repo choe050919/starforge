@@ -9,10 +9,6 @@ signal tile_replaced(cell: Vector2i, from_tile: int, to_tile: int, reason: Strin
 signal tile_destroyed(cell: Vector2i, from_tile: int, reason: StringName)
 signal cells_changed() # 필요 시 AABB/리스트로 확장, 아직 연결 X. TODO
 
-# 외부 참조
-@export_node_path("Node") var terrain_node_path: NodePath # Terrain 노드 경로
-var _terrain: Terrain
-
 var _data: DataLayer
 var _index: GridIndex
 var _size: Vector2i = Vector2i.ZERO
@@ -27,16 +23,11 @@ const TILE_WATER:   int = 20001
 const TILE_STEAM:   int = 30001
 const TILE_VACUUM:  int = 0
 
-func _ready() -> void:
-	if terrain_node_path != NodePath():
-		_terrain = get_node(terrain_node_path) as Terrain
 
 func setup(data: DataLayer) -> void:
 	_data = data
 	_index = _data.index
 	_size = _index.size
-	if _terrain == null and terrain_node_path != NodePath():
-		_terrain = get_node_or_null(terrain_node_path) as Terrain
 
 ## 편의: 단일 셀 교체
 func replace_cell(cell: Vector2i, to_tile: int, reason: StringName = &"") -> void:

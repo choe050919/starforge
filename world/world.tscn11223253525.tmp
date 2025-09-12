@@ -1,4 +1,4 @@
-[gd_scene load_steps=36 format=3 uid="uid://c5gv3n6byiin7"]
+[gd_scene load_steps=37 format=3 uid="uid://c5gv3n6byiin7"]
 
 [ext_resource type="Script" uid="uid://dgppaejvd18y0" path="res://world/world.gd" id="1_j7vgi"]
 [ext_resource type="TileSet" uid="uid://dnn0uacxq48mh" path="res://tilesets/world.tres" id="3_bwxdu"]
@@ -37,6 +37,69 @@
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_7iits"]
 shader = ExtResource("12_hnpqp")
+
+[sub_resource type="GDScript" id="GDScript_avd5l"]
+script/source = "extends Node2D
+class_name Terrain
+
+@onready var ground: TileMapLayer = get_node(\"Ground\")
+
+# 현재 프로젝트의 타일 매핑 (인스펙터에서 조정 가능)
+@export var sid: int = 2
+
+@export var atlas_ice: Vector2i = Vector2i(0, 0)
+@export var alt_ice: int = 0
+
+@export var atlas_ground: Vector2i = Vector2i(1, 0)
+@export var alt_ground: int = 0
+
+@export var atlas_uranium: Vector2i = Vector2i(2, 0)
+@export var alt_uranium: int = 0
+
+@export var atlas_copper: Vector2i = Vector2i(4, 0)
+@export var alt_copper: int = 0
+
+const TILE_VACCUM: int = 0
+const TILE_ICE: int = 10001
+const TILE_GROUND: int = 10002
+const TILE_URANIUM: int = 10003
+const TILE_COPPER: int = 10004
+
+func apply_tiles(tile_types: PackedInt32Array, size: Vector2i) -> void:
+	if ground.tile_set == null:
+		push_error(\"[Terrain.apply_tiles] Ground/TileSet missing.\"); return
+
+	ground.clear()
+
+	for y in size.y:
+		for x in size.x:
+			var idx:int = y * size.x + x
+			var t:int = tile_types[idx]
+			if t == TILE_GROUND:
+				ground.set_cell(Vector2i(x, y), sid, atlas_ground, alt_ground)
+			elif t == TILE_ICE:
+				ground.set_cell(Vector2i(x, y), sid, atlas_ice, alt_ice)
+			elif t == TILE_URANIUM:
+				ground.set_cell(Vector2i(x, y), sid, atlas_uranium, alt_uranium)
+			elif t == TILE_COPPER:
+				ground.set_cell(Vector2i(x, y), sid, atlas_copper, alt_copper)
+			else:
+				pass # 공기는 비워두기
+
+func apply_cell_change(cell: Vector2i, tile_type: int) -> void:
+	if ground == null:
+		push_error(\"[Terrain] TileMapLayer is null\"); return
+	match tile_type:
+		TILE_GROUND:
+			ground.set_cell(cell, sid, atlas_ground, alt_ground)
+		TILE_ICE:
+			ground.set_cell(cell, sid, atlas_ice, alt_ice)
+		TILE_URANIUM:
+			ground.set_cell(cell, sid, atlas_uranium, alt_uranium)
+		_:
+			# VACCUM 또는 미정의 → 지우기
+			ground.erase_cell(cell)
+"
 
 [node name="World" type="Node2D"]
 script = ExtResource("1_j7vgi")
@@ -87,6 +150,7 @@ grow_vertical = 2
 mouse_filter = 2
 
 [node name="Terrain" type="Node2D" parent="."]
+script = SubResource("GDScript_avd5l")
 
 [node name="LiquidOverlay" type="Node2D" parent="Terrain"]
 script = ExtResource("4_lwhbe")

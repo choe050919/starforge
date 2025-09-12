@@ -7,7 +7,6 @@ class_name World
 
 # ── Terrain & Overlays ───────────────────────────────────────────
 @onready var terrain = $Terrain
-@onready var ground_layer: TileMapLayer =        $Terrain/Ground
 @onready var liquid_overlay: LiquidOverlay =     $Terrain/LiquidOverlay
 @onready var crack_overlay: CrackOverlay =       $Terrain/CrackOverlay
 @onready var corner_highlight: CornerHighlight = $Terrain/CornerHighlight
@@ -23,7 +22,6 @@ class_name World
 @onready var phase_change: PhaseChange =   %Systems/PhaseChange
 @onready var input: InputController =      %Systems/InputController
 @onready var hover_service: HoverService = %Systems/HoverService
-#@onready var visual_sync: VisualSync =     %Systems/VisualSync
 
 # ── Overlay Manager ──────────────────────────────────────────────
 @onready var overlay_manager: OverlayManager = %OverlayManager
@@ -108,7 +106,6 @@ func _apply_worldgen_result(
 	springs: PackedVector2Array
 ) -> void:
 	# 시각화/데이터
-	terrain.apply_tiles(tiles, size)
 	ground.apply_tiles(tiles, size)
 
 	visual_sync.setup(data_layer)
@@ -147,8 +144,8 @@ func _apply_worldgen_result(
 ## - SimClock 배선
 func _post_apply_worldgen(size: Vector2i, initial_mass: PackedInt64Array) -> void:
 	# 레이아웃 (타일셋 크기 참조)
-	if ground_layer.tile_set != null:
-		var ts: TileSet = ground_layer.tile_set
+	if ground.tile_set != null:
+		var ts: TileSet = ground.tile_set
 		var map_px := Vector2(size.x * ts.tile_size.x, size.y * ts.tile_size.y)
 		camera.position = map_px * 0.5
 		input.set_cell_size(ts.tile_size)
@@ -159,7 +156,7 @@ func _post_apply_worldgen(size: Vector2i, initial_mass: PackedInt64Array) -> voi
 	else:
 		push_error("[World._on_world_generated] tileset is null"); return
 
-	corner_highlight.setup(ground_layer)
+	corner_highlight.setup(ground)
 
 	# 초기 렌더
 	liquid_overlay.render(initial_mass)
