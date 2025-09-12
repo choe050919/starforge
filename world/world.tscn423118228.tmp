@@ -41,9 +41,10 @@ shader = ExtResource("12_hnpqp")
 [node name="World" type="Node2D"]
 script = ExtResource("1_j7vgi")
 
-[node name="VisualSync" type="Node" parent="."]
+[node name="VisualSync" type="Node" parent="." node_paths=PackedStringArray("heatmap_overlay")]
 unique_name_in_owner = true
 script = ExtResource("24_inp7a")
+heatmap_overlay = NodePath("OverlayManager/OverlayLayer/HeatmapOverlay")
 
 [node name="Ground" type="TileMapLayer" parent="VisualSync"]
 unique_name_in_owner = true
@@ -59,7 +60,6 @@ layer = 2
 follow_viewport_enabled = true
 
 [node name="HeatmapOverlay" type="Node2D" parent="VisualSync/OverlayManager/OverlayLayer"]
-unique_name_in_owner = true
 visible = false
 z_index = 2
 script = ExtResource("10_q3kex")

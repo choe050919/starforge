@@ -16,7 +16,6 @@ var _phase_store: PhaseStore
 var _temperature_store: TemperatureStore
 var _mass_store: MassStore
 var _index: GridIndex
-var _clock : SimClock
 var _rules: SubstanceRuleCache
 
 # 코어
@@ -24,7 +23,6 @@ var _core: TemperatureCore
 
 func setup(
 	data: DataLayer,
-	clock: SimClock,
 	rule_cache: SubstanceRuleCache
 ) -> void:
 	_data = data
@@ -33,10 +31,9 @@ func setup(
 	_temperature_store = _data.temperature
 	_mass_store = _data.mass
 	_index = _data.index
-	_clock = clock
 	_rules = rule_cache
 
-	for _name in ["_substance_store", "_phase_store", "_temperature_store", "_mass_store", "_index", "_clock"]:
+	for _name in ["_substance_store", "_phase_store", "_temperature_store", "_mass_store", "_index"]:
 		var value = get(_name)
 		if value == null:
 			push_error("[Temperature.setup]%s is null" % _name)
@@ -50,16 +47,4 @@ func _on_sim_tick(dt: float) -> void:
 
 	var stats := _core.tick_fullscan(_temperature_store, _substance_store, _mass_store, _index, dt)
 
-	# TODO write-commit은 DataLayer에서 하도록 수정필요.
-
 	_data.set_bulk_temp(stats)
-
-	# DEPRECATED
-	#_temperature_store.begin_write()
-	#if stats.is_empty(): print("[Temperature] empty array"); return
-#
-	#for i in stats.size():
-		#var t: int = stats[i]
-		#_temperature_store.set_by_index(i, t)
-#
-	#_temperature_store.commit()

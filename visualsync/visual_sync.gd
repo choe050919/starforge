@@ -8,7 +8,7 @@ var mass: MassStore
 var temp: TemperatureStore
 
 @onready var ground: Ground = %Ground
-@export var heatmap_overlay: HeatmapOverlay
+@onready var heatmap_overlay: HeatmapOverlay = %HeatmapOverlay
 
 func setup(data_layer: DataLayer) -> void:
 	_data_layer = data_layer

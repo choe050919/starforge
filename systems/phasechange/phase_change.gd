@@ -5,6 +5,7 @@ class_name PhaseChange
 @export var debug_log := false
 
 # 의존성
+var _data: DataLayer
 var _phase_store: PhaseStore
 var _substance_store: SubstanceStore
 var _temperature_store: TemperatureStore
@@ -18,6 +19,7 @@ var _core: PhaseChangeCore
 var _applier: PhaseChangeApplier
 
 func setup(
+	data: DataLayer,
 	phase_store: PhaseStore,
 	substance_store: SubstanceStore,
 	temperature_store: TemperatureStore,
@@ -26,6 +28,7 @@ func setup(
 	clock: SimClock,
 	rule_cache: SubstanceRuleCache
 ) -> void:
+	_data = data
 	_phase_store = phase_store
 	_substance_store = substance_store
 	_temperature_store = temperature_store
@@ -41,7 +44,7 @@ func setup(
 	_core.bind_rule_cache(_rules)
 
 	_applier = PhaseChangeApplier.new()
-	_applier.setup(_index, _phase_store, _substance_store, _rules)
+	_applier.setup(_data, _rules)
 
 func _on_sim_tick(_dt: float, sim_time: float) -> void:
 	if not enabled:
