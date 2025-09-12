@@ -154,7 +154,12 @@ func set_cells_with_spec(cells: Array[Vector2i], spec: Dictionary, reason: Strin
 		"tiles_changed",
 		PackedInt32Array(idxs),
 		(reason if reason != &"" else &"apply_spec_cells"),
-		{"sid_changed": any_ch_sid}
+		{
+			"sid_changed": any_ch_sid,
+			"phase_changed": any_ch_phase,
+			"mass_changed": any_ch_mass,
+			"temp_changed": any_ch_temp,
+		}
 	)
 
 ## 하위 호환/편의를 위한 단수 래퍼

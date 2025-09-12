@@ -1,16 +1,37 @@
 extends Node
 class_name VisualSync
 
+var _data_layer: DataLayer
+var substance: SubstanceStore
+var phase: PhaseStore
+var mass
+var temp: TemperatureStore
 
+@export var heatmap_overlay: HeatmapOverlay
 
+func setup(data_layer: DataLayer) -> void:
+	_data_layer = data_layer
+	substance = _data_layer.substance
+	phase = _data_layer.phase
+	temp = _data_layer.temperature
 
+## 본체
+## DataLayer의 set_cells_with_spec함수에서 인자 전달됨
+## payload 키:
+## "sid_changed" | "phase_changed" | "mass_changed" | "temp_changed"
+func _on_tiles_changed(
+	changed_by_index: PackedInt32Array,
+	reason: StringName,
+	payload: Dictionary
+) -> void:
+	if changed_by_index.is_empty(): push_error("[VisualSync] nothing changed"); return
 
+	if payload["sid_changed"] == true:
+		pass
 
-
-
-
-
-
+	if payload["temp_changed"] == true:
+		print("dd")
+		heatmap_overlay.render_full_with_mask(temp.get_raw_read(), phase.get_raw_read())
 
 
 

@@ -1,6 +1,9 @@
 extends Node2D
 class_name World
 
+# ── VisualSync ───────────────────────────────────────────────────
+@onready var visual_sync: VisualSync = %VisualSync
+
 # ── Terrain & Overlays ───────────────────────────────────────────
 @onready var terrain = $Terrain
 @onready var ground_layer: TileMapLayer =        $Terrain/Ground
@@ -103,10 +106,14 @@ func _apply_worldgen_result(
 	tiles: PackedInt32Array,
 	springs: PackedVector2Array
 ) -> void:
-	# 타일/데이터
+	# 시각화/데이터
 	terrain.apply_tiles(tiles, size)
 
+	visual_sync.setup(data_layer)
+
 	data_layer.setup(size, substances, phases, mass, temperatures)
+
+	data_layer.tiles_changed.connect(visual_sync._on_tiles_changed)
 
 	# 시스템들 (데이터 준비 이후)
 	durability.setup_from_tiles(tiles, size)
@@ -193,6 +200,7 @@ func _on_sim_clock_tick(tag: StringName, dt: float) -> void:
 
 			liquid_overlay.render(liquid.get_amounts())
 
+			# DEPRECATED
 			match overlay_manager.current_overlay:
 				OverlayManager.OverlayMode.HEATMAP:
 					_render_temperature_overlay()
