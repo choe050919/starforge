@@ -47,6 +47,10 @@ func generate() -> void:
 	var tiles := classify_tiles(hmap)
 	place_uranium(tiles, hmap)
 	place_copper(tiles, hmap)
+
+	var cave_mask := compute_cave_mask(hmap)
+	apply_caves_to_tiles(tiles, cave_mask)
+
 	var liquid := generate_liquids(hmap)
 
 	var total := size.x * size.y
@@ -197,6 +201,131 @@ func place_copper(tiles: PackedInt32Array, hmap: PackedInt32Array) -> void:
 
 			if hit_noise or hit_rand:
 				tiles[idx] = _sid_copper
+
+## ─────────────────────────────────────────────────────────────────────────────
+## 동굴 생성: 마스크 계산 → 타일 절삭
+##  - compute_cave_mask: 지하 빈공간(동굴) 후보를 0/1로 만들기
+##  - apply_caves_to_tiles: 마스크=1인 셀을 전부 VACUUM(SID=0)로 치환
+##  - 내부 상수만 사용(MIN_DEPTH 등), 추가 옵션/보존 처리 없음
+## ─────────────────────────────────────────────────────────────────────────────
+
+## 지하 동굴 마스크 계산
+## 반환: PackedByteArray (0/1), 길이=size.x*size.y
+func compute_cave_mask(hmap: PackedInt32Array) -> PackedByteArray:
+	# 내부 상수(간단 튜닝 포인트)
+	const MIN_DEPTH := 6            # 지표선 아래 이 깊이부터만 동굴 후보
+	const INIT_FILL := 0.42         # 초기 랜덤 채움 비율
+	const SURVIVE_LIMIT := 4        # CA: 살아남는 임계(이웃 1의 수)
+	const BIRTH_LIMIT := 5          # CA: 탄생 임계(이웃 1의 수)
+	const STEPS := 4                # CA 스무딩 반복 횟수
+
+	var w := size.x
+	var h := size.y
+	var n := w * h
+
+	# 0) 마스크 초기화
+	var mask := PackedByteArray(); mask.resize(n)
+	for i in n: mask[i] = 0
+
+	# RNG (재현성): height 시드에서 파생
+	var rng := RandomNumberGenerator.new()
+	rng.seed = int(profile.seed_height) ^ String("cave").hash()
+
+	# 1) 후보 영역 초기 랜덤 채움
+	for x in w:
+		var start_y: float = clamp(hmap[x] + MIN_DEPTH, 0, h)
+		for y in range(start_y, h):
+			var idx := y * w + x
+			mask[idx] = 1 if rng.randf() < INIT_FILL else 0
+
+	# 2) 셀룰러 오토마타 스무딩(8이웃)
+	var neigh := [
+		Vector2i(-1,-1), Vector2i(0,-1), Vector2i(1,-1),
+		Vector2i(-1, 0),                 Vector2i(1, 0),
+		Vector2i(-1, 1), Vector2i(0, 1), Vector2i(1, 1)
+	]
+	for _step in STEPS:
+		var next := PackedByteArray(); next.resize(n)
+		for i in n: next[i] = 0
+
+		for y in h:
+			for x in w:
+				# 후보 영역 밖(얕은 곳)은 항상 0 유지
+				if y < hmap[x] + MIN_DEPTH:
+					continue
+
+				var idx := y * w + x
+				var cur := int(mask[idx])
+				var cnt := 0
+				for d in neigh:
+					var nx: int = x + d.x
+					var ny: int = y + d.y
+					if nx < 0 or nx >= w or ny < 0 or ny >= h:
+						continue
+					# 이웃도 후보 영역 안에서만 카운트
+					if ny >= hmap[nx] + MIN_DEPTH and mask[ny * w + nx] == 1:
+						cnt += 1
+				if cur == 1 and cnt >= SURVIVE_LIMIT:
+					next[idx] = 1
+				elif cur == 0 and cnt >= BIRTH_LIMIT:
+					next[idx] = 1
+				else:
+					next[idx] = 0
+		mask = next
+
+	# 3) 표면 연결 제거(입구 봉인): 지표 바로 아래 띠에서 4방 flood fill로 연결된 1 → 0
+	var stack := []        # int(idx) 스택
+	var visited := PackedByteArray(); visited.resize(n)
+	for i in n: visited[i] = 0
+
+	# 시작점: 각 x의 y0 = hmap[x] + MIN_DEPTH (후보 띠)
+	for x in w:
+		var y0 := hmap[x] + MIN_DEPTH
+		if y0 < 0 or y0 >= h:
+			continue
+		var i0 := y0 * w + x
+		if mask[i0] != 1:
+			continue
+		# flood fill
+		stack.clear()
+		stack.append(i0)
+		while stack.size() > 0:
+			var ii: int = stack.pop_back()
+			if ii < 0 or ii >= n: continue
+			if visited[ii] == 1: continue
+			visited[ii] = 1
+			if mask[ii] != 1: continue
+			# 표면 연결된 빈공간은 제거
+			mask[ii] = 0
+			var cx := ii % w
+			var cy := ii / w
+			# 4방
+			if cx > 0:         stack.append(ii - 1)
+			if cx < w - 1:     stack.append(ii + 1)
+			if cy > 0:         stack.append(ii - w)
+			if cy < h - 1:     stack.append(ii + w)
+
+	# 4) 외곽 안전장치: 맵 가장자리(좌/우/바닥)는 0으로 강제
+	for y in h:
+		var iL := y * w + 0
+		var iR := y * w + (w - 1)
+		mask[iL] = 0
+		mask[iR] = 0
+	for x in w:
+		var iB := (h - 1) * w + x
+		mask[iB] = 0
+
+	return mask
+
+## 마스크가 1인 셀은 전부 VACUUM(SID=0)으로 절삭
+func apply_caves_to_tiles(tiles: PackedInt32Array, cave_mask: PackedByteArray) -> void:
+	var n := tiles.size()
+	if cave_mask.size() != n:
+		push_error("[WorldGen] cave_mask size mismatch")
+		return
+	for i in n:
+		if cave_mask[i] == 1:
+			tiles[i] = _sid_vac
 
 func generate_liquids(hmap: PackedInt32Array) -> Dictionary:
 	var amount := PackedInt64Array()

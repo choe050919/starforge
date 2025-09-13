@@ -12,7 +12,7 @@ id_keys = {
 "solid/soil": "solid/soil",
 "solid/uranium": "solid/uranium"
 }
-size = Vector2i(96, 48)
+size = Vector2i(128, 64)
 seed_height = 12345
 height_freq = 0.03
 water_level_ratio = 0.4
