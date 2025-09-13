@@ -10,7 +10,7 @@ class_name LightOverlay
 @onready var sprite: Sprite2D = get_node("Map")
 
 # ── 설정값 ─────────────────────────────────────────────────────────
-@export var opacity: float = 0.9         ## 오버레이 투명도(0~1)
+@export var opacity: float = 0.8         ## 오버레이 투명도(0~1)
 
 @export var use_auto_max: bool = false   ## true면 현재 프레임의 최대값으로 자동 정규화
 @export var auto_max_epsilon: float = 1e-6 ## auto-max가 0에 수렴할 때의 안전 하한

@@ -3,7 +3,7 @@ class_name HeatmapOverlay
 
 @onready var sprite: Sprite2D = get_node("Map")
 
-@export var opacity: float = 0.9 # 오버레이 투명도
+@export var opacity: float = 0.8 # 오버레이 투명도
 
 @export var t_min_cc: int = -2000   # 히트맵 표시 최소/최대(시각화용)
 @export var t_max_cc: int = 4000
