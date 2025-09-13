@@ -71,6 +71,9 @@ func get_by_cell(cell: Vector2i) -> int:
 		return _vacuum_sid
 	return _read[_index.idx(cell)]
 
+func get_is_water(cell: Vector2i) -> bool:
+	return get_by_cell(cell) == 20001
+
 func get_raw_read() -> PackedInt32Array:  return _read
 func get_raw_write() -> PackedInt32Array: return _write
 

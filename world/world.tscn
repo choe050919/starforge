@@ -1,4 +1,4 @@
-[gd_scene load_steps=36 format=3 uid="uid://c5gv3n6byiin7"]
+[gd_scene load_steps=37 format=3 uid="uid://c5gv3n6byiin7"]
 
 [ext_resource type="Script" uid="uid://dgppaejvd18y0" path="res://world/world.gd" id="1_j7vgi"]
 [ext_resource type="TileSet" uid="uid://dnn0uacxq48mh" path="res://tilesets/world.tres" id="3_bwxdu"]
@@ -34,6 +34,7 @@
 [ext_resource type="PackedScene" uid="uid://balj4m27d4euf" path="res://UI/tile_info_hud.tscn" id="28_bfrib"]
 [ext_resource type="Script" uid="uid://j3edpypdb7d7" path="res://scripts/fps_mem_monitor.gd" id="29_mip0j"]
 [ext_resource type="PackedScene" uid="uid://cqinatbhx3krc" path="res://UI/hud.tscn" id="31_bwxdu"]
+[ext_resource type="PackedScene" uid="uid://bp27ax8mxaxmy" path="res://fish.tscn" id="35_ll3gq"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_7iits"]
 shader = ExtResource("12_hnpqp")
@@ -179,3 +180,7 @@ offset_right = 300.0
 script = ExtResource("29_mip0j")
 
 [node name="HUD" parent="." instance=ExtResource("31_bwxdu")]
+
+[node name="Fish" parent="." node_paths=PackedStringArray("world") instance=ExtResource("35_ll3gq")]
+position = Vector2(110, 885)
+world = NodePath("..")

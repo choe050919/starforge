@@ -45,6 +45,8 @@ var rule_cache := SubstanceRuleCache.new()
 
 @onready var camera: Camera2D = $Camera2D
 
+@onready var fish: Fish = $Fish
+
 func _ready() -> void:
 	# HUD 연결
 	hud.play_toggled.connect(_on_hud_play)
@@ -133,6 +135,8 @@ func _apply_worldgen_result(
 		rule_cache
 	)
 
+	fish.setup(data_layer)
+
 ## 적용 이후 후처리:
 ## - 카메라/오버레이 레이아웃(타일셋/맵 크기 필요)
 ## - 초기 렌더
@@ -189,6 +193,7 @@ func _on_sim_clock_tick(tag: StringName, dt: float) -> void:
 			phase_change._on_sim_tick(dt, sim_time)
 			liquid.tick_liquid(dt)
 			liquid_overlay.render(liquid.get_amounts())
+			fish._on_sim_tick(dt)
 		"temp":
 			temp._on_sim_tick(dt)
 		_:
