@@ -49,9 +49,9 @@ func _unhandled_input(event: InputEvent) -> void:
 
 	# 툴 전환(핫키): 1 → VACUUM, 2 → SPAWN_FISH
 	if event.is_action_pressed("tool_select_1"):
-		_select_tool_by_index(0)
-	elif event.is_action_pressed("tool_select_2"):
 		_select_tool_by_index(1)
+	elif event.is_action_pressed("tool_select_2"):
+		_select_tool_by_index(2)
 
 	# 좌클릭: ToolManager에 라우팅
 	if event is InputEventMouseButton \

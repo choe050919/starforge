@@ -169,14 +169,14 @@ layer = 3
 
 [node name="TileInfoHUD" parent="UIFXLayer" instance=ExtResource("28_bfrib")]
 
-[node name="FpsMemMonitor" type="Control" parent="UIFXLayer"]
+[node name="HUD" parent="." instance=ExtResource("31_bwxdu")]
+
+[node name="FpsMemMonitor" type="Control" parent="HUD"]
 layout_mode = 3
 anchors_preset = 0
 offset_left = 300.0
 offset_right = 300.0
 script = ExtResource("29_mip0j")
-
-[node name="HUD" parent="." instance=ExtResource("31_bwxdu")]
 
 [connection signal="request_spawn_fish" from="Systems/ToolManager" to="Actors/Spawner" method="_on_tool_manager_request_spawn_fish"]
 [connection signal="request_vacuum" from="Systems/ToolManager" to="Systems/TileChange" method="_on_tool_manager_request_vacuum"]

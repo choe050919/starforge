@@ -5,8 +5,8 @@
 [node name="HUD" type="CanvasLayer"]
 script = ExtResource("1_37p78")
 
-[node name="PanelContainer" type="PanelContainer" parent="."]
-offset_right = 40.0
+[node name="PanelContainer" type="VBoxContainer" parent="."]
+offset_right = 221.0
 offset_bottom = 40.0
 
 [node name="HBoxContainer" type="HBoxContainer" parent="PanelContainer"]
@@ -30,6 +30,18 @@ text = "Water"
 unique_name_in_owner = true
 layout_mode = 2
 text = "Temp"
+
+[node name="HBoxContainer2" type="HBoxContainer" parent="PanelContainer"]
+layout_mode = 2
+
+[node name="BtnToolVacuum" type="Button" parent="PanelContainer/HBoxContainer2"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="BtnToolFish" type="Button" parent="PanelContainer/HBoxContainer2"]
+unique_name_in_owner = true
+layout_mode = 2
+toggle_mode = true
 
 [connection signal="pressed" from="PanelContainer/HBoxContainer/BtnPlayPause" to="." method="_on_play_pressed"]
 [connection signal="item_selected" from="PanelContainer/HBoxContainer/OptSpeed" to="." method="_on_speed_selected"]

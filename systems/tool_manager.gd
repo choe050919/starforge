@@ -4,7 +4,8 @@ class_name ToolManager
 # ─────────────────────────────────────────────────────────
 ## 1) 도구 enum
 ##    - 에디터에서 current_tool을 드롭다운으로 선택 가능
-enum Tool { VACUUM, SPAWN_FISH }
+##    - NONE의 경우 현재 의미 없지만 일단 0의 자리에 추가해둠.
+enum Tool { NONE, VACUUM, SPAWN_FISH }
 
 ## 현재 선택된 도구 (기본: 물고기 소환)
 @export var current_tool: int = Tool.SPAWN_FISH
