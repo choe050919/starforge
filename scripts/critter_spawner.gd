@@ -53,3 +53,7 @@ func _spawn_at_mouse(scene := critter_scene) -> void:
 func _on_sim_tick(_dt: float, sim_time: float):
 	for actor in get_children():
 		actor._on_sim_tick(_dt, sim_time)
+
+
+func _on_tool_manager_request_spawn_fish(world_pos: Vector2, cell: Vector2i) -> void:
+	_spawn_at_mouse()

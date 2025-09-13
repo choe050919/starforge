@@ -42,3 +42,7 @@ func destroy_cell(cell: Vector2i, reason: StringName = &"destroy") -> void:
 # ── 내부 유틸 ────────────────────────────────────────────────────────────────
 static func _key(cell: Vector2i) -> int:
 	return (cell.y << 16) | (cell.x & 0xFFFF)
+
+
+func _on_tool_manager_request_vacuum(cell: Vector2i) -> void:
+	destroy_cell(cell)

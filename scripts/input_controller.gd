@@ -5,6 +5,8 @@ signal pan_requested(delta: Vector2)
 signal zoom_requested(direction: float)
 signal overlay_toggle_requested(mode: OverlayManager.OverlayMode)
 
+## ToolManager에 직접 라우팅 (입력 해석만 하고, 의미 실행은 ToolManager가 담당)
+@export var _tool_manager: ToolManager
 signal test_requested(cell: Vector2i)
 
 var data_layer: DataLayer
@@ -22,36 +24,40 @@ func setup(dl: DataLayer, hover: HoverService) -> void:
 func set_cell_size(size: Vector2) -> void:
 		cell_size = size
 
-# 우선순위: 오버레이 토글 > 줌 > 패닝
-# UI(Control)가 이벤트를 소비하면 _unhandled_input이 호출되지 않는다.
+# 우선순위: 오버레이 토글 > 줌 > 패닝 > 클릭/툴 전환
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.is_echo():
 		return
+
+	# 마우스 이동: 호버/패닝
 	if event is InputEventMouseMotion:
 		_update_hover()
 		if Input.is_action_pressed("pan"):
 			pan_requested.emit((event as InputEventMouseMotion).relative)
+
+	# 줌
 	if event.is_action_pressed("zoom_in"):
 		zoom_requested.emit(-1.0)
 	elif event.is_action_pressed("zoom_out"):
 		zoom_requested.emit(1.0)
+
+	# 오버레이 토글
 	if event.is_action_pressed("overlay_toggle_heatmap"):
 		overlay_toggle_requested.emit(OverlayManager.OverlayMode.HEATMAP)
 	elif event.is_action_pressed("overlay_toggle_heatsrc"):
 		overlay_toggle_requested.emit(OverlayManager.OverlayMode.HEAT_SOURCE)
 
-	# --- 좌클릭 테스트 트리거 ---
+	# 툴 전환(핫키): 1 → VACUUM, 2 → SPAWN_FISH
+	if event.is_action_pressed("tool_select_1"):
+		_select_tool_by_index(0)
+	elif event.is_action_pressed("tool_select_2"):
+		_select_tool_by_index(1)
+
+	# 좌클릭: ToolManager에 라우팅
 	if event is InputEventMouseButton \
 	and event.button_index == MOUSE_BUTTON_LEFT \
 	and event.pressed and not event.is_echo():
-		var world_pos: Vector2 = world_canvas.get_global_mouse_position()
-
-		const TILE_PX := Vector2(32, 32)
-		var cell := Vector2i(floor(world_pos.x / TILE_PX.x), floor(world_pos.y / TILE_PX.y))
-
-		test_requested.emit(cell)
-
-@export var world_canvas: CanvasItem
+		_route_click_to_tool_manager()
 
 func _update_hover() -> void:
 	if hover_service == null:
@@ -62,3 +68,16 @@ func _update_hover() -> void:
 	var world_pos := cam.get_global_mouse_position()
 	var cell := Vector2i(floor(world_pos.x / cell_size.x), floor(world_pos.y / cell_size.y))
 	hover_service.update_hover(cell)
+
+func _route_click_to_tool_manager() -> void:
+	if _tool_manager == null: return
+	var cam := get_viewport().get_camera_2d()
+	if cam == null: return
+	var world_pos := cam.get_global_mouse_position()
+	var cell := Vector2i(floor(world_pos.x / cell_size.x), floor(world_pos.y / cell_size.y))
+	_tool_manager.handle_click(cell, world_pos, 0)
+
+func _select_tool_by_index(idx: int) -> void:
+	if _tool_manager == null:
+		return
+	_tool_manager.select_tool_by_index(idx)

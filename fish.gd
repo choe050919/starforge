@@ -11,8 +11,7 @@ const EIGHT_DIRS: Array[Vector2i] = [
 	Vector2i(-1,  1), Vector2i(0,  1), Vector2i(1,  1),
 ]
 
-@export var tick_mod := 4
-@export var world: World
+var tick_mod := 4
 
 ## 현재 좌표
 var cell: Vector2i
@@ -36,6 +35,7 @@ func _ready():
 	rng.randomize()
 	update_phase = rng.randi_range(0, tick_mod - 1)
 
+# 5번씩 이동하는 이유: int(sim_time)이, 같은 값을 5번씩 출력해서.
 func _on_sim_tick(dt: float, sim_time: float):
 	if int(sim_time) % tick_mod != update_phase:
 		return
@@ -72,7 +72,6 @@ func attempt_move() -> bool:
 		return false
 
 	move_to_cell(target_cell)
-	print(target_cell, "로 이동하였다.")
 	return true
 
 ## 셀 좌표를 입력하면 sid가 Water인지 여부를 반환한다.
@@ -109,8 +108,6 @@ func weighted_random(cells: Array, weights: Array) -> Vector2i:
 
 func move_to_cell(new_cell: Vector2i):
 	warp_to_cell(new_cell)
-	#cell = new_cell
-	#global_position = (cell)
 
 func on_stuck():
 	# 20회 연속 못 움직이면 호출될 추가 기능

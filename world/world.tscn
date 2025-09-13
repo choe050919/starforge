@@ -134,9 +134,9 @@ script = ExtResource("19_pfbnl")
 [node name="PhaseChange" type="Node" parent="Systems"]
 script = ExtResource("20_gwdna")
 
-[node name="InputController" type="Node" parent="Systems" node_paths=PackedStringArray("world_canvas")]
+[node name="InputController" type="Node" parent="Systems" node_paths=PackedStringArray("_tool_manager")]
 script = ExtResource("21_h4vgh")
-world_canvas = NodePath("../..")
+_tool_manager = NodePath("../ToolManager")
 
 [node name="HoverService" type="Node" parent="Systems"]
 script = ExtResource("22_kvuv0")
@@ -177,3 +177,6 @@ offset_right = 300.0
 script = ExtResource("29_mip0j")
 
 [node name="HUD" parent="." instance=ExtResource("31_bwxdu")]
+
+[connection signal="request_spawn_fish" from="Systems/ToolManager" to="Actors/Spawner" method="_on_tool_manager_request_spawn_fish"]
+[connection signal="request_vacuum" from="Systems/ToolManager" to="Systems/TileChange" method="_on_tool_manager_request_vacuum"]
