@@ -14,7 +14,7 @@ id_keys = {
 }
 size = Vector2i(96, 48)
 seed_height = 12345
-height_freq = 0.02
+height_freq = 0.03
 water_level_ratio = 0.4
 ground_temp_init_cC = 1200
 ground_mass_mg_per_cell = 1200000

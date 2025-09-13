@@ -57,7 +57,7 @@ class_name WorldGenProfile
 @export var ice_freq: float = 0.08
 
 ## 얼음 마스크 임계값(0~1). (노이즈+표면보너스) ≥ 임계이면 ICE로 분류.
-@export var ice_threshold: float = 0.35
+@export var ice_threshold: float = 0.45
 
 ## 지표선 아래 표면 보너스가 적용되는 최대 깊이(타일). 얕을수록 보너스 큼.
 @export var ice_max_depth: int = 6

@@ -19,32 +19,30 @@ var cell: Vector2i
 var update_phase := 0
 var stuck_count := 0
 var rng := RandomNumberGenerator.new()
-var sim_tick := 0
 
 # 의존성
 var _data: DataLayer
 var index: GridIndex
 var s_store: SubstanceStore
+var _ground: Ground
 
-func setup(data: DataLayer):
+func setup(data: DataLayer, ground: Ground) -> void:
 	_data = data
 	index = _data.index
 	s_store = _data.substance
+	_ground = ground
 
 func _ready():
 	rng.randomize()
 	update_phase = rng.randi_range(0, tick_mod - 1)
 
-func _on_sim_tick(dt: float):
-	sim_tick += 1
-	if sim_tick % tick_mod != update_phase:
+func _on_sim_tick(dt: float, sim_time: float):
+	if int(sim_time) % tick_mod != update_phase:
 		return
 
-	print("dd")
 	if not is_water(cell):
 		return  # 물이 아니면 이동 비활성화
 
-	print("ddd")
 	var moved := attempt_move()
 	if moved:
 		stuck_count = 0
@@ -74,6 +72,7 @@ func attempt_move() -> bool:
 		return false
 
 	move_to_cell(target_cell)
+	print(target_cell, "로 이동하였다.")
 	return true
 
 ## 셀 좌표를 입력하면 sid가 Water인지 여부를 반환한다.
@@ -109,9 +108,19 @@ func weighted_random(cells: Array, weights: Array) -> Vector2i:
 	return cells[0]
 
 func move_to_cell(new_cell: Vector2i):
-	cell = new_cell
-	global_position = (cell)
+	warp_to_cell(new_cell)
+	#cell = new_cell
+	#global_position = (cell)
 
 func on_stuck():
 	# 20회 연속 못 움직이면 호출될 추가 기능
 	pass
+
+func warp_to_cell(_cell: Vector2i) -> void:
+	if _ground == null:
+		return
+	var local_origin: Vector2 = _ground.map_to_local(_cell)
+	var ts: TileSet = _ground.tile_set
+	var half: Vector2 = Vector2(ts.tile_size.x * 0.5, ts.tile_size.y * 0.5)
+	global_position = _ground.to_global(local_origin + half)
+	cell = _cell

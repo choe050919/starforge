@@ -1,4 +1,4 @@
-[gd_scene load_steps=37 format=3 uid="uid://c5gv3n6byiin7"]
+[gd_scene load_steps=35 format=3 uid="uid://c5gv3n6byiin7"]
 
 [ext_resource type="Script" uid="uid://dgppaejvd18y0" path="res://world/world.gd" id="1_j7vgi"]
 [ext_resource type="TileSet" uid="uid://dnn0uacxq48mh" path="res://tilesets/world.tres" id="3_bwxdu"]
@@ -27,9 +27,7 @@
 [ext_resource type="Script" uid="uid://dsk25alr21kno" path="res://systems/tool_manager.gd" id="23_sg5c8"]
 [ext_resource type="Script" uid="uid://0y3dr3nwo17m" path="res://visualsync/visual_sync.gd" id="24_inp7a"]
 [ext_resource type="Script" uid="uid://b2776qmf4l0o" path="res://scripts/critter_spawner.gd" id="24_vu62d"]
-[ext_resource type="PackedScene" uid="uid://dvfaso5evvyd" path="res://scenes/critter_breaker.tscn" id="25_58wjt"]
 [ext_resource type="Script" uid="uid://chsk6sttjcten" path="res://systems/hydrology/moisture.gd" id="25_lwhbe"]
-[ext_resource type="PackedScene" uid="uid://b3cc58761avvp" path="res://scenes/critter_builder.tscn" id="26_dp8ul"]
 [ext_resource type="Script" uid="uid://cqchm53g3n0d1" path="res://scripts/pan_zoom.gd" id="27_o7xkw"]
 [ext_resource type="PackedScene" uid="uid://balj4m27d4euf" path="res://UI/tile_info_hud.tscn" id="28_bfrib"]
 [ext_resource type="Script" uid="uid://j3edpypdb7d7" path="res://scripts/fps_mem_monitor.gd" id="29_mip0j"]
@@ -151,13 +149,12 @@ script = ExtResource("25_lwhbe")
 
 [node name="Actors" type="Node2D" parent="."]
 
-[node name="Spawner" type="Node2D" parent="Actors"]
+[node name="Spawner" type="Node2D" parent="Actors" node_paths=PackedStringArray("_ground", "_Tchange", "_dur")]
 script = ExtResource("24_vu62d")
-critter_scene = ExtResource("25_58wjt")
-builder_scene = ExtResource("26_dp8ul")
-ground_path = NodePath("")
-tile_change_path = NodePath("../../Systems/TileChange")
-durability_path = NodePath("../../Systems/Durability")
+critter_scene = ExtResource("35_ll3gq")
+_ground = NodePath("../../VisualSync/Ground")
+_Tchange = NodePath("../../Systems/TileChange")
+_dur = NodePath("../../Systems/Durability")
 
 [node name="Managers" type="Node" parent="."]
 
@@ -180,7 +177,3 @@ offset_right = 300.0
 script = ExtResource("29_mip0j")
 
 [node name="HUD" parent="." instance=ExtResource("31_bwxdu")]
-
-[node name="Fish" parent="." node_paths=PackedStringArray("world") instance=ExtResource("35_ll3gq")]
-position = Vector2(110, 885)
-world = NodePath("..")

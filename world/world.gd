@@ -5,6 +5,11 @@ class_name World
 @onready var visual_sync: VisualSync = %VisualSync
 @onready var ground: Ground = %Ground
 
+# ── Overlay Manager ──────────────────────────────────────────────
+@onready var overlay_manager: OverlayManager = %OverlayManager
+@onready var heatmap = overlay_manager.get_overlay(OverlayManager.OverlayMode.HEATMAP) as HeatmapOverlay
+@onready var heat_src = overlay_manager.get_overlay(OverlayManager.OverlayMode.HEAT_SOURCE) as HeatSourceOverlay
+
 # ── Terrain & Overlays ───────────────────────────────────────────
 @onready var terrain = $Terrain
 @onready var liquid_overlay: LiquidOverlay =     $Terrain/LiquidOverlay
@@ -23,10 +28,8 @@ class_name World
 @onready var input: InputController =      %Systems/InputController
 @onready var hover_service: HoverService = %Systems/HoverService
 
-# ── Overlay Manager ──────────────────────────────────────────────
-@onready var overlay_manager: OverlayManager = %OverlayManager
-@onready var heatmap = overlay_manager.get_overlay(OverlayManager.OverlayMode.HEATMAP) as HeatmapOverlay
-@onready var heat_src = overlay_manager.get_overlay(OverlayManager.OverlayMode.HEAT_SOURCE) as HeatSourceOverlay
+# ── Actors ───────────────────────────────────────────────────────
+@onready var spawner: CritterSpawner = $Actors/Spawner
 
 # ── UI ───────────────────────────────────────────────────────────
 @onready var tile_info_hud: TileInfoHUD = $UIFXLayer/TileInfoHUD
@@ -44,8 +47,6 @@ var substance_loader: SubstanceLoader = SubstanceLoader.new()
 var rule_cache := SubstanceRuleCache.new()
 
 @onready var camera: Camera2D = $Camera2D
-
-@onready var fish: Fish = $Fish
 
 func _ready() -> void:
 	# HUD 연결
@@ -135,8 +136,6 @@ func _apply_worldgen_result(
 		rule_cache
 	)
 
-	fish.setup(data_layer)
-
 ## 적용 이후 후처리:
 ## - 카메라/오버레이 레이아웃(타일셋/맵 크기 필요)
 ## - 초기 렌더
@@ -171,6 +170,8 @@ func _post_apply_worldgen(size: Vector2i, initial_mass: PackedInt64Array) -> voi
 		data_layer.temperature
 	)
 
+	spawner.setup(data_layer)
+
 	# 시뮬 배선
 	if not clock.tick_sim.is_connected(_on_sim_clock_tick):
 		clock.tick_sim.connect(_on_sim_clock_tick)
@@ -193,7 +194,7 @@ func _on_sim_clock_tick(tag: StringName, dt: float) -> void:
 			phase_change._on_sim_tick(dt, sim_time)
 			liquid.tick_liquid(dt)
 			liquid_overlay.render(liquid.get_amounts())
-			fish._on_sim_tick(dt)
+			spawner._on_sim_tick(dt, sim_time)
 		"temp":
 			temp._on_sim_tick(dt)
 		_:
@@ -238,4 +239,5 @@ func _on_hud_overlay(overlay_name: StringName, enabled: bool) -> void:
 				heatmap.visible = enabled
 
 func _test_by_left_click(cell: Vector2i):
-	tchange.destroy_cell(cell)
+	spawner._spawn_at_mouse()
+	#tchange.destroy_cell(cell)
