@@ -6,11 +6,17 @@
 				"thermal": { "c_J_per_kgK": 2050, "k_W_per_mK": 2.2 },
 				"transition": [
 					{ "to": "liquid/water", "when": { "t_ck_min": 27315 }, "hyst_ck": 50 }
-				]
+				],
+				"optical": {
+					"transparent": true,
+					"attenuation_m_inv": 1.0,
+					"albedo": 0.4
+				}
 			},
 			"soil": {
 				"id": 10002,
 				"thermal": { "c_J_per_kgK": 1200, "k_W_per_mK": 1.0 },
+				"optical": { "transparent": false },
 				"hydrology": {
 					"max_moisture_mg": 400000,
 					"infiltration_limit_mg_per_tick": 2000,
@@ -20,10 +26,12 @@
 			},
 			"uranium": {
 				"id": 10003,
+				"optical": { "transparent": false },
 			},
 			"copper": {
 				"id": 10004,
-				"thermal": { "c_J_per_kgK": 385, "k_W_per_mK": 400 }
+				"thermal": { "c_J_per_kgK": 385, "k_W_per_mK": 400 },
+				"optical": { "transparent": false },
 			}
 
 		},
@@ -34,7 +42,11 @@
 				"transition": [
 					{ "to": "solid/ice", "when": { "t_ck_max": 27315 }, "hyst_ck": 50 },
 					{ "to": "gas/steam", "when": { "t_ck_min": 37315 }, "hyst_ck": 50 }
-				]
+				],
+				"optical": {
+					"transparent": true,
+					"attenuation_m_inv": 0.2
+				}
 			}
 		},
 		"gas": {
@@ -42,7 +54,11 @@
 				"id": 30001,
 				"transition": [
 					{ "to": "liquid/water", "when": { "t_ck_max": 37315 }, "hyst_ck": 50 }
-				]
+				],
+				"optical": {
+					"transparent": true,
+					"attenuation_m_inv": 0.0
+				}
 			}
 		}
 	}
