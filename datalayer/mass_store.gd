@@ -90,7 +90,6 @@ func get_by_index(i: int) -> int:
 func get_mass_g(i: int) -> float:  return float(get_by_index(i)) / MG_PER_G
 func get_mass_kg(i: int) -> float: return float(get_by_index(i)) / MG_PER_KG
 
-func get_read() -> PackedInt64Array:      return _read
 func get_raw_read() -> PackedInt64Array:  return _read
 func get_raw_write() -> PackedInt64Array: return _write
 

@@ -40,7 +40,7 @@ func tick_liquid(dt: float) -> void:
 		"idx": idx,
 		"ph": phase.get_raw_read(),
 		"sid": subs.get_raw_read(),
-		"m": mass.get_read(),
+		"m": mass.get_raw_read(),
 		"T": temp.get_raw_read(),
 		"cap": water_capacity_mg_per_cell,
 	}
@@ -59,7 +59,7 @@ func commit_liquid(core_out: Dictionary) -> void:
 	var temp  = data.temperature
 
 	var ph_r : PackedByteArray   = phase.get_raw_read()
-	var m_r  : PackedInt64Array  = mass.get_read()
+	var m_r  : PackedInt64Array  = mass.get_raw_read()
 	var n := m_r.size()
 	var cap := water_capacity_mg_per_cell
 
@@ -119,7 +119,7 @@ func commit_liquid(core_out: Dictionary) -> void:
 func get_amounts() -> PackedInt64Array:
 	if data == null:
 		return PackedInt64Array()
-	var read_mass := data.mass.get_read()
+	var read_mass := data.mass.get_raw_read()
 	var ph_read := data.phase.get_raw_read()
 	var out := PackedInt64Array(); out.resize(read_mass.size())
 	for i in read_mass.size():
@@ -137,7 +137,7 @@ func apply_external_delta(d_liquid: PackedInt64Array) -> void:
 		return
 
 	# 길이 검증
-	var mass_read: PackedInt64Array = data.mass.get_read()
+	var mass_read: PackedInt64Array = data.mass.get_raw_read()
 	var n: int = mass_read.size()
 	if d_liquid.size() != n:
 		push_warning("[Liquid.apply_external_delta] delta size mismatch. n=%d, got=%d (ignored)" % [n, d_liquid.size()])

@@ -21,9 +21,9 @@ func setup(index: GridIndex, initial: Variant = null) -> void:
 		_read = PackedInt32Array(initial)
 	else:
 		if initial is PackedInt32Array:
-			push_error("[MassStore.setup] size mismatch. n=%d, got=%d.  Allocating empty buffer." % [n, initial.size()])
+			push_error("[TemperatureStore.setup] size mismatch. n=%d, got=%d.  Allocating empty buffer." % [n, initial.size()])
 		else:
-			push_error("[MassStore.setup] initial type mismatch (%s). PackedInt32Array required; allocating empty buffer." % typeof(initial))
+			push_error("[TemperatureStore.setup] initial type mismatch (%s). PackedInt32Array required; allocating empty buffer." % typeof(initial))
 		_read = PackedInt32Array(); _read.resize(n); _read.fill(0)
 
 	_write = PackedInt32Array(_read)
@@ -48,12 +48,11 @@ func is_valid_value(t: int) -> bool:
 func get_by_index(i: int) -> int:
 	return _read[i]
 
-func get_temperature(cell: Vector2i) -> int:
+func get_by_cell(cell: Vector2i) -> int:
 	if not _index.in_bounds_cell(cell):
 		return -1
 	return _read[_index.idx(cell)]
 
-func get_read() -> PackedInt32Array:      return _read
 func get_raw_read() -> PackedInt32Array:  return _read
 func get_raw_write() -> PackedInt32Array: return _write
 

@@ -57,7 +57,7 @@ func _read_mass(cell: Vector2i) -> int:
 	return _mass_store.get_by_index(_grid_index.idx(cell))
 
 func _read_temperature(cell: Vector2i) -> int:
-	return _temperature_store.get_temperature(cell)
+	return _temperature_store.get_by_cell(cell)
 
 func _make_info(cell: Vector2i, substance_val, phase_val: int, mass_val: int, temperature_val: int):
 	# 프로젝트에 TileInfo 클래스가 있으면 그걸 사용하고, 없으면 Dictionary로 반환.

@@ -7,6 +7,7 @@ var substance: SubstanceStore = SubstanceStore.new()
 var phase: PhaseStore = PhaseStore.new()
 var mass: MassStore = MassStore.new()
 var temperature: TemperatureStore = TemperatureStore.new()
+var light: LightStore = LightStore.new()
 #var moisture: MoistureStore = MoistureStore.new()
 #var soil_view: SoilViewStore = SoilViewStore.new()
 #var hydro_field: HydrologyField = HydrologyField.new()
@@ -242,15 +243,15 @@ func _resolve_field(field: String,current: Variant, default_spec: Dictionary, sp
 ## 각 phase 수 집계
 func _log_counts() -> void:
 	var counts := [0, 0, 0, 0]
-	var data := phase.get_read()
+	var data := phase.get_raw_read()
 	for i in data.size():
 		counts[data[i]] += 1
 	print("[DataLayer] SOLID=%d LIQUID=%d GAS=%d VACUUM=%d" % [counts[PhaseStore.Phase.SOLID], counts[PhaseStore.Phase.LIQUID], counts[PhaseStore.Phase.GAS], counts[PhaseStore.Phase.VACUUM]])
 
 ## 무결성 검증(기존 + 물질/phase 일관성 체크 옵션)
 func _validate() -> void:
-	var p := phase.get_read()
-	var m := mass.get_read()
+	var p := phase.get_raw_read()
+	var m := mass.get_raw_read()
 	var violations: int = 0
 	for i in p.size():
 		match p[i]:
