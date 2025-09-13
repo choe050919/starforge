@@ -54,5 +54,14 @@ layout_mode = 2
 [node name="TemperatureLabel" type="Label" parent="TileInfoPanel/VBoxContainer/Temperature"]
 layout_mode = 2
 
+[node name="Light" type="HBoxContainer" parent="TileInfoPanel/VBoxContainer"]
+layout_mode = 2
+
+[node name="LightIcon" type="TextureRect" parent="TileInfoPanel/VBoxContainer/Light"]
+layout_mode = 2
+
+[node name="LightLabel" type="Label" parent="TileInfoPanel/VBoxContainer/Light"]
+layout_mode = 2
+
 [node name="TileInfoTracker" type="Node" parent="."]
 script = ExtResource("2_1f1er")

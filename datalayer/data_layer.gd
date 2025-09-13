@@ -8,9 +8,6 @@ var phase: PhaseStore = PhaseStore.new()
 var mass: MassStore = MassStore.new()
 var temperature: TemperatureStore = TemperatureStore.new()
 var light: LightStore = LightStore.new()
-#var moisture: MoistureStore = MoistureStore.new()
-#var soil_view: SoilViewStore = SoilViewStore.new()
-#var hydro_field: HydrologyField = HydrologyField.new()
 
 func setup(
 	size: Vector2i,
@@ -24,6 +21,7 @@ func setup(
 	phase.setup(index, phases)
 	mass.setup(index, masses)
 	temperature.setup(index, temperatures)
+	light.setup(index)
 
 	# 로깅 및 검증 단계
 	_log_counts()
@@ -34,6 +32,7 @@ const SID  := "sid"
 const PHASE:= "phase"
 const MASS := "mass"
 const TEMP := "temp"
+const LIGHT := "light"
 
 # 임시 조치. 규모 커지면 Resource로 분리 필요. TODO
 var _schema := { # sid 값을 기준으로 찾을 수 있다.
@@ -60,16 +59,19 @@ func set_cells_with_spec(cells: Array[Vector2i], spec: Dictionary, reason: Strin
 	var tgt_phases: Array[int] = []
 	var tgt_masses: Array[int] = []
 	var tgt_temps : Array[int] = []
+	var tgt_lights: Array[float] = []
 
 	var ch_sid_arr  : Array[bool] = []
 	var ch_phase_arr: Array[bool] = []
 	var ch_mass_arr : Array[bool] = []
 	var ch_temp_arr : Array[bool] = []
+	var ch_light_arr: Array[bool] = []
 
 	var any_ch_sid   := false
 	var any_ch_phase := false
 	var any_ch_mass  := false
 	var any_ch_temp  := false
+	var any_ch_light := false
 
 	for cell in cells:
 		if not index.in_bounds_cell(cell):
@@ -204,6 +206,14 @@ func set_bulk_temp(arr: PackedInt32Array, reason: StringName = &"") -> void:
 	emit_signal("tiles_changed", PackedInt32Array(), &"bulk_temp",
 		{"temp_changed": true, "full_refresh": true})
 
+func set_bulk_light(arr: PackedFloat32Array, reason: StringName = &"") -> void:
+	var n := index.size.x * index.size.y
+	if arr.size() != n:
+		push_error("[DataLayer.set_bulk_light] size mismatch: need=%d, got=%d" % [n, arr.size()]); return
+	light.replace_all(arr, reason if reason != &"" else &"bulk_light")
+	emit_signal("tiles_changed", PackedInt32Array(), &"light",
+		{"light_changed": true, "full_refresh": true})
+
 ## 제네릭 버전
 ## target: "sid" | "phase" | "mass" | "temp"
 func set_store_bulk(target: StringName, values: Variant, reason: StringName = &"") -> void:
@@ -220,6 +230,9 @@ func set_store_bulk(target: StringName, values: Variant, reason: StringName = &"
 		"temp":
 			if values is PackedInt32Array: set_bulk_temp(values, reason)
 			else: push_error("[DataLayer.set_store_bulk] temp expects PackedInt32Array")
+		"light":
+			if values is PackedFloat32Array: set_bulk_light(values, reason)
+			else: push_error("[DataLayer.set_store_bulk] light expects PackedFloat32Array")
 		_:
 			push_error("[DataLayer.set_store_bulk] unknown target: %s" % [target])
 

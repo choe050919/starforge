@@ -1,21 +1,28 @@
 extends RefCounted
 class_name SubstanceRuleCache
 
-# 공개 캐시 (런타임에서 바로 사용)
+# 공개 캐시 (런타임 조회 전용)
 var rules_by_sid: Dictionary = {}   # sid -> Array[ {to_sid:int, t_ck_min?:int, t_ck_max?:int, hyst_ck:int} ]
 var phase_of_sid: Dictionary = {}   # sid -> PH enum(int)
 var path_to_sid: Dictionary = {}    # "phase/name" -> sid
 var sid_to_path: Dictionary = {}    # (디버그용) sid -> "phase/name"
-# 열 속성(SI) 원본 저장
+
+#열(thermal) 속성 (SI)
 var c_by_sid: Dictionary = {}   # sid -> c[J/kg·K]
 var k_by_sid: Dictionary = {}   # sid -> k[W/m·K]
 
-# 내부 상수: 문자열 phase -> enum 값
+# 광(optical) 속성
+var opt_transparent_by_sid: Dictionary = {}  # sid -> bool (없으면 false)
+var opt_k_by_sid: Dictionary = {}            # sid -> k [m^-1] (없으면 0.0)
+var opt_alpha_by_sid: Dictionary = {}        # sid -> alpha = exp(-k) (k 기반 사전계산, 기본 1.0)
+var opt_albedo_by_sid: Dictionary = {}       # sid -> albedo [0..1], 선택(없으면 0.0)
+
+# phase 문자열 → enum
 const PH_SOLID  := 1
 const PH_LIQUID := 2
 const PH_GAS    := 3
 
-# 파일에서 로드(최소 처리)
+# 파일에서 로드
 func load_from_file(path: String = "res://substance/substance.json") -> void:
 	var file := FileAccess.open(path, FileAccess.READ)
 	if file == null: return
@@ -28,36 +35,56 @@ func load_from_text(json_text: String) -> void:
 # ─────────────────────────────────────────────────────────
 
 func _load_from_text(text: String) -> void:
+	# 초기화
 	path_to_sid.clear()
 	sid_to_path.clear()
 	phase_of_sid.clear()
 	rules_by_sid.clear()
 	c_by_sid.clear()
 	k_by_sid.clear()
+	opt_transparent_by_sid.clear()
+	opt_k_by_sid.clear()
+	opt_alpha_by_sid.clear()
+	opt_albedo_by_sid.clear()
 
-	# 가정: JSON은 정상. (검증/경고 없음)
+	# 가정: JSON은 정상.
 	var j := JSON.new()
 	if j.parse(text) != OK: return
 	var root: Dictionary = j.get_data()
+	if not root.has("phase"): return
 	var phases: Dictionary = root["phase"]
 
-	# 패스1: 기본 맵 + 열 속성(SI) 수집	
+	# 패스1: sid/phase/path + thermal + optical 수집
 	for phase_str in phases.keys():
 		var phase_dict: Dictionary = phases[phase_str]
 		var phase_kind := _phase_kind(phase_str)
+
 		for name in phase_dict.keys():
 			var sdata: Dictionary = phase_dict[name]
 			var sid: int = int(sdata["id"])
 			var path := "%s/%s" % [phase_str, name]
 
-			# 멤버에 등록
 			path_to_sid[path] = sid
 			sid_to_path[sid] = path
 			phase_of_sid[sid] = phase_kind
 
+			# thermal (없으면 0으로)
 			var th: Dictionary = sdata.get("thermal", {})
 			c_by_sid[sid] = float(th.get("c_J_per_kgK", 0.0))
 			k_by_sid[sid] = float(th.get("k_W_per_mK", 0.0))
+
+			# optical (없으면 안전 기본값)
+			var op: Dictionary = sdata.get("optical", {})
+			var transparent := bool(op.get("transparent", false))
+			var k_m_inv := float(op.get("attenuation_m_inv", 0.0))
+			var albedo := float(op.get("albedo", 0.0))
+
+			opt_transparent_by_sid[sid] = transparent
+			opt_k_by_sid[sid] = k_m_inv
+			opt_albedo_by_sid[sid] = albedo
+			# 성능 위해 칸당 감쇠계수 사전계산 (Δz=1m 가정)
+			# k=0이면 alpha=1.0
+			opt_alpha_by_sid[sid] = 1.0 if (k_m_inv == 0.0) else exp(-k_m_inv)
 
 	# 패스2: 전이 규칙 컴파일
 	for phase_str in phases.keys():
@@ -65,11 +92,13 @@ func _load_from_text(text: String) -> void:
 		for name in phase_dict.keys():
 			var sdata: Dictionary = phase_dict[name]
 			var sid: int = int(sdata["id"])
+
 			if sdata.has("transition") and typeof(sdata["transition"]) == TYPE_ARRAY:
 				for trans in sdata["transition"]:
 					var to_path = trans.get("to", "")
 					var to_sid = path_to_sid.get(to_path, null)
 					if to_sid == null: continue
+
 					var _when: Dictionary = trans.get("when", {})
 					var rule := {
 						"to_sid": int(to_sid),
@@ -82,7 +111,7 @@ func _load_from_text(text: String) -> void:
 						rules_by_sid[sid] = []
 					rules_by_sid[sid].append(rule)
 
-# 문자열 phase를 enum으로
+# 문자열 phase → enum
 func _phase_kind(phase_str: String) -> int:
 	match phase_str:
 		"solid":  return PH_SOLID
@@ -90,9 +119,8 @@ func _phase_kind(phase_str: String) -> int:
 		"gas":    return PH_GAS
 		_:        return 0
 
-# 헬퍼 함수들
+# 헬퍼
 func sid_of(path: String, default_val: int = -1) -> int:
-	# 정확한 "phase/name" 경로를 sid로 변환. 없으면 default 반환.
 	return int(path_to_sid.get(path, default_val))
 
 func has_sid(sid: int) -> bool:

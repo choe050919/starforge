@@ -46,6 +46,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		overlay_toggle_requested.emit(OverlayManager.OverlayMode.HEATMAP)
 	elif event.is_action_pressed("overlay_toggle_heatsrc"):
 		overlay_toggle_requested.emit(OverlayManager.OverlayMode.HEAT_SOURCE)
+	elif event.is_action_pressed("overlay_toggle_light"):
+		overlay_toggle_requested.emit(OverlayManager.OverlayMode.LIGHT)
 
 	# 툴 전환(핫키): 1 → VACUUM, 2 → SPAWN_FISH
 	if event.is_action_pressed("tool_select_1"):

@@ -8,6 +8,7 @@ class_name TileInfoHUD
 @onready var _phase_label: Label = $TileInfoPanel/VBoxContainer/Phase/PhaseLabel
 @onready var _mass_label: Label = $TileInfoPanel/VBoxContainer/Mass/MassLabel
 @onready var _temperature_label: Label = $TileInfoPanel/VBoxContainer/Temperature/TemperatureLabel
+@onready var _light_label: Label = $TileInfoPanel/VBoxContainer/Light/LightLabel
 
 @export var offset := Vector2(14, 18)   # 커서와 겹치지 않도록
 @export var edge_margin := 8.0          # 화면 가장자리 여백
@@ -43,8 +44,8 @@ const PHASE_COLOR := {                 # 선택: Label 폰트 색 등
 	 3: Color(0.7,0.8,0.95),
 }
 
-func setup(hs: HoverService, gi: GridIndex, ss: SubstanceStore, ps: PhaseStore, ms: MassStore, ts: TemperatureStore) -> void:
-	tile_info_tracker.setup(hs, gi, ss, ps, ms, ts)
+func setup(data: DataLayer, hs: HoverService) -> void:
+	tile_info_tracker.setup(data, hs)
 	tile_info_tracker.connect("info_updated", _on_info_updated)
 
 func _on_info_updated(info: Dictionary) -> void:
@@ -52,6 +53,7 @@ func _on_info_updated(info: Dictionary) -> void:
 	_update_phase(info)
 	_update_mass(info)
 	_update_temperature(info)
+	_update_light(info)
 
 func _update_substance(info: Dictionary) -> void:
 	var s: int = info.get("substance", -1)
@@ -76,6 +78,11 @@ func _update_temperature(info: Dictionary) -> void:
 	var t = info.get("temperature", -1)
 	var text := _format_temperature(-1 if t == null else t)
 	_temperature_label.text = "TEMPERATURE: " + text
+
+func _update_light(info: Dictionary) -> void:
+	var l: float = info.get("light", -1)
+	var text := str(l)
+	_light_label.text = "LIGHT: " + text
 
 ## mg → g → kg 자동 포맷터 (HUD 전용)
 ## 추후 다른 패널에서도 사용될 수 있지만 일단 빠른 개발을 위해 여기서 구현하였음.

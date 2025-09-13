@@ -11,8 +11,8 @@ var cls: String
 func setup(index: GridIndex, initial: Variant = null) -> void:
 	cls = get_class()
 	if index   == null: push_error("[%s.setup] GridIndex not set" % cls); return
-	if initial == null: push_error("[%s.setup] initial not set" % cls);   return
 	_index = index
+	if initial == null: push_error("[%s.setup] initial not set" % cls);   return
 
 func begin_write() -> void:
 	if _is_writing:

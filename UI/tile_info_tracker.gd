@@ -11,6 +11,8 @@ var info_provider := TileInfoProvider.new()
 ## ── 외부 주입 객체들 ──────────────────────────────────────────────────
 var hover_service: HoverService
 
+var _data: DataLayer
+
 # 세분화 푸시: 필요한 스토어들
 var _phase_store: PhaseStore
 var _mass_store: MassStore
@@ -23,12 +25,13 @@ var _index: GridIndex
 var _current_cell: Vector2i = Vector2i(-1, -1)
 var _has_focus: bool = false             # hover 중 여부(hover_cleared 대응)
 
-func setup(hs: HoverService, gi: GridIndex, ss: SubstanceStore, ps: PhaseStore, ms: MassStore, ts: TemperatureStore) -> void:
+func setup(data:DataLayer, hs: HoverService) -> void:
+	_data = data
 	hover_service = hs
-	_index = gi
-	_phase_store = ps
-	_mass_store = ms
-	_temperature_store = ts
+	_index = _data.index
+	_phase_store = _data.phase
+	_mass_store = _data.mass
+	_temperature_store = _data.temperature
 
 	for name in ["hover_service", "_index", "_phase_store", "_mass_store", "_temperature_store"]:
 		var value = get(name)
@@ -38,7 +41,7 @@ func setup(hs: HoverService, gi: GridIndex, ss: SubstanceStore, ps: PhaseStore, 
 	_connect_sources()
 
 	if info_provider:
-		info_provider.setup(gi, ss, ps, ms, ts)
+		info_provider.setup(_data)
 	else:
 		push_error("[TileInfoTracker.setup] 어쩌구저쩌구 귀찮다")
 

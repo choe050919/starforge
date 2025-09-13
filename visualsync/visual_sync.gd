@@ -6,9 +6,11 @@ var substance: SubstanceStore
 var phase: PhaseStore
 var mass: MassStore
 var temp: TemperatureStore
+var light: LightStore
 
 @onready var ground: Ground = %Ground
 @onready var heatmap_overlay: HeatmapOverlay = %HeatmapOverlay
+@onready var light_overlay: LightOverlay = %LightOverlay
 
 func setup(data_layer: DataLayer) -> void:
 	_data_layer = data_layer
@@ -16,6 +18,7 @@ func setup(data_layer: DataLayer) -> void:
 	phase = _data_layer.phase
 	mass = _data_layer.mass
 	temp = _data_layer.temperature
+	light = _data_layer.light
 
 ## 본체
 ## DataLayer의 set_cells_with_spec함수에서 인자 전달됨
@@ -43,21 +46,19 @@ func _refresh_all(payload: Dictionary) -> void:
 	var ch_phase : bool = payload.get("phase_changed", false)
 	var ch_mass  : bool = payload.get("mass_changed", false)
 	var ch_temp  : bool = payload.get("temp_changed", false)
+	var ch_light : bool = payload.get("light_changed", false)
 
 	if ch_temp:
 		heatmap_overlay.render_full_with_mask(temp.get_raw_read(), phase.get_raw_read())
-	# 예시:
-	#if ch_sid:
-		#terrain.rebuild_all()      # 타일 아틀라스/메시 등 전체 재구성
-	#if ch_mass:
-		#liquid_overlay.rebuild_all()
-	# ... 필요 노드만 호출
+	if ch_light:
+		light_overlay.render_full(light.get_raw_read())
 
 func _refresh_indices(idxs: PackedInt32Array, payload: Dictionary) -> void:
 	var ch_sid   : bool = payload.get("sid_changed", false)
 	var ch_phase : bool = payload.get("phase_changed", false)
 	var ch_mass  : bool = payload.get("mass_changed", false)
 	var ch_temp  : bool = payload.get("temp_changed", false)
+	var ch_light : bool = payload.get("light_changed", false)
 
 	for i in idxs:
 		var cell := _data_layer.index.cell(i)

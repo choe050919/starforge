@@ -1,7 +1,7 @@
 extends Node
 class_name OverlayManager
 
-enum OverlayMode { NONE, HEATMAP, HEAT_SOURCE }
+enum OverlayMode { NONE, HEATMAP, HEAT_SOURCE, LIGHT }
 
 @onready var grayscale_overlay: ColorRect = get_node("FXLayer/GrayscaleOverlay")
 
@@ -11,6 +11,7 @@ var current_overlay: int = OverlayMode.NONE
 var overlay_paths := {
 	OverlayMode.HEATMAP: NodePath("OverlayLayer/HeatmapOverlay"),
 	OverlayMode.HEAT_SOURCE: NodePath("OverlayLayer/HeatSourceOverlay"),
+	OverlayMode.LIGHT: NodePath("OverlayLayer/LightOverlay"),
 }
 
 func _ready() -> void:
@@ -54,6 +55,8 @@ func set_overlay(mode: int) -> void:
 		name_str = "HEATMAP"
 	elif mode == OverlayMode.HEAT_SOURCE:
 		name_str = "HEAT_SOURCE"
+	elif mode == OverlayMode.LIGHT:
+		name_str = "LIGHT"
 	print("[Overlay] ", name_str)
 
 func toggle_overlay(mode: int) -> void:

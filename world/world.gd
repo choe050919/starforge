@@ -9,6 +9,7 @@ class_name World
 @onready var overlay_manager: OverlayManager = %OverlayManager
 @onready var heatmap = overlay_manager.get_overlay(OverlayManager.OverlayMode.HEATMAP) as HeatmapOverlay
 @onready var heat_src = overlay_manager.get_overlay(OverlayManager.OverlayMode.HEAT_SOURCE) as HeatSourceOverlay
+@onready var light_overlay = overlay_manager.get_overlay(OverlayManager.OverlayMode.LIGHT) as LightOverlay
 
 # ── Terrain & Overlays ───────────────────────────────────────────
 @onready var terrain = $Terrain
@@ -27,6 +28,7 @@ class_name World
 @onready var phase_change: PhaseChange =   %Systems/PhaseChange
 @onready var input: InputController =      %Systems/InputController
 @onready var hover_service: HoverService = %Systems/HoverService
+@onready var light: Light = $Systems/Light
 
 # ── Actors ───────────────────────────────────────────────────────
 @onready var spawner: CritterSpawner = $Actors/Spawner
@@ -119,12 +121,13 @@ func _apply_worldgen_result(
 
 	# 시스템들 (데이터 준비 이후)
 	durability.setup_from_tiles(tiles, size)
+
+	temp.setup(data_layer, rule_cache)
+
 	tchange.setup(data_layer)
 
 	liquid.setup(data_layer, springs)
 	liquid.set_liquid_sids()
-
-	temp.setup(data_layer, rule_cache)
 
 	phase_change.setup(
 		data_layer,
@@ -135,6 +138,8 @@ func _apply_worldgen_result(
 		clock,
 		rule_cache
 	)
+
+	light.setup(data_layer, rule_cache)
 
 ## 적용 이후 후처리:
 ## - 카메라/오버레이 레이아웃(타일셋/맵 크기 필요)
@@ -152,6 +157,7 @@ func _post_apply_worldgen(size: Vector2i, initial_mass: PackedInt64Array) -> voi
 		if crack_overlay != null: crack_overlay.set_layout(size)
 		if heatmap != null: heatmap.set_layout(size, ts.tile_size)
 		if heat_src != null: heat_src.set_layout(size, ts.tile_size)
+		if light_overlay != null: light_overlay.set_layout(size, ts.tile_size)
 	else:
 		push_error("[World._on_world_generated] tileset is null"); return
 
@@ -159,16 +165,10 @@ func _post_apply_worldgen(size: Vector2i, initial_mass: PackedInt64Array) -> voi
 
 	# 초기 렌더
 	liquid_overlay.render(initial_mass)
+	light_overlay # TODO
 
 	# HUD의 타일 정보(온도 포함) 데이터 배선
-	tile_info_hud.setup(
-		hover_service,
-		data_layer.index,
-		data_layer.substance,
-		data_layer.phase,
-		data_layer.mass,
-		data_layer.temperature
-	)
+	tile_info_hud.setup(data_layer, hover_service)
 
 	spawner.setup(data_layer)
 
@@ -195,6 +195,10 @@ func _on_sim_clock_tick(tag: StringName, dt: float) -> void:
 			liquid.tick_liquid(dt)
 			liquid_overlay.render(liquid.get_amounts())
 			spawner._on_sim_tick(dt, sim_time)
+			light._on_sim_tick(dt)
+			#var light_111 := data_layer.light.get_raw_read()
+			#for i in light_111.size() / 48:
+				#print(light_111[i*48])
 		"temp":
 			temp._on_sim_tick(dt)
 		_:

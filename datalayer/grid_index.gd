@@ -12,6 +12,13 @@ func cell(i: int) -> Vector2i:
 	@warning_ignore("integer_division")
 	return Vector2i(i % size.x, i / size.x)
 
+func _index_array_to_cells(index_array: Array[int]) -> Array[Vector2i]:
+	var cell_array := []
+	cell_array.resize(index_array.size())
+	for i in index_array.size():
+		cell_array.append(cell(index_array[i]))
+	return cell_array
+
 func in_bounds_cell(c: Vector2i) -> bool:
 	return c.x >= 0 and c.y >= 0 and c.x < size.x and c.y < size.y
 
