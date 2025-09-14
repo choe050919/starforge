@@ -134,6 +134,9 @@ func _trim_zeros(val: float, decimals: int) -> String:
 		s = s.substr(0, s.length() - 1)
 	return s
 
+func on_hover_changed(cell: Vector2i) -> void:
+	tile_info_tracker.on_hover_changed(cell)
+
 func _process(_delta: float) -> void:
 	if not visible:
 		return

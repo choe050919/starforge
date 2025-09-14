@@ -61,7 +61,7 @@ func _connect_sources() -> void:
 		_temperature_store.temperature_changed.connect(_on_temperature_changed)
 
 ## ── Hover 수신 ────────────────────────────────────────────────────────
-func on_hover_changed(cell: Vector2i,) -> void:
+func on_hover_changed(cell: Vector2i) -> void:
 	if not _index.in_bounds_cell(cell):
 		_on_hover_cleared()
 		return

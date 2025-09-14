@@ -18,24 +18,22 @@ class_name World
 @onready var corner_highlight: CornerHighlight = $Terrain/CornerHighlight
 
 # ── Systems ──────────────────────────────────────────────────────
-@onready var systems = %Systems
-@onready var worldgen: WorldGen =          %Systems/WorldGen
-@onready var durability: Durability =      %Systems/Durability
-@onready var temp: Temperature =           %Systems/Temperature
-@onready var clock: SimClock =             %Systems/SimClock
-@onready var tchange: TileChange =         %Systems/TileChange
-@onready var liquid: Liquid =              %Systems/Liquid
-@onready var phase_change: PhaseChange =   %Systems/PhaseChange
-@onready var input: InputController =      %Systems/InputController
-@onready var hover_service: HoverService = %Systems/HoverService
-@onready var light: Light = $Systems/Light
+@onready var worldgen: WorldGen =          %WorldGen
+@onready var durability: Durability =      %Durability
+@onready var temp: Temperature =           %Temperature
+@onready var clock: SimClock =             %SimClock
+@onready var tchange: TileChange =         %TileChange
+@onready var liquid: Liquid =              %Liquid
+@onready var phase_change: PhaseChange =   %PhaseChange
+@onready var input: InputController =      %InputController
+@onready var hover_service: HoverService = %HoverService
+@onready var light: Light =                %Light
 
 # ── Actors ───────────────────────────────────────────────────────
-@onready var spawner: CritterSpawner = $Actors/Spawner
+@onready var spawner: CritterSpawner = %Spawner
 
 # ── UI ───────────────────────────────────────────────────────────
 @onready var tile_info_hud: TileInfoHUD = $UIFXLayer/TileInfoHUD
-var tile_info_tracker: TileInfoTracker
 @onready var hud: HUD = $HUD
 
 # ── State ────────────────────────────────────────────────────────
@@ -69,10 +67,6 @@ func _ready() -> void:
 	input.overlay_toggle_requested.connect(_on_overlay_toggle_requested)
 	hover_service.hover_changed.connect(_on_hover_changed)
 
-	input.test_requested.connect(_test_by_left_click)
-
-	tile_info_tracker = tile_info_hud.get_node("TileInfoTracker") as TileInfoTracker
-
 	# 월드 생성
 	worldgen.generated.connect(_on_world_generated)
 	worldgen.bind_rule_cache(rule_cache)
@@ -82,9 +76,6 @@ func _ready() -> void:
 	durability.break_requested.connect(func(cell: Vector2i): tchange.queue_destroy(cell, &"durability"))
 	durability.hp_changed.connect(crack_overlay.on_hp_changed)
 	durability.break_requested.connect(crack_overlay.on_break_requested)
-
-	#tchange.tile_replaced.connect(_on_tile_replaced)
-	#tchange.tile_destroyed.connect(_on_tile_destroyed)
 
 func _on_world_generated(
 		size: Vector2i,
@@ -117,7 +108,7 @@ func _apply_worldgen_result(
 
 	data_layer.setup(size, substances, phases, mass, temperatures)
 
-	data_layer.tiles_changed.connect(visual_sync._on_tiles_changed)
+	data_layer.tiles_changed.connect(visual_sync.on_tiles_changed)
 
 	# 시스템들 (데이터 준비 이후)
 	durability.setup_from_tiles(tiles, size)
@@ -157,7 +148,8 @@ func _post_apply_worldgen(size: Vector2i, initial_mass: PackedInt64Array) -> voi
 
 	# 초기 렌더
 	liquid_overlay.render(initial_mass)
-	light_overlay # TODO
+	# TODO initial을 사용해서 초기 렌더를 할지 결정 필요. 안 하면 에러 계속 남.
+	light_overlay
 
 	# HUD의 타일 정보(온도 포함) 데이터 배선
 	tile_info_hud.setup(data_layer, hover_service)
@@ -194,7 +186,7 @@ func _on_sim_clock_tick(tag: StringName, dt: float) -> void:
 		"temp":
 			temp._on_sim_tick(dt)
 		_:
-			push_error("[World._on_sim_clock_tick] wrong tag")
+			push_error("[World._on_sim_clock_tick] wrong tag: %s" % [str(tag)])
 
 # ── Input / HUD ──────────────────────────────────────────────────
 func _pan_camera(delta: Vector2) -> void:
@@ -209,7 +201,7 @@ func _on_overlay_toggle_requested(mode: OverlayManager.OverlayMode) -> void:
 
 func _on_hover_changed(cell: Vector2i) -> void:
 	corner_highlight.show_cell(cell)
-	tile_info_tracker.on_hover_changed(cell)
+	tile_info_hud.on_hover_changed(cell)
 
 func _on_hud_play(running: bool) -> void:
 	_is_running = running
@@ -233,7 +225,3 @@ func _on_hud_overlay(overlay_name: StringName, enabled: bool) -> void:
 		&"temp":
 			if is_instance_valid(heatmap):
 				heatmap.visible = enabled
-
-func _test_by_left_click(cell: Vector2i):
-	spawner._spawn_at_mouse()
-	#tchange.destroy_cell(cell)

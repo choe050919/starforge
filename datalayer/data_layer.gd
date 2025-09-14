@@ -21,7 +21,11 @@ func setup(
 	phase.setup(index, phases)
 	mass.setup(index, masses)
 	temperature.setup(index, temperatures)
-	light.setup(index)
+
+	var n := index.size.x * index.size.y
+	var L0 := PackedFloat32Array(); L0.resize(n)
+	for i in n: L0[i] = 0.0
+	light.setup(index, L0)
 
 	# 로깅 및 검증 단계
 	_log_counts()

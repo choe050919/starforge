@@ -7,7 +7,6 @@ signal overlay_toggle_requested(mode: OverlayManager.OverlayMode)
 
 ## ToolManager에 직접 라우팅 (입력 해석만 하고, 의미 실행은 ToolManager가 담당)
 @export var _tool_manager: ToolManager
-signal test_requested(cell: Vector2i)
 
 var data_layer: DataLayer
 var hover_service: HoverService

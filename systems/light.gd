@@ -186,7 +186,7 @@ func _recompute_dirty_columns(I0: float) -> void:
 
 	_has_dirty = false
 
-	# ✅ DataLayer 경유로 한 번에 반영(시그널/풀리프레시 포함)
+	# DataLayer 경유로 한 번에 반영(시그널/풀리프레시 포함)
 	_data.set_bulk_light(L_new, &"light_recompute")
 
 

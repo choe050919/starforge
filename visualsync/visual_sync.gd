@@ -1,6 +1,20 @@
 extends Node
 class_name VisualSync
 
+const _PAYLOAD_FLAGS := {
+	"sid_changed": false,
+	"phase_changed": false,
+	"mass_changed": false,
+	"temp_changed": false,
+	"full_refresh": false,
+}
+const _LOG_SAMPLE := 8
+
+# ── 설정 ───────────────────────────────────────────────────────────
+@export var enabled := true
+@export var debug_log := false
+
+# ── 의존성 ─────────────────────────────────────────────────────────
 var _data_layer: DataLayer
 var substance: SubstanceStore
 var phase: PhaseStore
@@ -20,6 +34,33 @@ func setup(data_layer: DataLayer) -> void:
 	temp = _data_layer.temperature
 	light = _data_layer.light
 
+## 외부 계약(퍼블릭): 신호는 여기에 연결
+func on_tiles_changed(idxs: PackedInt32Array, reason: StringName, payload: Dictionary) -> void:
+	# 1) payload 정규화(허용 키만, bool 캐스트)
+	var flags := _normalize_payload(payload)
+
+	# 2) full_refresh 우선 처리
+	if flags.full_refresh:
+		if debug_log:
+			print("[VisualSync] full_refresh: reason=", reason)
+		_refresh_all(flags)  # 내부 전체 재생성
+		return
+
+	# 3) 부분 업데이트인데 인덱스 없음 → no-op 또는 경고
+	if idxs.is_empty():
+		if debug_log:
+			push_warning("[VisualSync] partial update with empty indices; reason=%s" % [str(reason)])
+		return
+
+	# 4) 라이트 로깅(샘플링)
+	if debug_log:
+		var n := idxs.size()
+		var show: int = min(n, _LOG_SAMPLE)
+		print("[VisualSync] update n=", n, " reason=", reason, " sample=", idxs.slice(0, show))
+
+	# 5) 검증 통과 → 본체로 위임 (얇게 유지)
+	_on_tiles_changed(idxs, reason, flags)
+
 ## 본체
 ## DataLayer의 set_cells_with_spec함수에서 인자 전달됨
 ## payload 키:
@@ -35,10 +76,15 @@ func _on_tiles_changed(
 		return
 
 	# 2) 부분 업데이트 경로
-	if idxs.is_empty():
-		print("something") # DEBUG HACK
-		push_error("[VisualSync] not full_refresh and idxs is empty"); return
 	_refresh_indices(idxs, payload)
+
+## 내부 유틸(가벼운 정규화)
+func _normalize_payload(src: Dictionary) -> Dictionary:
+	var out := _PAYLOAD_FLAGS.duplicate()
+	for k in out.keys():
+		if src.has(k):
+			out[k] = bool(src[k])
+	return out
 
 ## 전체 갱신. 어떤 정보를 동기화하느냐에 대한 입력만 받으며, 구체적 갱신은 직접 한다.
 func _refresh_all(payload: Dictionary) -> void:

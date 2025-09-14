@@ -3,7 +3,7 @@ class_name OverlayManager
 
 enum OverlayMode { NONE, HEATMAP, HEAT_SOURCE, LIGHT }
 
-@onready var grayscale_overlay: ColorRect = get_node("FXLayer/GrayscaleOverlay")
+@onready var grayscale_overlay: ColorRect = get_node("FXLayer/Grayscale")
 
 var current_overlay: int = OverlayMode.NONE
 
