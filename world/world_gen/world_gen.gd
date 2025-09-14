@@ -244,6 +244,7 @@ func build_mask_cave(hmap: PackedInt32Array) -> PackedByteArray:
 			if mask_cave[ii] != 1: continue
 			mask_cave[ii] = 0
 			var cx := ii % w
+			@warning_ignore("integer_division")
 			var cy := ii / w
 			if cx > 0:         stack.append(ii - 1)
 			if cx < w - 1:     stack.append(ii + 1)

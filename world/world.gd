@@ -129,15 +129,7 @@ func _apply_worldgen_result(
 	liquid.setup(data_layer, springs)
 	liquid.set_liquid_sids()
 
-	phase_change.setup(
-		data_layer,
-		data_layer.phase,
-		data_layer.substance,
-		data_layer.temperature,
-		data_layer.index,
-		clock,
-		rule_cache
-	)
+	phase_change.setup(data_layer, rule_cache)
 
 	light.setup(data_layer, rule_cache)
 

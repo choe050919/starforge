@@ -23,14 +23,15 @@ func bind_rule_cache(cache: SubstanceRuleCache) -> void:
 ##   "changes": Array[{ "cell": Vector2i, "from_sid": int, "to_sid": int }],
 ##   "stats": Dictionary ( (from_sid<<32)|to_sid : count )
 ## }
-func tick_fullscan(phase_store, substance_store, temp_store, index: GridIndex) -> Dictionary:
+func tick_fullscan(data: DataLayer) -> Dictionary:
+	var index := data.index
 	var n := index.size.x * index.size.y
 	if n <= 0 or _rules == null:
 		return { "changes": [], "stats": {} }
 
-	var P: PackedByteArray   = phase_store.get_raw_read()
-	var S: PackedInt32Array  = substance_store.get_raw_read()
-	var T: PackedInt32Array  = temp_store.get_raw_read()
+	var P: PackedByteArray  = data.phase.get_raw_read()
+	var S: PackedInt32Array = data.substance.get_raw_read()
+	var T: PackedInt32Array = data.temperature.get_raw_read()
 
 	var changes: Array = []
 	var stats: Dictionary = {}

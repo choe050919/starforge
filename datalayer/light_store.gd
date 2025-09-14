@@ -66,7 +66,7 @@ func set_by_index(i: int, value: float) -> void:
 ## 전 칸 복사조도 배열을 한 번에 교체(성능 경로).
 ## - per-cell 이벤트/시그널은 쏘지 않음
 ## - 외부에서 begin_write() 진행 중이면 그 상태를 존중(중복 begin 방지)
-func replace_all(values: PackedFloat32Array, reason: StringName = &"bulk_light") -> void:
+func replace_all(values: PackedFloat32Array, _reason: StringName = &"bulk_light") -> void:
 	var n := _index.size.x * _index.size.y
 	if values.size() != n:
 		push_error("[LightStore.replace_all] size mismatch: need=%d, got=%d" % [n, values.size()])

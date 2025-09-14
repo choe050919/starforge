@@ -26,7 +26,7 @@ func setup(data_layer: DataLayer) -> void:
 ## "sid_changed" | "phase_changed" | "mass_changed" | "temp_changed"
 func _on_tiles_changed(
 	idxs: PackedInt32Array,
-	reason: StringName,
+	_reason: StringName,
 	payload: Dictionary
 ) -> void:
 	# 1) 전체 무효화 신호면 풀 리프레시
@@ -66,7 +66,6 @@ func _refresh_indices(idxs: PackedInt32Array, payload: Dictionary) -> void:
 		# ── Substance/Phase 변경 → Terrain 쪽 갱신
 		if ch_sid or ch_phase:
 			var sid   := substance.get_by_index(i)
-			var phase := phase.get_by_index(i)
 			ground.apply_cell_change(cell, sid)
 
 		# ── Mass 변경 → 액체 오버레이

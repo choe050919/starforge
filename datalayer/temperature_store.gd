@@ -67,7 +67,7 @@ func set_by_index(i: int, temp: int) -> void:
 	_write[i] = temp
 	emit_signal("temperature_changed", _index.cell(i))
 
-func replace_all(values: PackedInt32Array, reason: StringName = &"bulk_replace") -> void:
+func replace_all(values: PackedInt32Array, _reason: StringName = &"bulk_replace") -> void:
 	var n := _index.size.x * _index.size.y
 	if values.size() != n:
 		push_error("[TemperatureStore.replace_all] size mismatch: need=%d, got=%d" % [n, values.size()])
@@ -116,7 +116,9 @@ func sum() -> int:
 # ── 도구 ────────────────────────────────────────────────
 func print_total_temperature() -> void:
 	var total_ck := sum()
+	@warning_ignore("integer_division")
 	var total_k := total_ck / CK_PER_K
+	@warning_ignore("integer_division")
 	var total_c := (total_ck + CK_0C) / CK_PER_K
 
 	print("[TemperatureStore] total temperature = %d cK (%.3f K, %.6f °C)" % [total_ck, total_k, total_c])
