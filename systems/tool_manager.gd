@@ -5,7 +5,7 @@ class_name ToolManager
 ## 1) 도구 enum
 ##    - 에디터에서 current_tool을 드롭다운으로 선택 가능
 ##    - NONE의 경우 현재 의미 없지만 일단 0의 자리에 추가해둠.
-enum Tool { NONE, VACUUM, SPAWN_FISH }
+enum Tool { NONE, VACUUM, SPAWN_FISH, SPAWN_PLANT }
 
 ## 현재 선택된 도구 (기본: 물고기 소환)
 @export var current_tool: int = Tool.SPAWN_FISH
@@ -18,6 +18,7 @@ signal tool_changed(new_tool: int)
 ##      (InputController는 이 신호에 관여하지 않음)
 signal request_vacuum(cell: Vector2i)
 signal request_spawn_fish(world_pos: Vector2, cell: Vector2i)
+signal request_spawn_plant(cell: Vector2i)
 
 func _ready() -> void:
 	# 에디터에서 기본값으로 시작할 때, UI가 즉시 반영되도록 1회 방송
@@ -37,8 +38,8 @@ func set_tool(new_tool: int) -> void:
 func select_tool_by_index(idx: int) -> void:
 	if idx < 0:
 		return
-	# enum은 0..(len-1) 범위의 연속된 int이므로 간단 체크
-	if idx > Tool.SPAWN_FISH:
+	# 유효한 값인지 체크
+	if not Tool.values().has(idx):
 		return
 	set_tool(idx)
 
@@ -50,6 +51,8 @@ func handle_click(cell: Vector2i, world_pos: Vector2, modifiers: int = 0) -> voi
 			emit_signal(&"request_vacuum", cell)
 		Tool.SPAWN_FISH:
 			emit_signal(&"request_spawn_fish", world_pos, cell)
+		Tool.SPAWN_PLANT:
+			emit_signal(&"request_spawn_plant", cell)
 		_:
 			# enum 누락 방지용 가드
 			push_warning("[ToolManager] Unknown tool: %s" % [str(current_tool)])

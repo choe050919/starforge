@@ -28,6 +28,7 @@ class_name World
 @onready var input: InputController =      %InputController
 @onready var hover_service: HoverService = %HoverService
 @onready var light: Light =                %Light
+@onready var plant: PlantLayer = %PlantLayer
 
 # ── Actors ───────────────────────────────────────────────────────
 @onready var spawner: CritterSpawner = %Spawner
@@ -112,17 +113,15 @@ func _apply_worldgen_result(
 
 	# 시스템들 (데이터 준비 이후)
 	durability.setup_from_tiles(tiles, size)
-
 	temp.setup(data_layer, rule_cache)
-
 	tchange.setup(data_layer)
-
-	liquid.setup(data_layer, springs)
-	liquid.set_liquid_sids()
-
+	liquid.setup(data_layer, springs); liquid.set_liquid_sids()
 	phase_change.setup(data_layer, rule_cache)
-
 	light.setup(data_layer, rule_cache)
+	plant.setup(data_layer.index)
+	plant.set_soil_checker(func(cell: Vector2i) -> bool: # TODO sid hardcoding
+		return data_layer.substance.get_by_cell(cell) == 10002
+	)
 
 ## 적용 이후 후처리:
 ## - 카메라/오버레이 레이아웃(타일셋/맵 크기 필요)
@@ -179,9 +178,7 @@ func _on_sim_clock_tick(tag: StringName, dt: float) -> void:
 			liquid_overlay.render(liquid.get_amounts())
 			spawner._on_sim_tick(dt, sim_time)
 			light._on_sim_tick(dt)
-			#var light_111 := data_layer.light.get_raw_read()
-			#for i in light_111.size() / 48:
-				#print(light_111[i*48])
+			plant.tick(dt)
 		"temp":
 			temp._on_sim_tick(dt)
 		_:
@@ -224,3 +221,17 @@ func _on_hud_overlay(overlay_name: StringName, enabled: bool) -> void:
 		&"temp":
 			if is_instance_valid(heatmap):
 				heatmap.visible = enabled
+
+var _spec_amphib := preload("res://plants/specs/amphibious_spec.tres")
+
+func _on_tool_manager_request_spawn_plant(cell: Vector2i) -> void:
+	if _spec_amphib == null:
+		push_error("[PlantTest] spec is null")
+		return
+	# 자리 가능 검사 → 배치
+	if plant.can_place(_spec_amphib, cell):
+		var id := plant.place(_spec_amphib, cell, 1.0)
+		if id < 0:
+			push_warning("[PlantTest] place failed (unknown)")
+	else:
+		push_warning("[PlantTest] cannot place: not_soil/out_of_bounds/occupied")

@@ -240,7 +240,6 @@ func set_store_bulk(target: StringName, values: Variant, reason: StringName = &"
 		_:
 			push_error("[DataLayer.set_store_bulk] unknown target: %s" % [target])
 
-
 func get_spec(tile_id: int) -> Dictionary:
 	if not _schema.has(tile_id):
 		push_error("[DataLayer] Unknown tile id %s" % tile_id)
