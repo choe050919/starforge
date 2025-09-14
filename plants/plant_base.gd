@@ -12,6 +12,7 @@ var stage_idx: int = 0
 
 var _cell_size := Vector2i(32, 32)
 var _sprites: Array[Sprite2D] = []
+var _ph_tex: Texture2D = null  # placeholder 캐시
 
 func _ready() -> void:
 	#_ensure_sprite_ready()
@@ -26,8 +27,6 @@ func setup_from_layer(id: int, _spec_id: StringName, _root: Vector2i, _stage: in
 func set_stage(v: int) -> void:
 	stage_idx = v
 	_apply_style_to_all()
-
-var _ph_tex: Texture2D = null  # placeholder 캐시
 
 func _placeholder_tex() -> Texture2D:
 	if _ph_tex: return _ph_tex

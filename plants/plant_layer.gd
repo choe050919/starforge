@@ -132,6 +132,14 @@ func tick(dt: float) -> void:
 				_emit_stage_changed(id, p.stage_idx)
 				_update_view_for(id, p)
 				advanced = true
+
+				#var rel_next := p.spec.get_footprint(p.stage_idx)            # 상대
+				#var abs_next := compute_world_footprint(p.spec, p.stage_idx, p.root_cell)  # 절대
+				#print_rich("[Plant] advanced id=", id,
+					#" stage=", p.stage_idx,
+					#"\n  rel=", rel_next,
+					#"\n  abs=", abs_next)
+
 				_log(
 					"stage_advanced id=%d -> stage=%d progress=%.3f", [id, p.stage_idx, p.progress]
 				)

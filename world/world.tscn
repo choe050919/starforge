@@ -163,7 +163,6 @@ script = ExtResource("26_lwhbe")
 [node name="PlantLayer" type="Node" parent="Systems"]
 unique_name_in_owner = true
 script = ExtResource("28_avd5l")
-debug_enabled = true
 plant_base_scene = ExtResource("29_ll3gq")
 
 [node name="Actors" type="Node2D" parent="."]
