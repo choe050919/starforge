@@ -148,8 +148,7 @@ func _post_apply_worldgen(size: Vector2i, initial_mass: PackedInt64Array) -> voi
 
 	# 초기 렌더
 	liquid_overlay.render(initial_mass)
-	# TODO initial을 사용해서 초기 렌더를 할지 결정 필요. 안 하면 에러 계속 남.
-	light_overlay
+	# light_overlay는 초기 렌더 X.
 
 	# HUD의 타일 정보(온도 포함) 데이터 배선
 	tile_info_hud.setup(data_layer, hover_service)

@@ -54,6 +54,6 @@ func _on_sim_tick(_dt: float, sim_time: float):
 	for actor in get_children():
 		actor._on_sim_tick(_dt, sim_time)
 
-
+## TODO 인자 전달을 어떻게 할지 처분 결정 필요.
 func _on_tool_manager_request_spawn_fish(world_pos: Vector2, cell: Vector2i) -> void:
 	_spawn_at_mouse()

@@ -33,10 +33,10 @@ func setup(data:DataLayer, hs: HoverService) -> void:
 	_mass_store = _data.mass
 	_temperature_store = _data.temperature
 
-	for name in ["hover_service", "_index", "_phase_store", "_mass_store", "_temperature_store"]:
-		var value = get(name)
+	for _name in ["hover_service", "_index", "_phase_store", "_mass_store", "_temperature_store"]:
+		var value = get(_name)
 		if value == null:
-			print("%s is null" % name)
+			print("%s is null" % _name)
 
 	_connect_sources()
 
