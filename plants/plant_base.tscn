@@ -1,0 +1,10 @@
+[gd_scene load_steps=3 format=3 uid="uid://k8y4dxb2r3q8"]
+
+[ext_resource type="Script" uid="uid://bubip45i1bhqd" path="res://plants/plant_base.gd" id="1_mx4ga"]
+[ext_resource type="Texture2D" uid="uid://drcw3d5sjondu" path="res://icon.svg" id="2_qwu6j"]
+
+[node name="PlantBase" type="Node2D"]
+script = ExtResource("1_mx4ga")
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+texture = ExtResource("2_qwu6j")

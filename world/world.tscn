@@ -1,4 +1,4 @@
-[gd_scene load_steps=35 format=3 uid="uid://c5gv3n6byiin7"]
+[gd_scene load_steps=37 format=3 uid="uid://c5gv3n6byiin7"]
 
 [ext_resource type="Script" uid="uid://dgppaejvd18y0" path="res://world/world.gd" id="1_j7vgi"]
 [ext_resource type="TileSet" uid="uid://dnn0uacxq48mh" path="res://tilesets/world.tres" id="3_bwxdu"]
@@ -29,7 +29,9 @@
 [ext_resource type="Script" uid="uid://b2776qmf4l0o" path="res://scripts/critter_spawner.gd" id="24_vu62d"]
 [ext_resource type="Script" uid="uid://b13uaqbvmpwfv" path="res://systems/light.gd" id="26_lwhbe"]
 [ext_resource type="Script" uid="uid://cqchm53g3n0d1" path="res://scripts/pan_zoom.gd" id="27_o7xkw"]
+[ext_resource type="Script" uid="uid://dcexf27r2r044" path="res://plants/plant_layer.gd" id="28_avd5l"]
 [ext_resource type="PackedScene" uid="uid://balj4m27d4euf" path="res://UI/tile_info_hud.tscn" id="28_bfrib"]
+[ext_resource type="PackedScene" uid="uid://k8y4dxb2r3q8" path="res://plants/plant_base.tscn" id="29_ll3gq"]
 [ext_resource type="Script" uid="uid://j3edpypdb7d7" path="res://scripts/fps_mem_monitor.gd" id="29_mip0j"]
 [ext_resource type="PackedScene" uid="uid://cqinatbhx3krc" path="res://UI/hud.tscn" id="31_bwxdu"]
 [ext_resource type="PackedScene" uid="uid://bp27ax8mxaxmy" path="res://fish.tscn" id="35_ll3gq"]
@@ -157,6 +159,10 @@ script = ExtResource("23_sg5c8")
 [node name="Light" type="Node" parent="Systems"]
 unique_name_in_owner = true
 script = ExtResource("26_lwhbe")
+
+[node name="PlantLayer" type="Node" parent="Systems"]
+script = ExtResource("28_avd5l")
+plant_base_scene = ExtResource("29_ll3gq")
 
 [node name="Actors" type="Node2D" parent="."]
 
