@@ -6,6 +6,7 @@ const _PAYLOAD_FLAGS := {
 	"phase_changed": false,
 	"mass_changed": false,
 	"temp_changed": false,
+	"light_changed": false,
 	"full_refresh": false,
 }
 const _LOG_SAMPLE := 8

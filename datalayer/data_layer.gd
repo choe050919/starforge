@@ -215,7 +215,7 @@ func set_bulk_light(arr: PackedFloat32Array, reason: StringName = &"") -> void:
 	if arr.size() != n:
 		push_error("[DataLayer.set_bulk_light] size mismatch: need=%d, got=%d" % [n, arr.size()]); return
 	light.replace_all(arr, reason if reason != &"" else &"bulk_light")
-	emit_signal("tiles_changed", PackedInt32Array(), &"light",
+	emit_signal("tiles_changed", PackedInt32Array(), &"bulk_light",
 		{"light_changed": true, "full_refresh": true})
 
 ## 제네릭 버전
