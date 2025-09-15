@@ -22,8 +22,8 @@ func _ready() -> void:
 		if ground_layer_path != NodePath():
 				_ground = get_node(ground_layer_path) as TileMapLayer
 
-func _process(dt: float) -> void:
-		_t += dt
+func _process(delta: float) -> void:
+		_t += delta
 		if _t >= think_interval:
 				_t = 0.0
 				_try_build_random_cell()

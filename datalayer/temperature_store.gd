@@ -65,7 +65,7 @@ func set_by_index(i: int, temp: int) -> void:
 		push_warning("[TemperatureStore.set_by_index] invalid id: %d" % temp)
 		return
 	_write[i] = temp
-	emit_signal("temperature_changed", _index.cell(i))
+	temperature_changed.emit(_index.cell(i))
 
 func replace_all(values: PackedInt32Array, _reason: StringName = &"bulk_replace") -> void:
 	var n := _index.size.x * _index.size.y

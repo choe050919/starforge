@@ -72,9 +72,9 @@ func commit() -> void:
 
 	# 배치 시그널 & 버전 증가(소비자 전체 리프레시 트리거에 유용)
 	if added.size() > 0 or removed.size() > 0:
-		emit_signal("soil_changed_batch", added, removed)
+		soil_changed_batch.emit(added, removed)
 	_version += 1
-	emit_signal("version_changed", _version)
+	version_changed.emit(_version)
 
 # ── 읽기 ────────────────────────────────────────────────
 func get_by_index(i: int) -> int:

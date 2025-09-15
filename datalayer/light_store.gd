@@ -60,7 +60,7 @@ func set_by_index(i: int, value: float) -> void:
 		push_warning("[LightStore.set_by_idx] invalid id: %d" % value)
 		return
 	_write[i] = value
-	emit_signal("light_changed", _index.cell(i))
+	light_changed.emit(_index.cell(i))
 
 ## LightStore.gd
 ## 전 칸 복사조도 배열을 한 번에 교체(성능 경로).

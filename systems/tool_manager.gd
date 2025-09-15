@@ -22,7 +22,7 @@ signal request_spawn_plant(cell: Vector2i)
 
 func _ready() -> void:
 	# 에디터에서 기본값으로 시작할 때, UI가 즉시 반영되도록 1회 방송
-	emit_signal(&"tool_changed", current_tool)
+	tool_changed.emit(current_tool)
 
 # ─────────────────────────────────────────────────────────
 # 3) 외부 인터페이스
@@ -32,7 +32,7 @@ func set_tool(new_tool: int) -> void:
 		return
 	current_tool = new_tool
 	print("[ToolManager] tool selected: ", new_tool)
-	emit_signal(&"tool_changed", current_tool)
+	tool_changed.emit(current_tool)
 
 ## 숫자 핫키(예: 1, 2) → enum과 바로 매핑해서 선택
 func select_tool_by_index(idx: int) -> void:
@@ -48,11 +48,11 @@ func select_tool_by_index(idx: int) -> void:
 func handle_click(cell: Vector2i, world_pos: Vector2, modifiers: int = 0) -> void:
 	match current_tool:
 		Tool.VACUUM:
-			emit_signal(&"request_vacuum", cell)
+			request_vacuum.emit(cell)
 		Tool.SPAWN_FISH:
-			emit_signal(&"request_spawn_fish", world_pos, cell)
+			request_spawn_fish.emit(world_pos, cell)
 		Tool.SPAWN_PLANT:
-			emit_signal(&"request_spawn_plant", cell)
+			request_spawn_plant.emit(cell)
 		_:
 			# enum 누락 방지용 가드
 			push_warning("[ToolManager] Unknown tool: %s" % [str(current_tool)])

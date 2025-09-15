@@ -22,7 +22,7 @@ func _process(delta: float) -> void:
 
 	while _accum_temp >= _step_temp:
 		_accum_temp -= _step_temp
-		emit_signal("tick_sim", "temp", _step_temp)  # 온도 신호
+		tick_sim.emit("temp", _step_temp) # 온도 신호
 	while _accum_sim >= _step_sim:
 		_accum_sim -= _step_sim
-		emit_signal("tick_sim", "sim", _step_sim)  # 기본 시뮬레이션 신호
+		tick_sim.emit("sim",  _step_sim)   # 기본 시뮬레이션 신호

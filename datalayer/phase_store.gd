@@ -86,4 +86,4 @@ func set_phase(cell: Vector2i, phase: int) -> void:
 		push_warning("[PhaseStore] invalid id: %d" % phase)
 		return
 	_write[_index.idx(cell)] = phase
-	emit_signal("phase_changed", cell)
+	phase_changed.emit(cell)

@@ -64,10 +64,10 @@ func apply_damage(cell: Vector2i, amount: float, _type: StringName = &"generic")
 	hp[idx] -= amount
 	if hp[idx] < 0.0:
 		hp[idx] = 0.0
-	emit_signal("hp_changed", cell, hp[idx], max_hp[idx])
+	hp_changed.emit(cell, hp[idx], max_hp[idx])
 	if hp[idx] <= 0.0 and _broken[idx] == 0:
 		_broken[idx] = 1
-		emit_signal("break_requested", cell)
+		break_requested.emit(cell)
 
 func get_hp(cell: Vector2i) -> float:
 	var idx := _cell_index(cell)
@@ -93,4 +93,4 @@ func on_tile_replaced(cell: Vector2i, _from_tile: int, to_tile: int, _reason: St
 	_broken[idx] = 0
 	if m <= 0.0:
 		hp[idx] = 0.0
-	emit_signal("hp_changed", cell, hp[idx], max_hp[idx])
+	hp_changed.emit(cell, hp[idx], max_hp[idx])

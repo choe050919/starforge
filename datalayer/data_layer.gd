@@ -157,8 +157,7 @@ func set_cells_with_spec(cells: Array[Vector2i], spec: Dictionary, reason: Strin
 	if any_ch_mass:  mass.commit()
 	if any_ch_temp:  temperature.commit()
 
-	emit_signal(
-		"tiles_changed",
+	tiles_changed.emit(
 		PackedInt32Array(idxs),
 		(reason if reason != &"" else &"apply_spec_cells"),
 		{
@@ -183,7 +182,7 @@ func set_bulk_sid(arr: PackedInt32Array, reason: StringName = &"") -> void:
 	if arr.size() != n:
 		push_error("[DataLayer.set_bulk_sid] size mismatch: need=%d, got=%d" % [n, arr.size()]); return
 	substance.replace_all(arr, reason if reason != &"" else &"bulk_sid")
-	emit_signal("tiles_changed", PackedInt32Array(), &"bulk_sid",
+	tiles_changed.emit(PackedInt32Array(), &"bulk_sid",
 		{"sid_changed": true, "full_refresh": true})
 
 func set_bulk_phase(arr: PackedByteArray, reason: StringName = &"") -> void:
@@ -191,7 +190,7 @@ func set_bulk_phase(arr: PackedByteArray, reason: StringName = &"") -> void:
 	if arr.size() != n:
 		push_error("[DataLayer.set_bulk_phase] size mismatch: need=%d, got=%d" % [n, arr.size()]); return
 	phase.replace_all(arr, reason if reason != &"" else &"bulk_phase")
-	emit_signal("tiles_changed", PackedInt32Array(), &"bulk_phase",
+	tiles_changed.emit(PackedInt32Array(), &"bulk_phase",
 		{"phase_changed": true, "full_refresh": true})
 
 func set_bulk_mass(arr: PackedInt64Array, reason: StringName = &"") -> void:
@@ -199,7 +198,7 @@ func set_bulk_mass(arr: PackedInt64Array, reason: StringName = &"") -> void:
 	if arr.size() != n:
 		push_error("[DataLayer.set_bulk_mass] size mismatch: need=%d, got=%d" % [n, arr.size()]); return
 	mass.replace_all(arr, reason if reason != &"" else &"bulk_mass")
-	emit_signal("tiles_changed", PackedInt32Array(), &"bulk_mass",
+	tiles_changed.emit(PackedInt32Array(), &"bulk_mass",
 		{"mass_changed": true, "full_refresh": true})
 
 func set_bulk_temp(arr: PackedInt32Array, reason: StringName = &"") -> void:
@@ -207,7 +206,7 @@ func set_bulk_temp(arr: PackedInt32Array, reason: StringName = &"") -> void:
 	if arr.size() != n:
 		push_error("[DataLayer.set_bulk_temp] size mismatch: need=%d, got=%d" % [n, arr.size()]); return
 	temperature.replace_all(arr, reason if reason != &"" else &"bulk_temp")
-	emit_signal("tiles_changed", PackedInt32Array(), &"bulk_temp",
+	tiles_changed.emit(PackedInt32Array(), &"bulk_temp",
 		{"temp_changed": true, "full_refresh": true})
 
 func set_bulk_light(arr: PackedFloat32Array, reason: StringName = &"") -> void:
@@ -215,7 +214,7 @@ func set_bulk_light(arr: PackedFloat32Array, reason: StringName = &"") -> void:
 	if arr.size() != n:
 		push_error("[DataLayer.set_bulk_light] size mismatch: need=%d, got=%d" % [n, arr.size()]); return
 	light.replace_all(arr, reason if reason != &"" else &"bulk_light")
-	emit_signal("tiles_changed", PackedInt32Array(), &"bulk_light",
+	tiles_changed.emit(PackedInt32Array(), &"bulk_light",
 		{"light_changed": true, "full_refresh": true})
 
 ## 제네릭 버전

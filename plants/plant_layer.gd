@@ -1,9 +1,8 @@
-extends Node
-class_name PlantLayer
-
 ## 멀티셀 식물 매니저.
 ## - 배치/점유/성장/충돌/저장 필드를 담당.
 ## - "규칙은 여기" / "표현은 PlantBase" 원칙.
+extends Node
+class_name PlantLayer
 
 ## ── Debug logging ────────────────────────────────────────────────────
 @export var debug_enabled: bool = false              ## 로그 on/off
@@ -189,13 +188,13 @@ func _in_bounds(c: Vector2i) -> bool:
 	return (c.x >= 0 and c.y >= 0 and c.x < _size.x and c.y < _size.y)
 
 func _emit_added(id: int, stage_idx: int) -> void:
-	emit_signal("plant_added", id, stage_idx)
+	plant_added.emit(id, stage_idx)
 
 func _emit_stage_changed(id: int, stage_idx: int) -> void:
-	emit_signal("plant_stage_changed", id, stage_idx)
+	plant_stage_changed.emit(id, stage_idx)
 
 func _emit_removed(id: int) -> void:
-	emit_signal("plant_removed", id)
+	plant_removed.emit(id)
 
 func _print_fail(reason: String, root: Vector2i) -> void:
 	push_warning("[Plant] place fail: reason=%s root=(%d,%d)" % [reason, root.x, root.y])

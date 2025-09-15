@@ -69,7 +69,7 @@ func on_hover_changed(cell: Vector2i) -> void:
 		return
 	_current_cell = cell
 	_has_focus = true
-	emit_signal("current_cell_changed", cell)
+	current_cell_changed.emit(cell)
 	_emit_full_info_now()  # 최초 1회 즉시 조회(깜빡임 방지)
 
 func _on_hover_cleared() -> void:
@@ -99,7 +99,7 @@ func _emit_full_info_now() -> void:
 	if info_provider.has_method("query"):
 		var info = info_provider.query(_current_cell)
 		if info != null:
-			emit_signal("info_updated", info)
+			info_updated.emit(info)
 		else:
 			push_error("[TileInfoTracker] info is null")
 	else:

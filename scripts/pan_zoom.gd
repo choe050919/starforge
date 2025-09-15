@@ -9,17 +9,17 @@ extends Camera2D
 var _target_zoom: float = 1.0                 # 실제 zoom.x와 동기
 
 func _ready() -> void:
-		_target_zoom = zoom.x
+	_target_zoom = zoom.x
 
 func pan(delta: Vector2) -> void:
-		position -= delta * (_target_zoom * pan_speed)
+	position -= delta * (_target_zoom * pan_speed)
 
 func apply_zoom(direction: float) -> void:
 	_zoom_towards_cursor(direction * zoom_step)
 
-func _process(dt: float) -> void:
+func _process(delta: float) -> void:
 	# 줌 부드럽게 보간
-	var z: float = lerp(zoom.x, _target_zoom, clamp(zoom_lerp_speed * dt, 0.0, 1.0))
+	var z: float = lerp(zoom.x, _target_zoom, clamp(zoom_lerp_speed * delta, 0.0, 1.0))
 	zoom = Vector2.ONE * z
 
 func _zoom_towards_cursor(delta_step: float) -> void:

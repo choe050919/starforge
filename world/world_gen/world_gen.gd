@@ -118,7 +118,7 @@ func generate() -> void:
 
 	_assert_world_arrays(substances, phases, mass, temperatures, tiles_composed)
 
-	emit_signal("generated", size, substances, phases, mass, temperatures, tiles_composed, liquid.springs)
+	generated.emit(size, substances, phases, mass, temperatures, tiles_composed, liquid.springs)
 
 # ─────────────────────────────────────────────────────────────────────────────
 ## Build a 1D heightmap representing surface level per column

@@ -32,8 +32,8 @@ func _ready() -> void:
 	# 콜백 연결
 	#btn_play.pressed.connect(_on_play_pressed) 이미 연결함.
 	#opt_speed.item_selected.connect(_on_speed_selected) 이미 연결함.
-	cb_water.toggled.connect(func(on): emit_signal("overlay_toggled", &"water", on))
-	cb_temp.toggled.connect(func(on): emit_signal("overlay_toggled", &"temp",  on))
+	cb_water.toggled.connect(func(on): overlay_toggled.emit(&"water", on))
+	cb_temp.toggled.connect(func(on):  overlay_toggled.emit(&"temp", on))
 
 	# 툴팁
 	btn_play.tooltip_text = "Play/Pause (Space)"
@@ -74,11 +74,11 @@ func _add_speed_item(label: String, mult: float) -> void:
 func _on_play_pressed() -> void:
 	_running = not _running
 	btn_play.text = "⏸" if _running else "▶"
-	emit_signal("play_toggled", _running)
+	play_toggled.emit(_running)
 
 func _on_speed_selected(idx: int) -> void:
 	var mult: float = opt_speed.get_item_metadata(idx)
-	emit_signal("speed_selected", mult)
+	speed_selected.emit(mult)
 
 # 외부에서 HUD 초기 상태 동기화하고 싶으면 사용
 func set_state(running: bool, speed_mult: float, water_on: bool, temp_on: bool) -> void:

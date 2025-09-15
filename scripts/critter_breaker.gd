@@ -21,17 +21,17 @@ func _ready() -> void:
 	if ground_layer_path != NodePath():
 		_ground = get_node(ground_layer_path) as TileMapLayer
 
-func _process(dt: float) -> void:
+func _process(delta: float) -> void:
 	if _durability == null or _ground == null:
 		return
-	_t += dt
+	_t += delta
 	if _target == Vector2i(-1, -1) or _durability.get_max_hp(_target) <= 0.0:
 		_target = Vector2i(-1, -1)
 	if _t >= think_interval and _target == Vector2i(-1, -1):
 		_t = 0.0
 		_target = _find_target_cell()
 	if _target != Vector2i(-1, -1):
-		_durability.apply_damage(_target, break_power * dt)
+		_durability.apply_damage(_target, break_power * delta)
 
 func _find_target_cell() -> Vector2i:
 	var center: Vector2i = _world_to_cell(global_position)

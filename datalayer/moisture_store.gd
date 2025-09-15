@@ -59,9 +59,9 @@ func commit() -> void:
 
 	# 시그널
 	if changed.size() > 0:
-		emit_signal("moisture_changed_batch", changed)
+		moisture_changed_batch.emit(changed)
 	_version += 1
-	emit_signal("version_changed", _version)
+	version_changed.emit(_version)
 
 # ── 읽기 ────────────────────────────────────────────────
 func get_by_index(i: int) -> int:
