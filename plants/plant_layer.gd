@@ -1,4 +1,4 @@
-## 멀티셀 식물 매니저.
+## 식물 담당 매니저.
 ## - 배치/점유/성장/충돌/저장 필드를 담당.
 ## - "규칙은 여기" / "표현은 PlantBase" 원칙.
 extends Node
@@ -20,22 +20,24 @@ signal plant_added(id: int, stage_idx: int)
 signal plant_stage_changed(id: int, stage_idx: int)
 signal plant_removed(id: int)
 
-@export var plant_base_scene: PackedScene    ## 표현용 베이스 프리팹(씬). 선택.
-@export var cell_world_scale: Vector2 = Vector2(32, 32)  ## 셀→월드 좌표 변환(간단 스케일)
+@export var plant_base_scene: PackedScene ## 표현용 베이스 프리팹(씬). 선택.
+@export var cell_world_scale: Vector2 = Vector2(32, 32) ## 셀→월드 좌표 변환(간단 스케일)
 
-var _size: Vector2i
-var _idx: GridIndex  ## 셀↔선형 인덱스 유틸
+var _size: Vector2i # 프로젝트 공통 기준값.
+var _grid: GridIndex
 
 ## 점유 맵: -1=비어있음, 그 외=인스턴스 ID
-var _occ: PackedInt32Array
+var _occupancy: PackedInt32Array
+const OCCUPANCY_EMPTY := -1
+# TODO 스크립트의 -1이 OCCUPANCY_EMPTY를 의미하는지 확인하고, 교체 필요.
 
 ## 인스턴스 저장 구조(간단 클래스)
 class PlantInstance:
 	var spec: PlantSpec
-	var root_cell: Vector2i
-	var stage_idx: int
-	var progress: float
-	var growth_rate: float
+	var root_cell: Vector2i        ## root 셀의 Grid 좌표
+	var stage_idx: int             ## 생장 단계 (0에서 시작)
+	var progress: float            ## 현재 생장률 저장
+	var growth_rate: float         ## 초당 생장률
 	var occupied: Array[Vector2i]  ## 절대좌표 footprint 캐시
 
 	func _init(_spec: PlantSpec, _root: Vector2i, _stage_idx: int, _growth_rate: float) -> void:
@@ -46,30 +48,39 @@ class PlantInstance:
 		growth_rate = _growth_rate
 		occupied = []
 
-var _instances: Array  ## Array[PlantInstance?], 삭제 시 null
-var _views: Dictionary = {}  ## id -> PlantBase(Node2D)
+var _instances: Array[PlantInstance]
+var _views: Dictionary = {}  ## id: int -> value: PlantBase(Node2D)
 
 ## 외부 의존: Soil 판정(하드코딩 회피). set_soil_checker 로 주입.
 var _is_soil_cb: Callable = Callable()
 
 func setup(index: GridIndex) -> void:
-	_idx = index
-	_size = _idx.size
-	_occ = PackedInt32Array()
-	_occ.resize(_size.x * _size.y)
-	for i in _occ.size():
-		_occ[i] = -1
+	_grid = index
+	_size = _grid.size
+	_occupancy = PackedInt32Array()
+	_occupancy.resize(_size.x * _size.y)
+	for i in _occupancy.size():
+		_occupancy[i] = OCCUPANCY_EMPTY
 	_instances = []
 
 ## checker: Callable(cell: Vector2i) -> bool
 func set_soil_checker(checker: Callable) -> void:
 	_is_soil_cb = checker
 
+## 식물의 spec을 보고 root의 좌표에 place할 수 있는지 여부를 반환한다.
+## 1) root 좌표가 soil이 아니라면 false를 출력한다.
+## 2) 생장 단계 0에서 점유해야 하는 좌표들에 대해 점유가 가능한지 검사한다.
 func can_place(spec: PlantSpec, root: Vector2i) -> bool:
-	if _is_soil_cb.is_null() or not bool(_is_soil_cb.call(root)):
+	# soil checker가 null이면 경고한다.
+	if _is_soil_cb.is_null():
+		push_warning("[PlantLayer.can_place] soil checker is null")
 		return false
+	# root 좌표가 soil이 아니라면 false를 출력한다.
+	if not bool(_is_soil_cb.call(root)):
+		return false
+	# spec 기준 생장 단계 0(기본값)에서 점유하는 절대 좌표를 가져온다.
 	var cells := compute_world_footprint(spec, 0, root)
-	return _can_occupy(-1, cells)  ## -1=새 배치(모두 비어야)
+	return _can_occupy(-1, cells) # -1=새 배치(모두 비어야)
 
 func place(spec: PlantSpec, root: Vector2i, rate_mult: float = 1.0) -> int:
 	if not can_place(spec, root):
@@ -158,8 +169,9 @@ func tick(dt: float) -> void:
 	if debug_progress_log_sec > 0.0 and _debug_accum >= debug_progress_log_sec:
 		_debug_accum = 0.0
 
-## ── Utilities ─────────────────────────────────────────────────────────
-
+# ── Utilities ─────────────────────────────────────────────────────────
+## 입력: spec, 생장 단계 값, root 좌표
+## 출력: 점유하는 타일의 절대 좌표의 배열
 func compute_world_footprint(spec: PlantSpec, stage_idx: int, root: Vector2i) -> Array[Vector2i]:
 	var offs: Array[Vector2i] = spec.get_footprint(stage_idx)
 	var out: Array[Vector2i] = []
@@ -172,8 +184,8 @@ func _can_occupy(self_id: int, cells: Array[Vector2i]) -> bool:
 	for c in cells:
 		if not _in_bounds(c):
 			return false
-		var li := _idx.idx(c)
-		var occ := _occ[li]
+		var li := _grid.idx(c)
+		var occ := _occupancy[li]
 		if occ != -1 and occ != self_id:
 			return false
 	return true
@@ -182,7 +194,7 @@ func _mark_occupied(id: int, cells: Array[Vector2i], occupy: bool) -> void:
 	var val := (id if occupy else -1)
 	for c in cells:
 		if not _in_bounds(c): continue
-		_occ[_idx.idx(c)] = val
+		_occupancy[_grid.idx(c)] = val
 
 func _in_bounds(c: Vector2i) -> bool:
 	return (c.x >= 0 and c.y >= 0 and c.x < _size.x and c.y < _size.y)
