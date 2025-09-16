@@ -9,16 +9,16 @@ signal overlay_toggle_requested(mode: OverlayManager.OverlayMode)
 @export var _tool_manager: ToolManager
 
 var data_layer: DataLayer
-var hover_service: HoverService
+var hover_service: HoverManager
 var cell_size: Vector2 = Vector2.ONE
 
-func setup(dl: DataLayer, hover: HoverService) -> void:
+func setup(dl: DataLayer, hover: HoverManager) -> void:
 	data_layer = dl
 	hover_service = hover
 	if dl == null:
 		push_warning("[InputController] DataLayer injected as null")
 	if hover == null:
-		push_warning("[InputController] HoverService injected as null")
+		push_warning("[InputController] HoverManager injected as null")
 
 func set_cell_size(size: Vector2) -> void:
 		cell_size = size

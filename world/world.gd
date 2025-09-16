@@ -18,17 +18,17 @@ class_name World
 @onready var corner_highlight: CornerHighlight = $Terrain/CornerHighlight
 
 # ── Systems ──────────────────────────────────────────────────────
-@onready var worldgen: WorldGen =          %WorldGen
-@onready var durability: Durability =      %Durability
-@onready var temp: Temperature =           %Temperature
-@onready var clock: SimClock =             %SimClock
-@onready var tchange: TileChange =         %TileChange
-@onready var liquid: Liquid =              %Liquid
-@onready var phase_change: PhaseChange =   %PhaseChange
-@onready var input: InputController =      %InputController
-@onready var hover_service: HoverService = %HoverService
-@onready var light: Light =                %Light
-@onready var plant: PlantLayer = %PlantLayer
+@onready var worldgen:     WorldGen        = %WorldGen
+@onready var durability:   Durability      = %Durability
+@onready var temp:         Temperature     = %Temperature
+@onready var clock:        SimClock        = %SimClock
+@onready var tchange:      TileChange      = %TileChange
+@onready var liquid:       Liquid          = %Liquid
+@onready var phase_change: PhaseChange     = %PhaseChange
+@onready var input:        InputController = %InputController
+@onready var hover:        HoverManager    = %HoverManager
+@onready var light:        Light           = %Light
+@onready var plant:        Plant           = %Plant
 
 # ── Actors ───────────────────────────────────────────────────────
 @onready var spawner: CritterSpawner = %Spawner
@@ -61,12 +61,12 @@ func _ready() -> void:
 	rule_cache.load_from_file("res://substance/substance.json")
 
 	# 입력/호버
-	hover_service.setup(data_layer)
-	input.setup(data_layer, hover_service)
+	hover.setup(data_layer)
+	input.setup(data_layer, hover)
 	input.pan_requested.connect(_pan_camera)
 	input.zoom_requested.connect(_zoom_camera)
 	input.overlay_toggle_requested.connect(_on_overlay_toggle_requested)
-	hover_service.hover_changed.connect(_on_hover_changed)
+	hover.hover_changed.connect(_on_hover_changed)
 
 	# 월드 생성
 	worldgen.generated.connect(_on_world_generated)
@@ -150,7 +150,7 @@ func _post_apply_worldgen(size: Vector2i, initial_mass: PackedInt64Array) -> voi
 	# light_overlay는 초기 렌더 X.
 
 	# HUD의 타일 정보(온도 포함) 데이터 배선
-	tile_info_hud.setup(data_layer, hover_service)
+	tile_info_hud.setup(data_layer, hover)
 
 	spawner.setup(data_layer)
 

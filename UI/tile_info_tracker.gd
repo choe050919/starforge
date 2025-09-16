@@ -9,7 +9,7 @@ signal current_cell_changed(cell: Vector2i)
 var info_provider := TileInfoProvider.new()
 
 ## ── 외부 주입 객체들 ──────────────────────────────────────────────────
-var hover_service: HoverService
+var hover_service: HoverManager
 
 var _data: DataLayer
 
@@ -25,7 +25,7 @@ var _index: GridIndex
 var _current_cell: Vector2i = Vector2i(-1, -1)
 var _has_focus: bool = false             # hover 중 여부(hover_cleared 대응)
 
-func setup(data:DataLayer, hs: HoverService) -> void:
+func setup(data:DataLayer, hs: HoverManager) -> void:
 	_data = data
 	hover_service = hs
 	_index = _data.index

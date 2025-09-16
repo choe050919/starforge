@@ -44,7 +44,7 @@ const PHASE_COLOR := {                 # 선택: Label 폰트 색 등
 	 3: Color(0.7,0.8,0.95),
 }
 
-func setup(data: DataLayer, hs: HoverService) -> void:
+func setup(data: DataLayer, hs: HoverManager) -> void:
 	tile_info_tracker.setup(data, hs)
 	tile_info_tracker.connect("info_updated", _on_info_updated)
 

@@ -1,8 +1,8 @@
 ## 식물 담당 매니저.
 ## - 배치/점유/성장/충돌/저장 필드를 담당.
-## - "규칙은 여기" / "표현은 PlantBase" 원칙.
+## - "규칙은 여기" / "표현은 PlantView" 원칙.
 extends Node
-class_name PlantLayer
+class_name Plant
 
 ## ── Debug logging ────────────────────────────────────────────────────
 @export var debug_enabled: bool = false              ## 로그 on/off
@@ -48,8 +48,9 @@ class PlantInstance:
 		growth_rate = _growth_rate
 		occupied = []
 
+## 식물 객체들의 참조를 보관하는 레지스트리. 
 var _instances: Array[PlantInstance]
-var _views: Dictionary = {}  ## id: int -> value: PlantBase(Node2D)
+var _views: Dictionary = {}  ## id: int -> value: PlantView(Node2D)
 
 ## 외부 의존: Soil 판정(하드코딩 회피). set_soil_checker 로 주입.
 var _is_soil_cb: Callable = Callable()
@@ -68,12 +69,13 @@ func set_soil_checker(checker: Callable) -> void:
 	_is_soil_cb = checker
 
 ## 식물의 spec을 보고 root의 좌표에 place할 수 있는지 여부를 반환한다.
-## 1) root 좌표가 soil이 아니라면 false를 출력한다.
-## 2) 생장 단계 0에서 점유해야 하는 좌표들에 대해 점유가 가능한지 검사한다.
+## 검사 단계:
+## 1. root 좌표가 soil인지.
+## 2. 생장 단계 0에서 점유해야 하는 좌표들에 대해 점유가 가능한지.
 func can_place(spec: PlantSpec, root: Vector2i) -> bool:
 	# soil checker가 null이면 경고한다.
 	if _is_soil_cb.is_null():
-		push_warning("[PlantLayer.can_place] soil checker is null")
+		push_warning("[Plant.can_place] soil checker is null")
 		return false
 	# root 좌표가 soil이 아니라면 false를 출력한다.
 	if not bool(_is_soil_cb.call(root)):
@@ -82,21 +84,32 @@ func can_place(spec: PlantSpec, root: Vector2i) -> bool:
 	var cells := compute_world_footprint(spec, 0, root)
 	return _can_occupy(-1, cells) # -1=새 배치(모두 비어야)
 
+## 새로운 식물 객체를 만들어 등록하고 ID를 반환한다.
+## 0. 배치가 가능한지 검사
+## 1. 식물 객체를 생성해서 레지스트리 배열에 추가
+## 2. 점유 위치를 계산하고 점유 맵에 기록
+## 3. plant_added 시그널을 발행
+## 4. _spawn_view_for
+## 5. ID 반환
 func place(spec: PlantSpec, root: Vector2i, rate_mult: float = 1.0) -> int:
+	# 배치가 가능한지 검사한다.
 	if not can_place(spec, root):
 		_print_fail("not_placeable", root)
 		return -1
+	# 객체를 생성하고 새 id를 할당한다.
 	var inst := PlantInstance.new(spec, root, 0, spec.base_growth_rate * rate_mult)
 	var id := _instances.size()
+	# 레지스트리 배열에 추가한다.
 	_instances.append(inst)
+	# 점유 위치를 계산하고 점유 맵에 기록한다.
 	var cells := compute_world_footprint(spec, 0, root)
 	_mark_occupied(id, cells, true)
 	inst.occupied = cells
+	# 시그널 발행
 	_emit_added(id, inst.stage_idx)
+	#
 	_spawn_view_for(id, inst)
-	_log(
-		"placed id=%d spec=%s root=(%d,%d) rate=%.3f", [id, String(inst.spec.id), root.x, root.y, inst.growth_rate]
-	)
+	_log("placed id=%d spec=%s root=(%d,%d) rate=%.3f", [id, String(inst.spec.id), root.x, root.y, inst.growth_rate])
 	return id
 
 func remove(id: int) -> void:
@@ -211,7 +224,7 @@ func _emit_removed(id: int) -> void:
 func _print_fail(reason: String, root: Vector2i) -> void:
 	push_warning("[Plant] place fail: reason=%s root=(%d,%d)" % [reason, root.x, root.y])
 
-## ── Views (표현 연결: 얇게) ──────────────────────────────────────────
+# ── Views (표현 연결: 얇게) ──────────────────────────────────────────
 
 func _spawn_view_for(id: int, p: PlantInstance) -> void:
 	if plant_base_scene == null: return
@@ -225,13 +238,13 @@ func _spawn_view_for(id: int, p: PlantInstance) -> void:
 		node.set_stage_and_cells(p.stage_idx, p.occupied, cell_world_scale)
 
 func _update_view_for(id: int, p: PlantInstance) -> void:
-	var node: PlantBase = _views.get(id, null)
+	var node: PlantView = _views.get(id, null)
 	if node == null: return
 	if node.has_method("set_stage_and_cells"):
 		node.set_stage_and_cells(p.stage_idx, p.occupied, cell_world_scale)
 
 func _free_view(id: int) -> void:
-	var node: PlantBase = _views.get(id, null)
+	var node: PlantView = _views.get(id, null)
 	if node == null: return
 	if is_instance_valid(node):
 		node.queue_free()

@@ -1,7 +1,7 @@
-## "표현 전용" 베이스. 규칙/점유 계산은 PlantLayer가 담당.
+## "표현 전용" 베이스. 규칙/점유 계산은 Plant가 담당.
 ## 여기서는 스프라이트 교체/애니메이션 등만 처리.
 extends Node2D
-class_name PlantBase
+class_name PlantView
 
 #@onready var _sprite: Sprite2D
 
