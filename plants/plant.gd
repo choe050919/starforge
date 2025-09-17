@@ -4,6 +4,8 @@
 extends Node
 class_name Plant
 
+const Part = preload("res://plants/plant_part.gd")
+
 ## ── Debug logging ────────────────────────────────────────────────────
 @export var debug_enabled: bool = false              ## 로그 on/off
 @export var debug_progress_log_sec: float = 0.0     ## >0이면 진행도 주기 로그 (예: 1.0)
@@ -39,6 +41,9 @@ class PlantInstance:
 	var progress: float            ## 현재 생장률 저장
 	var growth_rate: float         ## 초당 생장률
 	var occupied: Array[Vector2i]  ## 절대좌표 footprint 캐시
+	var tags_base: PackedInt32Array ## occupied와 index를 공유
+	var fruit_maturity: PackedFloat32Array ## 열매 성숙도(0.0~1.0), 비-FRUIT는 -1.0
+	var fruit_present: PackedByteArray ## 열매 존재(0/1). 비-FRUIT는 0
 
 	func _init(_spec: PlantSpec, _root: Vector2i, _stage_idx: int, _growth_rate: float) -> void:
 		spec = _spec
@@ -105,6 +110,8 @@ func place(spec: PlantSpec, root: Vector2i, rate_mult: float = 1.0) -> int:
 	var cells := compute_world_footprint(spec, 0, root)
 	_mark_occupied(id, cells, true)
 	inst.occupied = cells
+	# FRUIT 초기화
+	_init_stage_state(inst)
 	# 시그널 발행
 	_emit_added(id, inst.stage_idx)
 	#
@@ -151,6 +158,7 @@ func tick(dt: float) -> void:
 				p.stage_idx = next
 				_mark_occupied(id, next_cells, true)
 				p.occupied = next_cells
+				_init_stage_state(p) # stage 변경에 의해 FRUIT 초기화
 				p.progress -= 1.0
 				_emit_stage_changed(id, p.stage_idx)
 				_update_view_for(id, p)
@@ -175,6 +183,17 @@ func tick(dt: float) -> void:
 				break
 		## 필요 시 추가 로직(예: 번식 등) 자리
 
+		# 열매 성숙: 현재 스테이지 유지 구간에서 매 tick 처리
+		if p != null:
+			var n := p.occupied.size()
+			var rate := p.spec.fruit_growth_rate
+			if rate != 0.0:
+				for i in n:
+					# FRUIT 역할 + 존재할 때만 성장
+					if p.fruit_present[i] == 1 and (int(p.tags_base[i]) & Part.PlantPart.FRUIT) != 0:
+						var m := p.fruit_maturity[i] + rate * dt
+						p.fruit_maturity[i] = (m if m < 1.0 else 1.0)
+
 		# 선택적 주기 로그 (진행도 스냅샷)
 		if debug_progress_log_sec > 0.0 and _debug_accum >= debug_progress_log_sec and not advanced:
 			_log("progress id=%d stage=%d prog=%.3f (+%.3f)", [id, p.stage_idx, p.progress, p.progress - prev_progress])
@@ -183,6 +202,53 @@ func tick(dt: float) -> void:
 		_debug_accum = 0.0
 
 # ── Utilities ─────────────────────────────────────────────────────────
+
+# [_init_stage_state]
+# 특정 PlantInstance의 "현재 stage"에 맞춰
+# - 정적 태그(tags_base)
+# - 열매 성숙도(fruit_maturity)
+# - 열매 존재 여부(fruit_present)
+# 배열을 초기화한다.
+#
+# 호출 타이밍:
+#   • place() 직후 (최초 배치)
+#   • stage advance 직후 (성장 단계 전환)
+#
+# 처리 내용:
+#   1) PlantSpec에서 현재 stage의 part_tags를 복사 → tags_base로 저장
+#   2) occupied 크기(n)에 맞춰 fruit_maturity / fruit_present 배열 생성
+#   3) 각 셀을 순회:
+#        - FRUIT 태그가 있으면:
+#            fruit_maturity = spec의 초기값 (보통 0.0)
+#            fruit_present  = 1 (열매가 존재함)
+#        - FRUIT 태그가 없으면:
+#            fruit_maturity = -1.0 (센티널, 열매 없음)
+#            fruit_present  = 0
+#
+# 결과적으로, PlantInstance는
+# "이 stage에서 어떤 셀에 열매가 달려 있고,
+#   성숙도가 어디까지 차 있는지"를
+# 깔끔하게 새로 세팅하게 된다.
+# ─────────────────────────────────────────────────────────────
+func _init_stage_state(p: PlantInstance) -> void:
+	var tags := p.spec.get_part_tags(p.stage_idx)
+	p.tags_base = tags.duplicate()
+
+	var n := p.occupied.size()
+	p.fruit_maturity = PackedFloat32Array(); p.fruit_maturity.resize(n)
+	p.fruit_present  = PackedByteArray();    p.fruit_present.resize(n)
+
+	var init_m := p.spec.fruit_initial_maturity
+	for i in n:
+		var is_fruit := (int(p.tags_base[i]) & Part.PlantPart.FRUIT) != 0
+		if is_fruit:
+			p.fruit_maturity[i] = init_m
+			p.fruit_present[i] = 1
+		else:
+			p.fruit_maturity[i] = -1.0
+			p.fruit_present[i] = 0
+
+
 ## 입력: spec, 생장 단계 값, root 좌표
 ## 출력: 점유하는 타일의 절대 좌표의 배열
 func compute_world_footprint(spec: PlantSpec, stage_idx: int, root: Vector2i) -> Array[Vector2i]:
@@ -199,12 +265,12 @@ func _can_occupy(self_id: int, cells: Array[Vector2i]) -> bool:
 			return false
 		var li := _grid.idx(c)
 		var occ := _occupancy[li]
-		if occ != -1 and occ != self_id:
+		if occ != OCCUPANCY_EMPTY and occ != self_id:
 			return false
 	return true
 
 func _mark_occupied(id: int, cells: Array[Vector2i], occupy: bool) -> void:
-	var val := (id if occupy else -1)
+	var val := (id if occupy else OCCUPANCY_EMPTY)
 	for c in cells:
 		if not _in_bounds(c): continue
 		_occupancy[_grid.idx(c)] = val
@@ -236,12 +302,16 @@ func _spawn_view_for(id: int, p: PlantInstance) -> void:
 	add_child(node)
 	if node.has_method("set_stage_and_cells"):
 		node.set_stage_and_cells(p.stage_idx, p.occupied, cell_world_scale)
+	if node.has_method("set_part_tags_and_fruit"):
+		node.set_part_tags_and_fruit(p.tags_base, p.fruit_present, p.fruit_maturity)
 
 func _update_view_for(id: int, p: PlantInstance) -> void:
 	var node: PlantView = _views.get(id, null)
 	if node == null: return
 	if node.has_method("set_stage_and_cells"):
 		node.set_stage_and_cells(p.stage_idx, p.occupied, cell_world_scale)
+	if node.has_method("set_part_tags_and_fruit"):
+		node.set_part_tags_and_fruit(p.tags_base, p.fruit_present, p.fruit_maturity)
 
 func _free_view(id: int) -> void:
 	var node: PlantView = _views.get(id, null)

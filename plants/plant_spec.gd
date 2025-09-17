@@ -2,6 +2,8 @@
 extends Resource
 class_name PlantSpec
 
+const Part = preload("res://plants/plant_part.gd")
+
 @export var id: StringName
 @export var base_growth_rate: float = 0.04  ## progress/sec. 1.0에 도달하면 다음 단계.
 
@@ -15,6 +17,16 @@ class_name PlantSpec
 	[Vector2i(0, 0), Vector2i(0, -1)],                 # sprout
 	[Vector2i(0, 0), Vector2i(0, -1), Vector2i(0, -2)] # adult
 ]
+
+# 각 stage의 footprint 길이와 동일한 태그 배열
+@export var part_tags: Array[PackedInt32Array] = [
+	PackedInt32Array([Part.PlantPart.STEM]),                          # seed
+	PackedInt32Array([Part.PlantPart.STEM, Part.PlantPart.LEAF]),     # sprout
+	PackedInt32Array([Part.PlantPart.STEM, Part.PlantPart.LEAF, Part.PlantPart.LEAF]) # adult
+]
+
+@export var fruit_growth_rate: float = 0.02
+@export var fruit_initial_maturity: float = 0.0
 
 @export var sprite_keys: PackedStringArray = ["plant/amp/seed", "plant/amp/sprout", "plant/amp/adult"]
 
@@ -36,3 +48,15 @@ func get_sprite_key(stage_idx: int) -> StringName:
 	if stage_idx < 0 or stage_idx >= sprite_keys.size():
 		return &""
 	return StringName(sprite_keys[stage_idx])
+
+func get_part_tags(stage_idx: int) -> PackedInt32Array:
+	if stage_idx < 0 or stage_idx >= part_tags.size():
+		return PackedInt32Array()
+	return part_tags[stage_idx]
+
+# 간단 검증
+func validate_stage(stage_idx: int) -> void:
+	var f := footprints[stage_idx]
+	var t := part_tags[stage_idx]
+	if f.size() != t.size():
+		push_error("[PlantSpec] stage %d: footprints=%d, part_tags=%d 길이 불일치" % [stage_idx, f.size(), t.size()])

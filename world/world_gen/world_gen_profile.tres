@@ -4,46 +4,7 @@
 
 [resource]
 script = ExtResource("1_wygdk")
-schema_version = 1
-id_keys = {
-"liquid/water": "liquid/water",
-"solid/copper": "solid/copper",
-"solid/ice": "solid/ice",
-"solid/soil": "solid/soil",
-"solid/uranium": "solid/uranium"
-}
-size = Vector2i(128, 64)
-seed_height = 12345
+size = Vector2i(96, 48)
 height_freq = 0.03
-water_level_ratio = 0.4
-ground_temp_init_cC = 1200
-ground_mass_mg_per_cell = 1200000
-ice_temp_init_cC = -500
-ice_mass_mg_per_cell = 900000
-ice_seed = 98765
-ice_freq = 0.08
 ice_threshold = 0.55
-ice_max_depth = 6
-ice_edge_bonus = 0.15
-uranium_temp_init_cC = 1200
-uranium_mass_mg_per_cell = 1900000
-uranium_seed = 24680
-uranium_freq = 0.06
-uranium_threshold = 0.72
-uranium_density = 0.006
-uranium_depth_min = 8
-uranium_depth_max = 24
-copper_temp_init_cC = 800
-copper_mass_mg_per_cell = 1400000
-copper_seed = 13579
-copper_freq = 0.05
-copper_threshold = 0.65
-copper_density = 0.01
-copper_depth_min = 3
-copper_depth_max = 15
-water_temp_init_cC = 800
-water_capacity_mg_per_cell = 1000000
-min_lake_size = 4
-depth_scale = 4.0
-springs_per_k = 1.0
 metadata/_custom_type_script = "uid://d247l16y0ap2h"

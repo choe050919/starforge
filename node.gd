@@ -7,6 +7,11 @@ const FLAG_SOLID   = 1 << 2
 var state: int = 0
 
 func _ready():
+	print(FLAG_VISIBLE)
+
+	for i in 5:
+		print(1 << i)
+
 	# 플래그 켜기
 	state |= FLAG_VISIBLE
 	state |= FLAG_SOLID
