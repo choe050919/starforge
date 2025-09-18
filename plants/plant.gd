@@ -14,7 +14,7 @@ var _debug_accum: float = 0.0
 func _log(msg: String, args: Array = []):
 	if not debug_enabled: return
 	if args.is_empty():
-		print("[Plant]", msg)
+		print("[Plant] ", msg)
 	else:
 		print("[Plant] " + msg % args)
 
@@ -31,7 +31,6 @@ var _grid: GridIndex
 ## 점유 맵: -1=비어있음, 그 외=인스턴스 ID
 var _occupancy: PackedInt32Array
 const OCCUPANCY_EMPTY := -1
-# TODO 스크립트의 -1이 OCCUPANCY_EMPTY를 의미하는지 확인하고, 교체 필요.
 
 ## 인스턴스 저장 구조(간단 클래스)
 class PlantInstance:
@@ -129,77 +128,102 @@ func remove(id: int) -> void:
 	_free_view(id)
 	_log("removed id=%d", [id])
 
+# ── Tick ──────────────────────────────────────────────────────────────
+
 func tick(dt: float) -> void:
-	# 선택적 주기 로그용 누산
 	if debug_progress_log_sec > 0.0:
 		_debug_accum += dt
 
+	# PlantInstance 순회
 	for id in _instances.size():
 		var p: PlantInstance = _instances[id]
-		if p == null: continue
-		## 마지막 단계면 고정
-		if p.stage_idx >= p.spec.stage_count() - 1:
-			p.progress = 1.0
+		if p == null:
 			continue
 
-		var prev_stage := p.stage_idx
 		var prev_progress := p.progress
+		var advanced := _advance_growth_for_instance(id, p, dt)
+		var fruit_changed := _update_fruit_for_instance(p, dt)
 
-		p.progress += p.growth_rate * dt
-		var advanced := false
-		while p.progress >= 1.0:
-			var next := p.stage_idx + 1
-			if next >= p.spec.stage_count():
-				p.progress = 1.0
-				break
-			var next_cells := compute_world_footprint(p.spec, next, p.root_cell)
-			if _can_occupy(id, next_cells):
-				_mark_occupied(id, p.occupied, false)
-				p.stage_idx = next
-				_mark_occupied(id, next_cells, true)
-				p.occupied = next_cells
-				_init_stage_state(p) # stage 변경에 의해 FRUIT 초기화
-				p.progress -= 1.0
-				_emit_stage_changed(id, p.stage_idx)
-				_update_view_for(id, p)
-				advanced = true
+		# 열매 시각 반영이 필요하면 뷰 갱신
+		if fruit_changed:
+			_update_view_for(id, p)
 
-				#var rel_next := p.spec.get_footprint(p.stage_idx)            # 상대
-				#var abs_next := compute_world_footprint(p.spec, p.stage_idx, p.root_cell)  # 절대
-				#print_rich("[Plant] advanced id=", id,
-					#" stage=", p.stage_idx,
-					#"\n  rel=", rel_next,
-					#"\n  abs=", abs_next)
-
-				_log(
-					"stage_advanced id=%d -> stage=%d progress=%.3f", [id, p.stage_idx, p.progress]
-				)
-			else:
-				## 자리 막힘 → 정지(다시 시도 가능)
-				p.progress = 0.999
-				_log(
-					"blocked id=%d at stage=%d (footprint occupied)", [id, p.stage_idx]
-				)
-				break
-		## 필요 시 추가 로직(예: 번식 등) 자리
-
-		# 열매 성숙: 현재 스테이지 유지 구간에서 매 tick 처리
-		if p != null:
-			var n := p.occupied.size()
-			var rate := p.spec.fruit_growth_rate
-			if rate != 0.0:
-				for i in n:
-					# FRUIT 역할 + 존재할 때만 성장
-					if p.fruit_present[i] == 1 and (int(p.tags_base[i]) & Part.PlantPart.FRUIT) != 0:
-						var m := p.fruit_maturity[i] + rate * dt
-						p.fruit_maturity[i] = (m if m < 1.0 else 1.0)
-
-		# 선택적 주기 로그 (진행도 스냅샷)
 		if debug_progress_log_sec > 0.0 and _debug_accum >= debug_progress_log_sec and not advanced:
-			_log("progress id=%d stage=%d prog=%.3f (+%.3f)", [id, p.stage_idx, p.progress, p.progress - prev_progress])
+			_log("progress id=%d stage=%d prog=%.3f (+%.3f)", [
+				id, p.stage_idx, p.progress, p.progress - prev_progress
+			])
 
 	if debug_progress_log_sec > 0.0 and _debug_accum >= debug_progress_log_sec:
 		_debug_accum = 0.0
+
+## 성장률 누적 + 스테이지 전환까지 담당.
+## 반환값: 이번 tick 동안 스테이지가 1회 이상 전진했는지
+func _advance_growth_for_instance(id: int, p: PlantInstance, dt: float) -> bool:
+	var advanced := false
+
+	# 마지막 스테이지면 고정, 성장 계산 종료
+	if p.stage_idx >= p.spec.stage_count() - 1:
+		p.progress = 1.0
+		return false
+
+	p.progress += p.growth_rate * dt
+
+	while p.progress >= 1.0:
+		var next := p.stage_idx + 1
+		if next >= p.spec.stage_count():
+			p.progress = 1.0
+			break
+
+		var next_cells := compute_world_footprint(p.spec, next, p.root_cell)
+		if _can_occupy(id, next_cells):
+			_mark_occupied(id, p.occupied, false)
+			p.stage_idx = next
+			_mark_occupied(id, next_cells, true)
+			p.occupied = next_cells
+			_init_stage_state(p)  # 스테이지 전환에 따른 FRUIT 초기화
+			p.progress -= 1.0
+			_emit_stage_changed(id, p.stage_idx)
+			_update_view_for(id, p)
+			advanced = true
+			_log("stage_advanced id=%d -> stage=%d progress=%.3f",
+				[id, p.stage_idx, p.progress])
+		else:
+			# 자리 막힘 → 정지(다시 시도 가능)
+			p.progress = 0.999
+			_log("blocked id=%d at stage=%d (footprint occupied)", [id, p.stage_idx])
+			break
+
+	return advanced
+
+## 열매 성숙 처리.
+## 반환값: 성숙도 변화가 실제로 있었는지 (뷰 갱신 힌트)
+func _update_fruit_for_instance(p: PlantInstance, dt: float) -> bool:
+	var rate := p.spec.fruit_growth_rate
+	if rate == 0.0:
+		return false
+
+	var changed := false
+	var n := p.occupied.size()
+
+	for i in n:
+		# 이미 열매가 존재하는 셀은 스킵
+		if p.fruit_present[i] == 1:
+			continue
+		# 열매가 아닌 파트면 스킵
+		if (int(p.tags_base[i]) & Part.PlantPart.FRUIT) == 0:
+			continue
+		# 성숙도 증가
+		var before := p.fruit_maturity[i]
+		var after: float = clamp(before + rate * dt, 0.0, 1.0)
+		if after != before:
+			p.fruit_maturity[i] = after
+			if after == 1.0:
+				p.fruit_present[i] = 1
+				_log("열매가 완전히 성숙했습니다.")
+			changed = true
+
+	return changed
+
 
 # ── Utilities ─────────────────────────────────────────────────────────
 
@@ -220,7 +244,7 @@ func tick(dt: float) -> void:
 #   3) 각 셀을 순회:
 #        - FRUIT 태그가 있으면:
 #            fruit_maturity = spec의 초기값 (보통 0.0)
-#            fruit_present  = 1 (열매가 존재함)
+#            fruit_present  = 0 (보통 성숙도 0에서 시작하므로 없음)
 #        - FRUIT 태그가 없으면:
 #            fruit_maturity = -1.0 (센티널, 열매 없음)
 #            fruit_present  = 0
@@ -243,7 +267,7 @@ func _init_stage_state(p: PlantInstance) -> void:
 		var is_fruit := (int(p.tags_base[i]) & Part.PlantPart.FRUIT) != 0
 		if is_fruit:
 			p.fruit_maturity[i] = init_m
-			p.fruit_present[i] = 1
+			p.fruit_present[i] = 0
 		else:
 			p.fruit_maturity[i] = -1.0
 			p.fruit_present[i] = 0

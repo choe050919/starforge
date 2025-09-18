@@ -99,8 +99,8 @@ func set_part_tags_and_fruit(
 
 		# 열매가 존재함: 성숙도 기반 색/스케일 연출 (0.0=초록 → 1.0=노란빛)
 		var t: float = clamp(m, 0.0, 1.0)
-		var unripe := Color(0.55, 0.85, 0.55)   # 덜 익음(초록 기)
-		var ripe   := Color(1.00, 0.85, 0.35)   # 잘 익음(황금 기)
+		var unripe := Color(0.55, 0.85, 0.55) # 덜 익음(초록 기)
+		var ripe   := Color(1.0, 0.388, 0.278, 1.0) # 잘 익음, CSS 색상 "tomato"
 		var c := _lerp_color(unripe, ripe, t)
 
 		# 스테이지 공통 틴트 위에 곱해지므로, 살짝 강조하려고 알파는 유지
