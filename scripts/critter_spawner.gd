@@ -40,22 +40,60 @@ func _spawn_at_mouse(scene := critter_scene) -> void:
 	if critter == null or not (critter is Node2D):
 		push_error("[Spawner] critter_scene must be a Node2D scene.")
 		return
-	# 보통은 Spawner와 같은 상위(Actors)에 붙임
 	add_child(critter)
 	print("[Spawner] %s가 생성됨" % critter.name)
+
 	if critter is Fish:
 		critter.setup(data, _ground, _plant)
+		critter.set_spawn_fish_callable(Callable(self, "spawn_fish_at_cell"))
+
 	if (critter is CritterChanger or critter is CritterBuilder) and _Tchange != null:
 		critter.set_dependencies(_Tchange, _ground)
 	elif critter is CritterBreaker and _dur != null:
 		critter.set_dependencies(_dur, _ground)
+
 	if critter.has_method("warp_to_cell"):
 		critter.warp_to_cell(cell)
 
 func _on_sim_tick(_dt: float, sim_time: float):
 	for actor in get_children():
-		actor._on_sim_tick(_dt, sim_time)
+		if actor.has_method("_on_sim_tick"):
+			actor._on_sim_tick(_dt, sim_time)
+		else:
+			push_warning("[Spawner._on_sim_tick] %s doesn't have tick function", actor)
 
 ## TODO 인자 전달을 어떻게 할지 처분 결정 필요.
 func _on_tool_manager_request_spawn_fish(world_pos: Vector2, cell: Vector2i) -> void:
 	_spawn_at_mouse()
+
+# 번식/자율 스폰용 단일 진입점
+func spawn_fish_at_cell(cell: Vector2i) -> bool:
+	if critter_scene == null or _ground == null:
+		push_warning("[Spawner] Missing critter_scene or ground reference.")
+		return false
+
+	# (옵션) 월드 경계 체크: 하한만 간단히 가드(상한은 필요시 너가 쓰던 방식대로 추가)
+	if only_inside_world and cell.x < 0 or cell.y < 0:
+		return false
+
+	var critter := critter_scene.instantiate()
+	if critter == null or not (critter is Node2D):
+		push_error("[Spawner] critter_scene must be a Node2D scene.")
+		return false
+
+	add_child(critter)
+
+	if critter is Fish:
+		critter.setup(data, _ground, _plant)
+		# ★ 새끼도 동일 콜백 보유 → 이후 번식 시 동일 경로 재사용
+		critter.set_spawn_fish_callable(Callable(self, "spawn_fish_at_cell"))
+
+	if (critter is CritterChanger or critter is CritterBuilder) and _Tchange != null:
+		critter.set_dependencies(_Tchange, _ground)
+	elif critter is CritterBreaker and _dur != null:
+		critter.set_dependencies(_dur, _ground)
+
+	if critter.has_method("warp_to_cell"):
+		critter.warp_to_cell(cell)
+
+	return true

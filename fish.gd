@@ -39,6 +39,10 @@ func _ready():
 
 # 5번씩 이동하는 이유: int(sim_time)이, 같은 값을 5번씩 출력해서.
 func _on_sim_tick(dt: float, sim_time: float):
+	_last_sim_time = sim_time
+	if eligible_at_simtime < 0.0:
+		eligible_at_simtime = sim_time + reproduction_cooldown_sec
+
 	if int(sim_time) % tick_mod != update_phase:
 		return
 
@@ -129,13 +133,25 @@ func warp_to_cell(_cell: Vector2i) -> void:
 func _try_harvest_current_cell() -> void:
 	if _plant == null:
 		return
+	# 쿨다운 중이면 harvest 자체 차단
+	if _last_sim_time < eligible_at_simtime:
+		return
+
 	# 물 위 전용 제약 없음(디자인 상). Fish가 물 셀에만 존재하더라도 여기선 제약 두지 않음.
 	var ok := _plant.try_harvest_fruit_at_cell(cell)
 	if ok:
 		on_eat_fruit()
 
-# 수확 성공 시 Fish 내부 처리(포만/체력/로그 등). 지금은 간단히 훅만 둔다.
+# 수확 성공 시 Fish 내부 처리
 func on_eat_fruit() -> void:
-	# TODO: 포만도/체력 시스템 연결 시 구현
-	# print("[Fish] fruit eaten at ", cell)
-	pass
+	if _spawn_fish_cb.is_valid():
+		_spawn_fish_cb.call(cell)
+
+# ── Reproduction (공통 쿨다운) ─────────────────────────────────────────
+@export var reproduction_cooldown_sec: float = 5.0
+var eligible_at_simtime: float = -1.0
+var _last_sim_time: float = 0.0
+var _spawn_fish_cb: Callable = Callable()
+
+func set_spawn_fish_callable(cb: Callable) -> void:
+	_spawn_fish_cb = cb
