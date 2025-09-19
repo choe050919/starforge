@@ -343,3 +343,97 @@ func _free_view(id: int) -> void:
 	if is_instance_valid(node):
 		node.queue_free()
 	_views.erase(id)
+
+# ── Public API: Plant-Fish 상호작용용 조회/행동 ───────────────────────
+# 외부에서 Plant 상태를 읽고/요청하기 위한 최소 인터페이스.
+# 배열에 직접 접근 금지: 반드시 아래 행동 메서드를 통해 변경할 것.
+
+## 해당 셀을 점유 중인 식물 인스턴스 id 반환. 없으면 -1.
+func get_plant_id_at_cell(cell: Vector2i) -> int:
+	if not _in_bounds(cell):
+		return OCCUPANCY_EMPTY
+	return _occupancy[_grid.idx(cell)]
+
+## 셀 단위 파트 정보 조회.
+## 반환 예:
+## { "found": true, "plant_id": 0, "part_index": 1, "tags": 8, "fruit_present": true, "fruit_maturity": 1.0 }
+func get_part_info_at_cell(cell: Vector2i) -> Dictionary:
+	var out := {
+		"found": false,
+		"plant_id": OCCUPANCY_EMPTY,
+		"part_index": -1,
+		"tags": 0,
+		"fruit_present": false,
+		"fruit_maturity": -1.0,
+	}
+	if not _in_bounds(cell):
+		return out
+
+	var id := _occupancy[_grid.idx(cell)]
+	if id == OCCUPANCY_EMPTY:
+		return out
+
+	# 인스턴스 확인
+	if id < 0 or id >= _instances.size():
+		return out
+	var p: PlantInstance = _instances[id]
+	if p == null:
+		return out
+
+	# 안전성: 길이 일치 검사(디버깅 도움)
+	if p.occupied.size() != p.tags_base.size():
+		push_warning("[Plant.get_part_info_at_cell] size mismatch: occ=%d tags=%d"
+			% [p.occupied.size(), p.tags_base.size()])
+
+	# 동일 셀의 파트 인덱스 찾기(초기엔 선형검색으로 충분)
+	var part_idx := -1
+	for i in p.occupied.size():
+		if p.occupied[i] == cell:
+			part_idx = i
+			break
+	if part_idx == -1:
+		return out
+
+	out.found = true
+	out.plant_id = id
+	out.part_index = part_idx
+	out.tags = int(p.tags_base[part_idx])
+	out.fruit_present = (p.fruit_present[part_idx] == 1)
+	out.fruit_maturity = p.fruit_maturity[part_idx]
+	return out
+
+## 동일 셀 수확: 해당 셀이 "익은 과일"이면 수확하고 true 반환. 아니면 false.
+## - 성공 시: fruit_present=0, fruit_maturity=fruit_initial_maturity 로 리셋 후 뷰 갱신.
+## - 향후 확장 여지:
+##   • 8방/가까운 과일 탐색 헬퍼 추가
+##   • 수확 시 인벤토리/아이템 스폰 훅
+func try_harvest_fruit_at_cell(cell: Vector2i) -> bool:
+	var info := get_part_info_at_cell(cell)
+	if not info.found:
+		return false
+
+	# FRUIT 태그 확인
+	if (info.tags & Part.PlantPart.FRUIT) == 0:
+		return false
+
+	# 현재 과일 존재해야 함(present==1). 성숙도 체크는 정책에 따라: present면 충분.
+	if not info.fruit_present:
+		return false
+
+	# 상태 갱신
+	var id := int(info.plant_id)
+	var idx := int(info.part_index)
+	var p: PlantInstance = _instances[id]
+	if p == null:
+		return false
+
+	p.fruit_present[idx] = 0
+	p.fruit_maturity[idx] = p.spec.fruit_initial_maturity
+
+	# 뷰 갱신
+	_update_view_for(id, p)
+
+	if debug_enabled:
+		_log("fruit_harvested id=%d part_idx=%d", [id, idx])
+
+	return true

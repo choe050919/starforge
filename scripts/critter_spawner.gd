@@ -13,9 +13,11 @@ func _ready() -> void:
 	_rng.randomize()
 
 var data: DataLayer
+var _plant: Plant
 
-func setup(_data: DataLayer):
+func setup(_data: DataLayer, plant: Plant):
 	data = _data
+	_plant = plant
 
 func _spawn_at_mouse(scene := critter_scene) -> void:
 	if scene == null or _ground == null:
@@ -42,7 +44,7 @@ func _spawn_at_mouse(scene := critter_scene) -> void:
 	add_child(critter)
 	print("[Spawner] %s가 생성됨" % critter.name)
 	if critter is Fish:
-		critter.setup(data, _ground)
+		critter.setup(data, _ground, _plant)
 	if (critter is CritterChanger or critter is CritterBuilder) and _Tchange != null:
 		critter.set_dependencies(_Tchange, _ground)
 	elif critter is CritterBreaker and _dur != null:

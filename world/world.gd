@@ -152,7 +152,7 @@ func _post_apply_worldgen(size: Vector2i, initial_mass: PackedInt64Array) -> voi
 	# HUD의 타일 정보(온도 포함) 데이터 배선
 	tile_info_hud.setup(data_layer, hover)
 
-	spawner.setup(data_layer)
+	spawner.setup(data_layer, plant)
 
 	# 시뮬 배선
 	if not clock.tick_sim.is_connected(_on_sim_clock_tick):

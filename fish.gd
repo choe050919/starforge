@@ -24,12 +24,14 @@ var _data: DataLayer
 var index: GridIndex
 var s_store: SubstanceStore
 var _ground: Ground
+var _plant: Plant
 
-func setup(data: DataLayer, ground: Ground) -> void:
+func setup(data: DataLayer, ground: Ground, plant: Plant) -> void:
 	_data = data
 	index = _data.index
 	s_store = _data.substance
 	_ground = ground
+	_plant = plant
 
 func _ready():
 	rng.randomize()
@@ -108,6 +110,7 @@ func weighted_random(cells: Array, weights: Array) -> Vector2i:
 
 func move_to_cell(new_cell: Vector2i):
 	warp_to_cell(new_cell)
+	_try_harvest_current_cell()
 
 func on_stuck():
 	# 20회 연속 못 움직이면 호출될 추가 기능
@@ -121,3 +124,18 @@ func warp_to_cell(_cell: Vector2i) -> void:
 	var half: Vector2 = Vector2(ts.tile_size.x * 0.5, ts.tile_size.y * 0.5)
 	global_position = _ground.to_global(local_origin + half)
 	cell = _cell
+
+# 동일 셀 과일 수확만 시도(8방 탐색 X: 후속 단계)
+func _try_harvest_current_cell() -> void:
+	if _plant == null:
+		return
+	# 물 위 전용 제약 없음(디자인 상). Fish가 물 셀에만 존재하더라도 여기선 제약 두지 않음.
+	var ok := _plant.try_harvest_fruit_at_cell(cell)
+	if ok:
+		on_eat_fruit()
+
+# 수확 성공 시 Fish 내부 처리(포만/체력/로그 등). 지금은 간단히 훅만 둔다.
+func on_eat_fruit() -> void:
+	# TODO: 포만도/체력 시스템 연결 시 구현
+	# print("[Fish] fruit eaten at ", cell)
+	pass

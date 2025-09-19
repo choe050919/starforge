@@ -4,7 +4,7 @@
 
 [resource]
 script = ExtResource("1_wygdk")
-size = Vector2i(96, 48)
+size = Vector2i(48, 48)
 height_freq = 0.03
 ice_threshold = 0.55
 metadata/_custom_type_script = "uid://d247l16y0ap2h"
