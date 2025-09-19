@@ -20,10 +20,15 @@ const Part = preload("res://plants/plant_part.gd")
 
 # 각 stage의 footprint 길이와 동일한 태그 배열
 @export var part_tags: Array[PackedInt32Array] = [
-	PackedInt32Array([Part.PlantPart.STEM]),                          # seed
-	PackedInt32Array([Part.PlantPart.STEM, Part.PlantPart.LEAF]),     # sprout
-	PackedInt32Array([Part.PlantPart.STEM, Part.PlantPart.LEAF, Part.PlantPart.LEAF]) # adult
+	PackedInt32Array([Part.PlantPart.ROOT]),                          # seed
+	PackedInt32Array([Part.PlantPart.ROOT, Part.PlantPart.LEAF]),     # sprout
+	PackedInt32Array([Part.PlantPart.ROOT, Part.PlantPart.LEAF, Part.PlantPart.FRUIT]) # adult
 ]
+
+# 빛 요구/튜닝 필드 (기본값은 기존 동작을 최대한 보존)
+@export var required_light_wm2: float = 0.0   # L_min: 이 값 이하면 성장률 0
+@export var optimal_light_wm2: float = 1000.0 # L_opt: 이 값에서 성장률 100%
+@export var fruit_light_coupled: bool = true  # true면 과일 성숙도도 빛 비례
 
 @export var fruit_growth_rate: float = 0.02
 @export var fruit_initial_maturity: float = 0.0

@@ -5,5 +5,5 @@
 [resource]
 script = ExtResource("1_qj4p6")
 id = &"amphibious_basic"
-part_tags = Array[PackedInt32Array]([PackedInt32Array(2), PackedInt32Array(2, 1), PackedInt32Array(2, 1, 8)])
+part_tags = Array[PackedInt32Array]([PackedInt32Array(4), PackedInt32Array(4, 1), PackedInt32Array(4, 1, 8)])
 metadata/_custom_type_script = "uid://dr8df4u2npquo"

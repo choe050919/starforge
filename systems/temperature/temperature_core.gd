@@ -72,9 +72,9 @@ func tick_fullscan(
 	var h := index.size.y
 	var n := w * h
 
-	var T := temp_store.get_raw_read()             # 온도, 최초 온도 조회용.
-	var S := substance_store.get_raw_read()        # 물질 id, K와 C 조회용.
-	var M := mass_store.get_raw_read().duplicate() # 질량, 온도 변화량 계산용.
+	var T := temp_store.get_raw_read()      # 온도, 최초 온도 조회용.
+	var S := substance_store.get_raw_read() # 물질 id, K와 C 조회용.
+	var M := mass_store.get_raw_read()      # 질량, 온도 변화량 계산용.
 
 	if T.size() != n or S.size() != n or M.size() != n:
 		push_error("[TemperatureCore.tick_fullscan] Size mismatch")

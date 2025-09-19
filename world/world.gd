@@ -122,6 +122,7 @@ func _apply_worldgen_result(
 	plant.set_soil_checker(func(cell: Vector2i) -> bool: # TODO sid hardcoding
 		return data_layer.substance.get_by_cell(cell) == 10002
 	)
+	plant.set_light_sampler(Callable(data_layer.light, "get_by_cell"))
 
 ## 적용 이후 후처리:
 ## - 카메라/오버레이 레이아웃(타일셋/맵 크기 필요)

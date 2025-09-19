@@ -43,6 +43,7 @@ class PlantInstance:
 	var tags_base: PackedInt32Array ## occupied와 index를 공유
 	var fruit_maturity: PackedFloat32Array ## 열매 성숙도(0.0~1.0), 비-FRUIT는 -1.0
 	var fruit_present: PackedByteArray ## 열매 존재(0/1). 비-FRUIT는 0
+	var leaf_indices: PackedInt32Array ## 현재 stage에서 LEAF 파트의 인덱스 캐시(샘플링 최적화)
 
 	func _init(_spec: PlantSpec, _root: Vector2i, _stage_idx: int, _growth_rate: float) -> void:
 		spec = _spec
@@ -51,6 +52,7 @@ class PlantInstance:
 		progress = 0.0
 		growth_rate = _growth_rate
 		occupied = []
+		leaf_indices = PackedInt32Array()
 
 ## 식물 객체들의 참조를 보관하는 레지스트리. 
 var _instances: Array[PlantInstance]
@@ -58,6 +60,9 @@ var _views: Dictionary = {}  ## id: int -> value: PlantView(Node2D)
 
 ## 외부 의존: Soil 판정(하드코딩 회피). set_soil_checker 로 주입.
 var _is_soil_cb: Callable = Callable()
+
+## 외부 의존: Light 샘플링(주입식). set_light_sampler 로 주입.
+var _light_sampler: Callable = Callable()
 
 func setup(index: GridIndex) -> void:
 	_grid = index
@@ -71,6 +76,10 @@ func setup(index: GridIndex) -> void:
 ## checker: Callable(cell: Vector2i) -> bool
 func set_soil_checker(checker: Callable) -> void:
 	_is_soil_cb = checker
+
+## sampler: Callable(cell: Vector2i) -> float (W/m²)
+func set_light_sampler(sampler: Callable) -> void:
+	_light_sampler = sampler
 
 ## 식물의 spec을 보고 root의 좌표에 place할 수 있는지 여부를 반환한다.
 ## 검사 단계:
@@ -166,7 +175,14 @@ func _advance_growth_for_instance(id: int, p: PlantInstance, dt: float) -> bool:
 		p.progress = 1.0
 		return false
 
-	p.progress += p.growth_rate * dt
+	# 빛 비례 factor 계산 (샘플러가 없으면 1.0로 처리해 기존 동작 유지)
+	var factor := _compute_light_factor_for(p)
+	if factor <= 0.0:
+		# (옵션) 디버그 간격 로깅에 잡히도록 그대로 두고, 누적만 생략
+		# if debug_progress_log_sec > 0.0: _log("light_block id=%d stage=%d", [id, p.stage_idx])
+		pass
+	else:
+		p.progress += (p.growth_rate * factor) * dt
 
 	while p.progress >= 1.0:
 		var next := p.stage_idx + 1
@@ -201,6 +217,13 @@ func _update_fruit_for_instance(p: PlantInstance, dt: float) -> bool:
 	var rate := p.spec.fruit_growth_rate
 	if rate == 0.0:
 		return false
+
+	# 과일도 빛 비례 옵션
+	if p.spec.fruit_light_coupled:
+		var f := _compute_light_factor_for(p)
+		if f <= 0.0:
+			return false
+		rate *= f
 
 	var changed := false
 	var n := p.occupied.size()
@@ -272,6 +295,12 @@ func _init_stage_state(p: PlantInstance) -> void:
 			p.fruit_maturity[i] = -1.0
 			p.fruit_present[i] = 0
 
+	# LEAF 인덱스 캐시 생성 (스테이지 전환 시 1회 계산)
+	var leafs := PackedInt32Array()
+	for i in n:
+		if (int(p.tags_base[i]) & Part.PlantPart.LEAF) != 0:
+			leafs.push_back(i)
+	p.leaf_indices = leafs
 
 ## 입력: spec, 생장 단계 값, root 좌표
 ## 출력: 점유하는 타일의 절대 좌표의 배열
@@ -343,6 +372,50 @@ func _free_view(id: int) -> void:
 	if is_instance_valid(node):
 		node.queue_free()
 	_views.erase(id)
+
+# [추가] 빛 샘플링 → 비례 factor 계산
+func _compute_light_factor_for(p: PlantInstance) -> float:
+	# ── 스테이지-0(씨앗) 면제: 빛과 무관하게 100% 성장 ──
+	if p.stage_idx == 0:
+		return 1.0
+
+	# 샘플러 미주입 → 기존 동작 유지(성장 100%)
+	if _light_sampler.is_null():
+		return 1.0
+
+	var L_min: float = max(p.spec.required_light_wm2, 0.0)
+	var L_opt: float = max(p.spec.optimal_light_wm2, 0.0)
+
+	# 샘플 셀 목록: LEAF가 있으면 LEAF만, 없으면 root 1셀
+	var sum := 0.0
+	var cnt := 0
+
+	if p.leaf_indices.size() > 0:
+		for i in p.leaf_indices:
+			if i >= 0 and i < p.occupied.size():
+				var cell := p.occupied[i]
+				var L := float(_light_sampler.call(cell))
+				if L > 0.0:
+					sum += L
+				cnt += 1
+	else:
+		var Lr := float(_light_sampler.call(p.root_cell))
+		if Lr > 0.0:
+			sum += Lr
+		cnt = 1
+
+	if cnt <= 0:
+		return 0.0
+
+	var L_avg := sum / float(cnt)
+
+	# 선형 비례: factor = clamp((L - L_min) / (L_opt - L_min), 0..1)
+	var denom: float = max(L_opt - L_min, 0.000001)
+	var factor: float = (L_avg - L_min) / denom
+	if factor < 0.0: factor = 0.0
+	elif factor > 1.0: factor = 1.0
+	return factor
+
 
 # ── Public API: Plant-Fish 상호작용용 조회/행동 ───────────────────────
 # 외부에서 Plant 상태를 읽고/요청하기 위한 최소 인터페이스.
