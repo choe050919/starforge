@@ -7,7 +7,7 @@ const TILE_LEN_M := 0.1  # 0.1이라면 한 변의 길이가 0.1m
 const GEOM_ORTHO := TILE_LEN_M  # A/d = L
 
 ## 저질량 처리의 기준값 (mg)
-const MIN_MASS_FOR_CONDUCTION := 1000
+const MIN_MASS_FOR_CONDUCTION := 10_000
 
 # 4방 탐색
 const DIRS := [Vector2i(1,0), Vector2i(-1,0), Vector2i(0,1), Vector2i(0,-1)]

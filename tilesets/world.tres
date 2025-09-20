@@ -1,7 +1,7 @@
 [gd_resource type="TileSet" load_steps=5 format=3 uid="uid://dnn0uacxq48mh"]
 
 [ext_resource type="Texture2D" uid="uid://d2rnl6umswf7l" path="res://tilesets/ImageToStl.com_merged-document.jpg" id="1_e078v"]
-[ext_resource type="Texture2D" uid="uid://cbjuhrqj6mhj3" path="res://tilesets/5Tiles.jpg" id="3_60jw1"]
+[ext_resource type="Texture2D" uid="uid://dmrwic18th56x" path="res://tilesets/5Tiles-0920.jpg" id="2_e078v"]
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_60jw1"]
 texture = ExtResource("1_e078v")
@@ -11,7 +11,7 @@ texture_region_size = Vector2i(32, 32)
 2:0/0 = 0
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_2pm11"]
-texture = ExtResource("3_60jw1")
+texture = ExtResource("2_e078v")
 texture_region_size = Vector2i(32, 32)
 0:0/0 = 0
 1:0/0 = 0

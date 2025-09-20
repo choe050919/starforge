@@ -29,6 +29,7 @@ class_name World
 @onready var hover:        HoverManager    = %HoverManager
 @onready var light:        Light           = %Light
 @onready var plant:        Plant           = %Plant
+@onready var grid_nav:     GridNav         = %GridNav
 
 # ── Actors ───────────────────────────────────────────────────────
 @onready var spawner: CritterSpawner = %Spawner
@@ -123,6 +124,7 @@ func _apply_worldgen_result(
 		return data_layer.substance.get_by_cell(cell) == 10002
 	)
 	plant.set_light_sampler(Callable(data_layer.light, "get_by_cell"))
+	grid_nav.setup(data_layer.index)
 
 ## 적용 이후 후처리:
 ## - 카메라/오버레이 레이아웃(타일셋/맵 크기 필요)

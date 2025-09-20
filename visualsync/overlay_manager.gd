@@ -1,7 +1,9 @@
 extends Node
 class_name OverlayManager
 
-enum OverlayMode { NONE, HEATMAP, HEAT_SOURCE, LIGHT }
+# ── 오버레이 정의 ───────────────────────────────────────────────
+# 필요 모드만 추가해 사용. 추후 모드가 늘어도 enum만 확장하면 됨.
+enum OverlayMode { NONE, HEATMAP, HEAT_SOURCE, LIGHT, NAVIGATION }
 
 @onready var grayscale_overlay: ColorRect = get_node("FXLayer/Grayscale")
 
@@ -12,6 +14,7 @@ var overlay_paths := {
 	OverlayMode.HEATMAP: NodePath("OverlayLayer/HeatmapOverlay"),
 	OverlayMode.HEAT_SOURCE: NodePath("OverlayLayer/HeatSourceOverlay"),
 	OverlayMode.LIGHT: NodePath("OverlayLayer/LightOverlay"),
+	OverlayMode.NAVIGATION: NodePath("OverlayLayer/NavigationOverlay")
 }
 
 func _ready() -> void:
@@ -57,6 +60,8 @@ func set_overlay(mode: int) -> void:
 		name_str = "HEAT_SOURCE"
 	elif mode == OverlayMode.LIGHT:
 		name_str = "LIGHT"
+	elif mode == OverlayMode.NAVIGATION:
+		name_str = "NAVIGATION"
 	print("[Overlay] ", name_str)
 
 func toggle_overlay(mode: int) -> void:
