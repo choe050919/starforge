@@ -93,19 +93,32 @@ func _draw() -> void:
 				draw_rect(rect, col, true)
 				draw_rect(rect, Color(0,0,0,0.18), false, 1.0)
 
-	# ── 2) 간선(오른쪽/아래 이웃만) ─────────────────────────────
+	# ── 2) 간선(그래프 기반) ─────────────────────────────────────────
 	if show_edges:
+		var has_neighbors := _grid_nav.has_method("neighbors")
 		for y in range(rect_to_draw.position.y, rect_to_draw.position.y + rect_to_draw.size.y):
 			for x in range(rect_to_draw.position.x, rect_to_draw.position.x + rect_to_draw.size.x):
 				var c := Vector2i(x, y)
-				if not _is_walkable(c): continue
+				if not _is_walkable(c): 
+					continue
 				var p := _cell_center(c, cs)
-				var r := c + Vector2i(1, 0)
-				if _in_bounds(r) and _is_walkable(r):
-					draw_line(p, _cell_center(r, cs), edge_color, edge_width, true)
-				var d := c + Vector2i(0, 1)
-				if _in_bounds(d) and _is_walkable(d):
-					draw_line(p, _cell_center(d, cs), edge_color, edge_width, true)
+
+				if has_neighbors:
+					# 실제 그래프 간선을 사용. 중복 방지를 위해 사전식 순서로 필터
+					for n in _grid_nav.neighbors(c):
+						if not _in_bounds(n): 
+							continue
+						# (x,y) < (nx,ny) 일 때만 그리기 → 중복 라인 제거
+						if n.y > c.y or (n.y == c.y and n.x > c.x):
+							draw_line(p, _cell_center(n, cs), edge_color, edge_width, true)
+				else:
+					# Fallback: 기존 “오른쪽/아래 이웃” 근사
+					var r := c + Vector2i(1, 0)
+					if _in_bounds(r) and _is_walkable(r):
+						draw_line(p, _cell_center(r, cs), edge_color, edge_width, true)
+					var d := c + Vector2i(0, 1)
+					if _in_bounds(d) and _is_walkable(d):
+						draw_line(p, _cell_center(d, cs), edge_color, edge_width, true)
 
 	# ── 3) 경로 프리뷰 ───────────────────────────────────────────
 	if show_path_preview and _path_preview.size() >= 2:

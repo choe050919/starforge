@@ -24,3 +24,13 @@ func in_bounds_cell(c: Vector2i) -> bool:
 
 func in_bounds_index(i: int) -> bool:
 	return i >= 0 and i < size.x * size.y
+
+## index와 cell 둘 중 무엇을 받든 검사해주는 간단 래퍼
+func in_bounds(value) -> bool:
+	if value is int:
+		return in_bounds_index(value)
+	elif value is Vector2i:
+		return in_bounds_cell(value)
+	else:
+		push_warning("[GridIndex.in_bounds] type wrong: only int or Vecter2i")
+		return false
