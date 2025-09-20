@@ -84,6 +84,7 @@ script = ExtResource("8_ftqqi")
 [node name="Map" type="Sprite2D" parent="VisualSync/OverlayManager/OverlayLayer/LightOverlay"]
 
 [node name="NavigationOverlay" type="Node2D" parent="VisualSync/OverlayManager/OverlayLayer"]
+visible = false
 script = ExtResource("10_jgi7c")
 grid_nav_path = NodePath("../../../../Systems/GridNav")
 

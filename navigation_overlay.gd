@@ -149,16 +149,34 @@ func _merge_dirty(list: Array[Rect2i]) -> Rect2i:
 
 func _visible_cells_rect() -> Rect2i:
 	var cs := tile_px
-	var vp := get_viewport_rect()
-	var tl := to_local(vp.position)
-	var br := to_local(vp.position + vp.size)
-	var top_left := Vector2i(floor(tl.x / cs.x), floor(tl.y / cs.y))
-	var bottom_right := Vector2i(ceil(br.x / cs.x), ceil(br.y / cs.y))
-	return Rect2i(top_left, bottom_right - top_left)
+	var cam := get_viewport().get_camera_2d()
+	if cam:
+		# 화면 크기(픽셀) → 카메라 줌을 고려해 월드 Half-Extents로 변환
+		var vp_size := get_viewport_rect().size
+		var half := (vp_size * 0.5) / cam.zoom
+		# 카메라의 화면 중앙의 월드 좌표
+		var center := cam.get_screen_center_position()
+		var tl := center - half   # 월드 좌상
+		var br := center + half   # 월드 우하
 
+		var top_left := Vector2i(floor(tl.x / cs.x), floor(tl.y / cs.y))
+		var bottom_right := Vector2i(ceil(br.x / cs.x), ceil(br.y / cs.y))
+
+		# 살짝 버퍼
+		top_left -= Vector2i.ONE
+		bottom_right += Vector2i.ONE
+
+		# 그리드 경계로 클램프
+		var rect := Rect2i(top_left, bottom_right - top_left)
+		return rect.intersection(_iter_bounds())
+
+	# 카메라가 없으면 전체
+	return _iter_bounds()
+
+
+# 코스트 → 색 변환 헬퍼
 func _cost_to_color(v: float, a: float) -> Color:
-	# 0 → 파랑, 중간 → 노랑, 높음 → 빨강
-	var t: float = clamp(v / 100.0, 0.0, 1.0)
+	var t: float = clamp(v / 100.0, 0.0, 1.0)  # 필요하면 100.0을 익스포트 변수로 빼세요
 	if t < 0.5:
 		var k := t * 2.0
 		return Color(0.0 + k, 0.0 + k, 1.0 - k, a)
