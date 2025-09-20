@@ -12,8 +12,7 @@ func setup(grid_index: GridIndex):
 	grid.cell_size = cell_size
 	grid.default_compute_heuristic = AStarGrid2D.HEURISTIC_MANHATTAN
 	grid.diagonal_mode = AStarGrid2D.DIAGONAL_MODE_NEVER
-	grid.default_compute_heuristic = AStarGrid2D.HEURISTIC_MANHATTAN
-	grid.diagonal_mode = AStarGrid2D.DIAGONAL_MODE_NEVER
+	grid.update()
 
 func set_walkable(cell: Vector2i, walkable: bool) -> void:
 	grid.set_point_solid(cell, not walkable)
