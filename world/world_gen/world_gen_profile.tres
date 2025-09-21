@@ -5,5 +5,6 @@
 [resource]
 script = ExtResource("1_wygdk")
 size = Vector2i(128, 64)
+seed_height = 12348
 ice_threshold = 0.55
 metadata/_custom_type_script = "uid://d247l16y0ap2h"

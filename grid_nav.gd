@@ -84,7 +84,7 @@ func _connect(a: Vector2i, b: Vector2i) -> void:
 	var id_b: int = _id_from_cell.get(b, 0)
 	if id_a == 0 or id_b == 0: return
 	if not _astar.are_points_connected(id_a, id_b):
-		_astar.connect_points(id_a, id_b, false)
+		_astar.connect_points(id_a, id_b, true) # ← bidirectional = true 로!
 
 # ────────────────────────────────────────────────────────────────────
 # 퍼블릭 API (기존 시그니처 유지)
