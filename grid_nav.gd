@@ -219,6 +219,16 @@ func neighbors(cell: Vector2i) -> Array[Vector2i]:
 # ────────────────────────────────────────────────────────────────────
 # 표면/공기/솔리드 헬퍼
 
+func _is_solid_safe(c: Vector2i) -> bool:
+	if not _grid_index.in_bounds_cell(c):
+		return false
+	return _phase != null and _phase.get_phase(c) == PhaseStore.Phase.SOLID
+
+func _is_air_safe(c: Vector2i) -> bool:
+	if not _grid_index.in_bounds_cell(c):
+		return false
+	return not _is_solid_safe(c)
+
 func _is_solid(c: Vector2i) -> bool:
 	return _is_solid_safe(c)
 
@@ -283,55 +293,41 @@ func _rebuild_links_for(c: Vector2i) -> void:
 	if id_c == 0:
 		return
 
-	# 일단 근방 후보에 대해 기존 연결을 깔끔히 정리(조건 불충족이면 끊김)
 	for dir_x in [-1, 1]:
 		var side := c + Vector2i(dir_x, 0)
 		var up := c + Vector2i(dir_x, -1)
 		var down := c + Vector2i(dir_x, 1)
 
 		# 평지
-		var side_id := _node_id(side)
-		_connect_if(id_c, side_id, _can_step_flat(c, dir_x))
+		_connect_if(id_c, _node_id(side), _can_step_flat(c, dir_x))
 
-		# 한 칸 오르기(대각 ↗/↖)
-		var up_id := _node_id(up)
-		_connect_if(id_c, up_id, _can_step_up(c, dir_x))
+		# 한 칸 오르기 (↗/↖) — side는 '솔리드'여야 함
+		_connect_if(id_c, _node_id(up), _can_step_up(c, dir_x))
 
-		# 한 칸 내리기(대각 ↘/↙)
-		var down_id := _node_id(down)
-		_connect_if(id_c, down_id, _can_step_down(c, dir_x))
+		# 한 칸 내리기 (↘/↙) — side는 '공기'여야 함
+		_connect_if(id_c, _node_id(down), _can_step_down(c, dir_x))
 
 func _can_step_flat(from: Vector2i, dir_x: int) -> bool:
 	var to := from + Vector2i(dir_x, 0)
 	return _id_from_cell.has(from) and _id_from_cell.has(to)
 
 func _can_step_up(from: Vector2i, dir_x: int) -> bool:
-	# 목표: (x±1, y-1) 가 표면 노드
-	# 머리/옆 공간: (x±1, y) 는 공기여야 함
+	# 목표: up=(x±1, y-1)가 표면(노드)이고,
+	# 그 '바로 아래' side=(x±1, y)가 '솔리드'여야 함(계단 단 높이).
 	var side := from + Vector2i(dir_x, 0)
 	var up := from + Vector2i(dir_x, -1)
 	return _id_from_cell.has(from) \
 		and _id_from_cell.has(up) \
-		and _is_air_safe(side)
+		and _is_solid_safe(side)
 
 func _can_step_down(from: Vector2i, dir_x: int) -> bool:
-	# 목표: (x±1, y+1) 가 표면 노드
-	# 옆으로 떨어질 공간: (x±1, y) 는 공기여야 함
+	# 목표: down=(x±1, y+1)이 표면(노드)이고,
+	# 옆으로 떨어질 공간 side=(x±1, y)는 '공기'여야 함.
 	var side := from + Vector2i(dir_x, 0)
 	var down := from + Vector2i(dir_x, 1)
 	return _id_from_cell.has(from) \
 		and _id_from_cell.has(down) \
 		and _is_air_safe(side)
-
-func _is_solid_safe(c: Vector2i) -> bool:
-	if not _grid_index.in_bounds_cell(c):
-		return false
-	return _phase != null and _phase.get_phase(c) == PhaseStore.Phase.SOLID
-
-func _is_air_safe(c: Vector2i) -> bool:
-	if not _grid_index.in_bounds_cell(c):
-		return false
-	return not _is_solid_safe(c)
 
 func _connect_if(a_id: int, b_id: int, cond: bool) -> void:
 	if a_id == 0 or b_id == 0:
