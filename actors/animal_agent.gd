@@ -42,6 +42,31 @@ func _ready() -> void:
 	if overlay_path != NodePath() and has_node(overlay_path):
 		_overlay = get_node(overlay_path)
 
+	call_deferred("_snap_start_to_surface")
+
+func _snap_start_to_surface() -> void:
+	if _grid_nav == null:
+		return
+	var b := _grid_nav.iter_bounds()
+	var cell := _world_to_cell(global_position)
+	cell.x = clamp(cell.x, b.position.x, b.position.x + b.size.x - 1)
+
+	var found := false
+	# ↓ 아래로 먼저 탐색
+	for y in range(cell.y, b.position.y + b.size.y):
+		var c2 := Vector2i(cell.x, y)
+		if _grid_nav.is_walkable(c2):
+			global_position = Vector2(c2) * _cell_px + _cell_px * 0.5
+			found = true
+			break
+	# ↑ 그래도 못 찾으면 위로
+	if not found:
+		for y in range(cell.y - 1, b.position.y - 1, -1):
+			var c2 := Vector2i(cell.x, y)
+			if _grid_nav.is_walkable(c2):
+				global_position = Vector2(c2) * _cell_px + _cell_px * 0.5
+				break
+
 func _physics_process(delta: float) -> void:
 	match _mode:
 		Mode.IDLE:
