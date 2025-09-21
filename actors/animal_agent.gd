@@ -7,6 +7,7 @@ class_name AnimalAgent
 ## - 셀 판정 히스테리시스(대각선/경계 떨림 완화)
 ## - Nav 변경 신호에 쿨다운 방식으로 반응
 ## - 오버레이가 있으면 경로 프리뷰 출력(옵션)
+## - WANDER: 자동 “걷다-멈추다” 루프(가까운 목적지 샘플링)
 
 # ── 외부 참조 ───────────────────────────────────────────────────────
 @export var grid_nav_path: NodePath
@@ -14,19 +15,28 @@ class_name AnimalAgent
 
 # ── 이동 튜닝 ───────────────────────────────────────────────────────
 @export var move_speed: float = 120.0           # px/sec
-@export var arrive_epsilon_px: float = 10.0     # 경유점 도착 판정(셀 크기 32일 때 8~16 권장)
+@export var arrive_epsilon_px: float = 10.0     # 경유점 도착 판정
 @export var show_own_path_preview: bool = true  # 내 경로를 오버레이에 띄우기
 
 # ── 추적/재탐색 ─────────────────────────────────────────────────────
-@export var repath_interval_sec: float = 0.35   # FOLLOW 기본 주기
+@export var repath_interval_sec: float = 0.35   # FOLLOW/WANDER 이동 중 환경대응 주기
 @export var repath_cooldown_sec: float = 0.15   # 재탐색 쿨다운(신호/빈번 변동 대응)
-@export var follow_repath_threshold_px: float = 12.0  # 타겟 이동 문턱(미세 흔들림 무시)
+@export var follow_repath_threshold_px: float = 12.0  # FOLLOW 대상 이동 문턱
 
 # ── 셀 판정 안정화 ──────────────────────────────────────────────────
 @export var cell_hysteresis_px: float = 8.0     # 셀 중심에서 이만큼 벗어나야 start_cell 갱신
 
+# ── 자동 배회(WANDER) ──────────────────────────────────────────────
+@export var wander_enabled: bool = true
+@export var wander_pause_sec: float = 1.2             # 도착 후 대기
+@export var wander_radius_cells: int = 5              # 목적지 후보 반경(셀)
+@export var wander_retry_limit: int = 3               # 경로 실패 재시도 횟수
+@export var wander_progress_timeout_sec: float = 1.0  # 이동 중 진척 없으면 폐기/대기
+@export var wander_progress_epsilon_px: float = 4.0   # “진척 없음” 판정 문턱
+@export var wander_max_path_points: int = 16          # 과도한 장거리 금지(평균 비용 통제)
+
 # ── 내부 상태 ───────────────────────────────────────────────────────
-enum Mode { IDLE, MOVE_TO, FOLLOW }
+enum Mode { IDLE, MOVE_TO, FOLLOW, WANDER }
 var _mode: int = Mode.IDLE
 
 var _grid_nav: Node = null
@@ -42,6 +52,17 @@ var _time_since_repath := 0.0
 var _repath_cooldown_left := 0.0
 
 var _last_start_cell: Vector2i = Vector2i(-9999, -9999)
+
+# WANDER 서브상태
+enum WanderPhase { PAUSE, CRUISE }
+var _wander_phase: int = WanderPhase.PAUSE
+var _wander_timer: float = 0.0
+var _wander_retries_left: int = 0
+var _wander_goal_cell: Vector2i = Vector2i(-9999, -9999)
+var _wander_rng := RandomNumberGenerator.new()
+var _wander_last_progress_pos: Vector2
+var _wander_progress_timer: float = 0.0
+var _defer_resample_until_next_tick: bool = false  # 한 틱 내 실패 폭주 억제
 
 # ────────────────────────────────────────────────────────────────────
 # 수명주기
@@ -60,6 +81,12 @@ func _ready() -> void:
 	if overlay_path != NodePath() and has_node(overlay_path):
 		_overlay = get_node(overlay_path)
 
+	# WANDER 시드/페이즈 스태거
+	_wander_rng.seed = hash("%s:%s" % [get_instance_id(), Time.get_ticks_usec()])
+	_wander_timer = randf_range(0.25, 0.75) * wander_pause_sec
+	_wander_retries_left = wander_retry_limit
+	_wander_last_progress_pos = global_position
+
 	call_deferred("_snap_start_to_surface")
 
 func _physics_process(delta: float) -> void:
@@ -67,6 +94,9 @@ func _physics_process(delta: float) -> void:
 
 	match _mode:
 		Mode.IDLE:
+			# 자동 배회가 켜져 있고 다른 명령이 없으면 WANDER로 진입
+			if wander_enabled:
+				_enter_wander()
 			return
 
 		Mode.MOVE_TO:
@@ -79,11 +109,15 @@ func _physics_process(delta: float) -> void:
 				_repath_follow()
 			_move_along_path(delta)
 
+		Mode.WANDER:
+			_tick_wander(delta)
+
 # ────────────────────────────────────────────────────────────────────
 # 퍼블릭 API
 
 ## 셀 목표로 이동(목표가 공중이어도 GridNav가 표면으로 스냅한다고 가정)
 func move_to_cell(cell: Vector2i) -> void:
+	_abort_wander()
 	_follow_target = null
 	_goal_cell = cell
 	_rebuild_path_to(cell)
@@ -95,16 +129,31 @@ func move_to_world(world_pos: Vector2) -> void:
 
 ## 타겟 노드를 따라가기(주기적으로 재탐색)
 func follow_node(node: Node2D) -> void:
+	_abort_wander()
 	_follow_target = node
 	_time_since_repath = 9999.0  # 즉시 한 번 재탐색
 	_mode = Mode.FOLLOW
 
 ## 정지
 func stop() -> void:
+	_abort_wander()
 	_mode = Mode.IDLE
 	_path.clear()
 	_path_index = 0
 	_show_path_preview([])
+
+## 자동 배회 시작/중단(선택적 외부 제어용)
+func start_wander() -> void:
+	if not wander_enabled:
+		return
+	if _mode == Mode.FOLLOW:
+		return
+	_enter_wander()
+
+func stop_wander() -> void:
+	_abort_wander()
+	if _mode == Mode.WANDER:
+		_mode = Mode.IDLE
 
 # ────────────────────────────────────────────────────────────────────
 # 내부: 시작 위치 스냅
@@ -142,7 +191,7 @@ func _snap_start_to_surface() -> void:
 
 func _move_along_path(delta: float) -> void:
 	if _path.is_empty():
-		_mode = Mode.IDLE
+		_mode = (Mode.WANDER if _mode == Mode.WANDER else Mode.IDLE)
 		return
 
 	var eps: float = max(arrive_epsilon_px, 0.001)
@@ -178,7 +227,14 @@ func _move_along_path(delta: float) -> void:
 func _finish_path() -> void:
 	if _mode == Mode.MOVE_TO:
 		_mode = Mode.IDLE
-	_show_path_preview([])
+		_show_path_preview([])
+	elif _mode == Mode.WANDER:
+		# 도착 → 대기 페이즈로 전환
+		_wander_phase = WanderPhase.PAUSE
+		_wander_timer = wander_pause_sec
+		_path.clear()
+		_path_index = 0
+		_show_path_preview([])
 
 # ────────────────────────────────────────────────────────────────────
 # 내부: 경로 재생성/채택
@@ -192,6 +248,13 @@ func _rebuild_path_to(cell: Vector2i) -> void:
 	var start_cell := _stable_start_cell_from_world(global_position)
 	var pts: PackedVector2Array = _grid_nav.find_path(start_cell, cell)  # 월드 좌표 경유점 가정
 	if pts.is_empty():
+		_path = []
+		_path_index = 0
+		_show_path_preview(_path)
+		return
+
+	# 너무 긴 경로는 거부 (샘플 단계에서 길이 상한)
+	if wander_max_path_points > 0 and pts.size() > wander_max_path_points and _mode == Mode.WANDER:
 		_path = []
 		_path_index = 0
 		_show_path_preview(_path)
@@ -298,3 +361,140 @@ func _show_path_preview(points: PackedVector2Array) -> void:
 		return
 	if _overlay and _overlay.has_method("set_path_preview"):
 		_overlay.call("set_path_preview", points)
+
+# ────────────────────────────────────────────────────────────────────
+# WANDER 로직
+
+func _enter_wander() -> void:
+	if not wander_enabled:
+		return
+	_follow_target = null
+	_mode = Mode.WANDER
+	_wander_phase = WanderPhase.PAUSE
+	_wander_timer = max(_wander_timer, 0.2)  # 초기 스태거 유지
+	_wander_retries_left = wander_retry_limit
+	_path.clear()
+	_path_index = 0
+	_show_path_preview([])
+
+func _abort_wander() -> void:
+	_wander_phase = WanderPhase.PAUSE
+	_wander_timer = 0.0
+	_wander_retries_left = wander_retry_limit
+	_wander_goal_cell = Vector2i(-9999, -9999)
+	_defer_resample_until_next_tick = false
+
+func _tick_wander(delta: float) -> void:
+	# 네비 신호 대응: 쿨다운이 끝났고, 현재 이동 중이면 같은 목표로 재탐색 (빈번폭주 방지)
+	if _repath_cooldown_left <= 0.0 and _wander_phase == WanderPhase.CRUISE and _time_since_repath >= repath_interval_sec:
+		_time_since_repath = 0.0
+		if _wander_goal_cell.x > -9998:
+			_rebuild_path_to(_wander_goal_cell)
+			_repath_cooldown_left = repath_cooldown_sec
+
+	match _wander_phase:
+		WanderPhase.PAUSE:
+			_wander_timer -= delta
+			if _wander_timer <= 0.0:
+				if _defer_resample_until_next_tick:
+					# 지난 틱에서 실패가 누적되었으면 이번 틱은 쉬고 다음 틱에서 재시도
+					_defer_resample_until_next_tick = false
+					_wander_timer = 0.05
+					return
+				_try_pick_wander_goal()
+			return
+
+		WanderPhase.CRUISE:
+			# 이동
+			_move_along_path(delta)
+			# 진척 모니터링
+			_wander_progress_timer += delta
+			if _wander_progress_timer >= wander_progress_timeout_sec:
+				var moved := (global_position - _wander_last_progress_pos).length()
+				if moved < wander_progress_epsilon_px:
+					# 막혔다고 판단 → 폐기 후 대기
+					_path.clear()
+					_path_index = 0
+					_wander_phase = WanderPhase.PAUSE
+					_wander_timer = wander_pause_sec
+					_show_path_preview([])
+				else:
+					_wander_last_progress_pos = global_position
+				_wander_progress_timer = 0.0
+
+# 목표 샘플링: 가까운 표면 셀 기준 짧은 경로만 채택
+func _try_pick_wander_goal() -> void:
+	if _grid_nav == null:
+		# 네비 없으면 그냥 가만히
+		_wander_timer = wander_pause_sec
+		return
+
+	var start_cell := _stable_start_cell_from_world(global_position)
+	var bounds_ok := _grid_nav.has_method("iter_bounds") and _grid_nav.has_method("is_walkable")
+	var b: Rect2i = ( _grid_nav.iter_bounds() if bounds_ok else Rect2i(Vector2i(-INF, -INF), Vector2i(INF, INF)) )
+
+	var attempts: int = max(1, wander_retry_limit)
+	var picked := false
+
+	for i in range(attempts):
+		var offset := _rand_cell_in_radius(wander_radius_cells)
+		var cand := start_cell + offset
+
+		# 경계/워커블 검사
+		if bounds_ok:
+			if cand.x < b.position.x or cand.y < b.position.y or cand.x >= b.position.x + b.size.x or cand.y >= b.position.y + b.size.y:
+				continue
+			if not _grid_nav.is_walkable(cand):
+				continue
+
+		# 경로 시도
+		var pts: PackedVector2Array = []
+		if _grid_nav.has_method("find_path"):
+			pts = _grid_nav.find_path(start_cell, cand)
+		if pts.is_empty():
+			continue
+		if wander_max_path_points > 0 and pts.size() > wander_max_path_points:
+			continue
+
+		# 채택
+		_wander_goal_cell = cand
+		_goal_cell = cand
+		_adopt_path_from_current_position(pts)
+		_path_index = 0
+		_show_path_preview(_path)
+
+		if _path.is_empty():
+			continue
+
+		# 이동 페이즈로
+		_wander_phase = WanderPhase.CRUISE
+		_time_since_repath = 0.0
+		_wander_progress_timer = 0.0
+		_wander_last_progress_pos = global_position
+		picked = true
+		break
+
+	if not picked:
+		# 이번 틱에서 실패 → 다음 틱으로 이월하여 스파이크 억제
+		_defer_resample_until_next_tick = true
+		_wander_timer = 0.05  # 짧게 한숨
+	else:
+		# 잘 골랐으면 다음엔 도착 후 대기
+		pass
+
+func _rand_cell_in_radius(r: int) -> Vector2i:
+	if r <= 0:
+		return Vector2i.ZERO
+	# 원반 샘플링: 가까운 셀에 더 자주 가도록 반지름 가중치 sqrt
+	var ang := _wander_rng.randf_range(0.0, TAU)
+	var rad := sqrt(_wander_rng.randf()) * float(r) + 0.001
+	var dx := int(round(rad * cos(ang)))
+	var dy := int(round(rad * sin(ang)))
+	# 자기 자신(0,0) 방지: 최소 한 칸은 움직이게
+	if dx == 0 and dy == 0:
+		dx = 1 if (_wander_rng.randi() % 2 == 0) else -1
+	return Vector2i(dx, dy)
+
+# randf_range 헬퍼 (Godot 4엔 RandomNumberGenerator에 있음)
+func randf_range(a: float, b: float) -> float:
+	return a + (b - a) * randf()

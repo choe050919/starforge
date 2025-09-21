@@ -30,10 +30,31 @@ var _pending_bbox := Rect2i()
 var _has_pending_bbox := false
 
 # ── 부분 패치용 대기열 ─────────────────────────────────────────────────
-# 후보 셀 집합(중복 방지용 Set처럼 사용) : key=Vector2i, value=true
-var _pending_candidates: Dictionary = {}
+var _pending_candidates: Dictionary = {}     # key=Vector2i, value=true
 var _force_full_scan := false
 
+# ── 풀빌드 분할 처리 옵션 ─────────────────────────────────────────────
+@export var chunk_rows_per_frame_full := 64  # 0이면 한 프레임에 전부 처리(기존 방식)
+
+enum _FullStage { NONE, SCAN_SURFACE, ADD_NODES, CONNECT_EDGES, COMMIT_MAPS, DONE }
+var _full_stage: int = _FullStage.NONE
+var _full_y: int = 0
+var _full_surface: PackedByteArray
+var _full_id_from_index: PackedInt32Array
+var _full_w := 0
+var _full_h := 0
+
+func _ready() -> void:
+	set_process(true)
+
+# ── 인덱스 유틸 ────────────────────────────────────────────────────────
+func _index_of(c: Vector2i) -> int:
+	return c.x + c.y * _grid_index.size.x
+
+func _in_bounds(c: Vector2i) -> bool:
+	return _grid_index.in_bounds_cell(c)
+
+# ──────────────────────────────────────────────────────────────────────
 func setup(data: DataLayer) -> void:
 	# 기존 연결 해제
 	if _data and _data.tiles_changed.is_connected(_on_tiles_changed):
@@ -51,7 +72,7 @@ func setup(data: DataLayer) -> void:
 	_force_full_scan = true
 	_schedule_rebuild()
 
-# ────────────────────────────────────────────────────────────────────
+# ──────────────────────────────────────────────────────────────────────
 # DataLayer 통합 이벤트 수신
 func _on_tiles_changed(changed_indices: PackedInt32Array, reason: StringName, payload: Dictionary) -> void:
 	var phase_changed := bool(payload.get("phase_changed", false))
@@ -102,21 +123,168 @@ func _do_rebuild() -> void:
 	_rebuild_pending = false
 	_last_rebuild_msec = Time.get_ticks_msec()
 
+	# 분할 풀빌드가 이미 진행 중이면 계속 진행하도록 두고, 추가로 강제 풀스캔 요청만 갱신
+	if _full_stage != _FullStage.NONE and _full_stage != _FullStage.DONE:
+		# 이미 진행 중 → 끝나면 누적 bbox만 한 번 더 내보내면 됨
+		return
+
 	if _force_full_scan:
-		_rebuild_surface_graph_full()
+		if chunk_rows_per_frame_full > 0:
+			_start_full_rebuild_incremental()
+		else:
+			_rebuild_surface_graph_full()  # 한방 풀빌드
+			# 알림은 누적된 BBox만 1회 발송
+			if _has_pending_bbox:
+				navigation_bulk_changed.emit(_pending_bbox)
+				_has_pending_bbox = false
+				_pending_bbox = Rect2i()
+		_force_full_scan = false
 	else:
 		_apply_partial_patches()
+		if _has_pending_bbox:
+			navigation_bulk_changed.emit(_pending_bbox)
+			_has_pending_bbox = false
+			_pending_bbox = Rect2i()
 
-	# 알림은 누적된 BBox만 1회 발송
+# ── 분할 풀빌드 메인 루프 ─────────────────────────────────────────────
+func _process(_delta: float) -> void:
+	# 분할 풀빌드가 진행 중이면 일을 조금씩 처리
+	if _full_stage != _FullStage.NONE and _full_stage != _FullStage.DONE:
+		_step_full_rebuild_chunk()
+		# 끝난 시점에만 한 번 알림
+		if _full_stage == _FullStage.DONE:
+			_finish_full_rebuild_emit()
+
+func _finish_full_rebuild_emit() -> void:
+	_full_stage = _FullStage.NONE
 	if _has_pending_bbox:
 		navigation_bulk_changed.emit(_pending_bbox)
 		_has_pending_bbox = false
 		_pending_bbox = Rect2i()
 
-# ────────────────────────────────────────────────────────────────────
-# (FULL) 내부: 표면 그래프 전체 생성
+# ── 분할 풀빌드: 시작/스텝 ────────────────────────────────────────────
+func _start_full_rebuild_incremental() -> void:
+	_astar.clear()
+	_id_from_cell.clear()
+	_cell_from_id.clear()
+	_next_id = 1
+
+	_full_w = _grid_index.size.x
+	_full_h = _grid_index.size.y
+
+	var wh := _full_w * _full_h
+	_full_surface = PackedByteArray(); _full_surface.resize(wh); _full_surface.fill(0)
+	_full_id_from_index = PackedInt32Array(); _full_id_from_index.resize(wh)
+	for i in range(wh):
+		_full_id_from_index[i] = 0
+
+	_full_stage = _FullStage.SCAN_SURFACE
+	_full_y = 0
+
+func _step_full_rebuild_chunk() -> void:
+	var rows := chunk_rows_per_frame_full
+	if rows <= 0:
+		rows = _full_h  # safety
+
+	match _full_stage:
+		_FullStage.SCAN_SURFACE:
+			var y_end: int = min(_full_y + rows, _full_h)
+			var getp = _phase.get_phase if _phase != null else null
+			for y in range(_full_y, y_end):
+				for x in range(_full_w):
+					var c := Vector2i(x, y)
+					var below := Vector2i(x, y + 1)
+					var air := false
+					var solid_below := false
+					if getp != null:
+						air = getp.call(c) != PhaseStore.Phase.SOLID
+						solid_below = (below.y < _full_h) and getp.call(below) == PhaseStore.Phase.SOLID
+					if air and solid_below:
+						_full_surface[_index_of(c)] = 1
+			_full_y = y_end
+			if _full_y >= _full_h:
+				_full_stage = _FullStage.ADD_NODES
+				_full_y = 0
+
+		_FullStage.ADD_NODES:
+			var y_end2: int = min(_full_y + rows, _full_h)
+			for y in range(_full_y, y_end2):
+				for x in range(_full_w):
+					var c := Vector2i(x, y)
+					var idx := _index_of(c)
+					if _full_surface[idx] == 0:
+						continue
+					var id := _next_id; _next_id += 1
+					_full_id_from_index[idx] = id
+					var world_pos := Vector2(c) * cell_size + cell_size * 0.5
+					_astar.add_point(id, world_pos)
+			_full_y = y_end2
+			if _full_y >= _full_h:
+				_full_stage = _FullStage.CONNECT_EDGES
+				_full_y = 0
+
+		_FullStage.CONNECT_EDGES:
+			var y_end3: int = min(_full_y + rows, _full_h)
+			var getp2 = _phase.get_phase if _phase != null else null
+			for y in range(_full_y, y_end3):
+				for x in range(_full_w):
+					var c := Vector2i(x, y)
+					var idx_c := _index_of(c)
+					var id_c := _full_id_from_index[idx_c]
+					if id_c == 0:
+						continue
+
+					var rx := x + 1
+					if rx < _full_w:
+						var right := Vector2i(rx, y)
+						var idx_r := _index_of(right)
+						var id_r := _full_id_from_index[idx_r]
+						if id_r != 0:
+							_astar.connect_points(id_c, id_r, true)
+
+						# 한 칸 오르기(↗): up 표면 + side(right) SOLID
+						var uy := y - 1
+						if uy >= 0:
+							var up := Vector2i(rx, uy)
+							var idx_up := _index_of(up)
+							var id_up := _full_id_from_index[idx_up]
+							if id_up != 0 and getp2 != null and getp2.call(right) == PhaseStore.Phase.SOLID:
+								_astar.connect_points(id_c, id_up, true)
+
+						# 한 칸 내리기(↘): down 표면 + side(right) AIR
+						var dy := y + 1
+						if dy < _full_h:
+							var down := Vector2i(rx, dy)
+							var idx_down := _index_of(down)
+							var id_down := _full_id_from_index[idx_down]
+							if id_down != 0 and getp2 != null and getp2.call(right) != PhaseStore.Phase.SOLID:
+								_astar.connect_points(id_c, id_down, true)
+			_full_y = y_end3
+			if _full_y >= _full_h:
+				_full_stage = _FullStage.COMMIT_MAPS
+				_full_y = 0
+
+		_FullStage.COMMIT_MAPS:
+			var y_end4: int = min(_full_y + rows, _full_h)
+			for y in range(_full_y, y_end4):
+				for x in range(_full_w):
+					var c := Vector2i(x, y)
+					var idx := _index_of(c)
+					var id := _full_id_from_index[idx]
+					if id == 0:
+						continue
+					_id_from_cell[c] = id
+					_cell_from_id[id] = c
+			_full_y = y_end4
+			if _full_y >= _full_h:
+				_full_stage = _FullStage.DONE
+
+# ──────────────────────────────────────────────────────────────────────
+# (FULL) 내부: 표면 그래프 전체 생성 — 한방(비분할) 최적화 버전
 func _rebuild_surface_graph_full() -> void:
 	_force_full_scan = false
+
+	# 0) 초기화
 	_astar.clear()
 	_id_from_cell.clear()
 	_cell_from_id.clear()
@@ -124,24 +292,94 @@ func _rebuild_surface_graph_full() -> void:
 
 	var w := _grid_index.size.x
 	var h := _grid_index.size.y
+	if w <= 0 or h <= 0:
+		return
+	var wh := w * h
 
-	# 1) 표면 셀만 노드로 추가
+	# 1) 표면 캐시(한 번만 판정)
+	var surface := PackedByteArray()
+	surface.resize(wh)
+	surface.fill(0)
+	var getp = _phase.get_phase if _phase != null else null
+
 	for y in range(h):
 		for x in range(w):
 			var c := Vector2i(x, y)
-			if _is_surface(c):
-				_add_node(c)
+			var below := Vector2i(x, y + 1)
+			var air := false
+			var solid_below := false
+			if getp != null:
+				air = getp.call(c) != PhaseStore.Phase.SOLID
+				solid_below = (below.y < h) and getp.call(below) == PhaseStore.Phase.SOLID
+			if air and solid_below:
+				surface[_index_of(c)] = 1
 
-	# 2) 간선 연결: 좌/우 평지 + 한 칸 오르기/내리기 (옆 칸 공기 가드)
+	# 2) id_from_index + AStar 노드 생성
+	var id_from_index := PackedInt32Array()
+	id_from_index.resize(wh)
+	for i in range(wh):
+		id_from_index[i] = 0
+
 	for y in range(h):
 		for x in range(w):
 			var c := Vector2i(x, y)
-			if not _id_from_cell.has(c):
+			var idx := _index_of(c)
+			if surface[idx] == 0:
 				continue
-			_rebuild_links_for(c)
+			var id := _next_id
+			_next_id += 1
+			id_from_index[idx] = id
+			var world_pos := Vector2(c) * cell_size + cell_size * 0.5
+			_astar.add_point(id, world_pos)
 
-# ────────────────────────────────────────────────────────────────────
-# (PARTIAL) 변경된 주변만 로컬 패치
+	# 3) 간선 연결(중복 없는 방향만)
+	for y in range(h):
+		for x in range(w):
+			var c := Vector2i(x, y)
+			var idx_c := _index_of(c)
+			var id_c := id_from_index[idx_c]
+			if id_c == 0:
+				continue
+
+			var rx := x + 1
+			if rx < w:
+				var right := Vector2i(rx, y)
+				var idx_r := _index_of(right)
+				var id_r := id_from_index[idx_r]
+				if id_r != 0:
+					_astar.connect_points(id_c, id_r, true)
+
+				# up(↗): up 표면 + side(right) SOLID
+				var uy := y - 1
+				if uy >= 0:
+					var up := Vector2i(rx, uy)
+					var idx_up := _index_of(up)
+					var id_up := id_from_index[idx_up]
+					if id_up != 0 and getp != null and getp.call(right) == PhaseStore.Phase.SOLID:
+						_astar.connect_points(id_c, id_up, true)
+
+				# down(↘): down 표면 + side(right) AIR
+				var dy := y + 1
+				if dy < h:
+					var down := Vector2i(rx, dy)
+					var idx_down := _index_of(down)
+					var id_down := id_from_index[idx_down]
+					if id_down != 0 and getp != null and getp.call(right) != PhaseStore.Phase.SOLID:
+						_astar.connect_points(id_c, id_down, true)
+
+	# 4) 딕셔너리 테이블 채우기(퍼블릭 API 호환)
+	for y in range(h):
+		for x in range(w):
+			var c := Vector2i(x, y)
+			var idx := _index_of(c)
+			var id := id_from_index[idx]
+			if id == 0:
+				continue
+			_id_from_cell[c] = id
+			_cell_from_id[id] = c
+
+# ──────────────────────────────────────────────────────────────────────
+# (PARTIAL) 변경된 주변만 로컬 패치 — 기존 방식 유지
 func _apply_partial_patches() -> void:
 	if _pending_candidates.is_empty():
 		return
@@ -164,7 +402,7 @@ func _apply_partial_patches() -> void:
 		if _id_from_cell.has(c):
 			_rebuild_links_for(c)
 
-# ────────────────────────────────────────────────────────────────────
+# ──────────────────────────────────────────────────────────────────────
 # 퍼블릭 API (기존 시그니처 유지)
 
 func set_walkable(cell: Vector2i, walkable: bool) -> void:
@@ -196,9 +434,6 @@ func find_path(start_cell: Vector2i, goal_cell: Vector2i) -> PackedVector2Array:
 
 func mark_region_rebuilt(rect: Rect2i) -> void:
 	_accumulate_bbox(rect)
-	# 강제로 해당 영역 후보를 큐에 넣어 재평가하고 싶다면, 아래처럼 전체 rect 스캔을 소규모로 수행 가능.
-	# 여기서는 알림만(가벼움). 필요 시 주석 해제:
-	# _queue_patch_candidates_from_rect(rect)
 	_schedule_rebuild()
 
 func is_walkable(cell: Vector2i) -> bool:
@@ -216,7 +451,7 @@ func neighbors(cell: Vector2i) -> Array[Vector2i]:
 		out.append(_cell_from_id[nid])
 	return out
 
-# ────────────────────────────────────────────────────────────────────
+# ──────────────────────────────────────────────────────────────────────
 # 표면/공기/솔리드 헬퍼
 
 func _is_solid_safe(c: Vector2i) -> bool:
@@ -263,7 +498,7 @@ func _ensure_node_for_or_near_surface(c: Vector2i) -> int:
 
 	return 0
 
-# ────────────────────────────────────────────────────────────────────
+# ──────────────────────────────────────────────────────────────────────
 # 노드/간선 유틸
 
 func _add_node(cell: Vector2i) -> void:
@@ -287,7 +522,7 @@ func _remove_node(cell: Vector2i) -> void:
 func _node_id(cell: Vector2i) -> int:
 	return int(_id_from_cell.get(cell, 0))
 
-# 간선 규칙 재구성: 좌/우 평지 + 한 칸 오르기/내리기 (옆 칸 공기 가드)
+# 간선 규칙 재구성: 좌/우 평지 + 한 칸 오르기/내리기 (옆 칸 공기/솔리드 가드)
 func _rebuild_links_for(c: Vector2i) -> void:
 	var id_c := _node_id(c)
 	if id_c == 0:
@@ -312,8 +547,6 @@ func _can_step_flat(from: Vector2i, dir_x: int) -> bool:
 	return _id_from_cell.has(from) and _id_from_cell.has(to)
 
 func _can_step_up(from: Vector2i, dir_x: int) -> bool:
-	# 목표: up=(x±1, y-1)가 표면(노드)이고,
-	# 그 '바로 아래' side=(x±1, y)가 '솔리드'여야 함(계단 단 높이).
 	var side := from + Vector2i(dir_x, 0)
 	var up := from + Vector2i(dir_x, -1)
 	return _id_from_cell.has(from) \
@@ -321,8 +554,6 @@ func _can_step_up(from: Vector2i, dir_x: int) -> bool:
 		and _is_solid_safe(side)
 
 func _can_step_down(from: Vector2i, dir_x: int) -> bool:
-	# 목표: down=(x±1, y+1)이 표면(노드)이고,
-	# 옆으로 떨어질 공간 side=(x±1, y)는 '공기'여야 함.
 	var side := from + Vector2i(dir_x, 0)
 	var down := from + Vector2i(dir_x, 1)
 	return _id_from_cell.has(from) \
@@ -340,7 +571,7 @@ func _connect_if(a_id: int, b_id: int, cond: bool) -> void:
 		if connected:
 			_astar.disconnect_points(a_id, b_id)
 
-# ────────────────────────────────────────────────────────────────────
+# ──────────────────────────────────────────────────────────────────────
 # BBox 유틸(② 변경 범위 축소 알림)
 
 func _accumulate_bbox_full() -> void:
@@ -410,7 +641,7 @@ func _accumulate_bbox(rect: Rect2i) -> void:
 	var maxy: int = max(a.position.y + a.size.y - 1, rect.position.y + rect.size.y - 1)
 	_pending_bbox = Rect2i(Vector2i(minx, miny), Vector2i(maxx - minx + 1, maxy - miny + 1))
 
-# ────────────────────────────────────────────────────────────────────
+# ──────────────────────────────────────────────────────────────────────
 # 부분 패치: 후보 큐잉 유틸
 
 func _queue_patch_candidates_from_indices(indices: PackedInt32Array) -> void:
