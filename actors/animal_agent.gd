@@ -70,8 +70,9 @@ var _defer_resample_until_next_tick: bool = false  # 한 틱 내 실패 폭주 �
 func _ready() -> void:
 	if grid_nav_path != NodePath() and has_node(grid_nav_path):
 		_grid_nav = get_node(grid_nav_path)
-		if "cell_size" in _grid_nav:
-			_cell_px = _grid_nav.cell_size
+		var cs: Vector2 = _grid_nav.get("cell_size")
+		if cs is Vector2:
+			_cell_px = cs
 		# 네비 변화 신호 연결(쿨다운만 갱신)
 		if _grid_nav.has_signal("navigation_cell_changed"):
 			_grid_nav.navigation_cell_changed.connect(_on_nav_changed)
@@ -83,7 +84,7 @@ func _ready() -> void:
 
 	# WANDER 시드/페이즈 스태거
 	_wander_rng.seed = hash("%s:%s" % [get_instance_id(), Time.get_ticks_usec()])
-	_wander_timer = randf_range(0.25, 0.75) * wander_pause_sec
+	_wander_timer = _wander_rng.randf_range(0.25, 0.75) * wander_pause_sec
 	_wander_retries_left = wander_retry_limit
 	_wander_last_progress_pos = global_position
 
@@ -385,6 +386,15 @@ func _abort_wander() -> void:
 	_defer_resample_until_next_tick = false
 
 func _tick_wander(delta: float) -> void:
+	if _wander_phase == WanderPhase.CRUISE:
+		_time_since_repath += delta
+
+	if _repath_cooldown_left <= 0.0 and _wander_phase == WanderPhase.CRUISE and _time_since_repath >= repath_interval_sec:
+		_time_since_repath = 0.0
+		if _wander_goal_cell.x > -9998:
+			_rebuild_path_to(_wander_goal_cell)
+			_repath_cooldown_left = repath_cooldown_sec
+
 	# 네비 신호 대응: 쿨다운이 끝났고, 현재 이동 중이면 같은 목표로 재탐색 (빈번폭주 방지)
 	if _repath_cooldown_left <= 0.0 and _wander_phase == WanderPhase.CRUISE and _time_since_repath >= repath_interval_sec:
 		_time_since_repath = 0.0
@@ -494,7 +504,3 @@ func _rand_cell_in_radius(r: int) -> Vector2i:
 	if dx == 0 and dy == 0:
 		dx = 1 if (_wander_rng.randi() % 2 == 0) else -1
 	return Vector2i(dx, dy)
-
-# randf_range 헬퍼 (Godot 4엔 RandomNumberGenerator에 있음)
-func randf_range(a: float, b: float) -> float:
-	return a + (b - a) * randf()
