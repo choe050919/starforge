@@ -73,7 +73,7 @@ func set_by_index(i: int, phase: int) -> void:
 		push_warning("[PhaseStore.set_by_idx] invalid id: %d" % phase)
 		return
 	_write[i] = phase
-	# index→cell 역변환 신호가 필요하면 여기서 emit 고려(지금은 생략)
+	#phase_changed.emit(_index.cell(i)) # FIXME
 
 func set_phase(cell: Vector2i, phase: int) -> void:
 	if not _is_writing:
