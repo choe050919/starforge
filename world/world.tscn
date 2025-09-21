@@ -1,4 +1,4 @@
-[gd_scene load_steps=39 format=3 uid="uid://c5gv3n6byiin7"]
+[gd_scene load_steps=40 format=3 uid="uid://c5gv3n6byiin7"]
 
 [ext_resource type="Script" uid="uid://dgppaejvd18y0" path="res://world/world.gd" id="1_j7vgi"]
 [ext_resource type="TileSet" uid="uid://dnn0uacxq48mh" path="res://tilesets/world.tres" id="3_bwxdu"]
@@ -10,7 +10,7 @@
 [ext_resource type="Script" uid="uid://pcc844o8d3cu" path="res://visualsync/light_overlay.gd" id="8_ftqqi"]
 [ext_resource type="Script" uid="uid://dwqjgykotlorq" path="res://UI/corner_highlight.gd" id="8_jgi7c"]
 [ext_resource type="Script" uid="uid://c7wi2g2m2x6vj" path="res://visualsync/overlay_manager.gd" id="9_cqwbg"]
-[ext_resource type="Script" uid="uid://bb0qa3t5ousut" path="res://navigation_overlay.gd" id="10_jgi7c"]
+[ext_resource type="Script" uid="uid://bb0qa3t5ousut" path="res://visualsync/navigation_overlay.gd" id="10_jgi7c"]
 [ext_resource type="Script" uid="uid://cheovfjbqki2h" path="res://visualsync/heatmap_overlay.gd" id="10_q3kex"]
 [ext_resource type="Script" uid="uid://bbb78kl6w5u70" path="res://visualsync/heat_source_overlay.gd" id="11_hm5b2"]
 [ext_resource type="Shader" uid="uid://bqtbrwxs4stbe" path="res://shaders/gray_scale.gdshader" id="12_hnpqp"]
@@ -36,6 +36,7 @@
 [ext_resource type="Script" uid="uid://j3edpypdb7d7" path="res://scripts/fps_mem_monitor.gd" id="29_mip0j"]
 [ext_resource type="PackedScene" uid="uid://cqinatbhx3krc" path="res://UI/hud.tscn" id="31_bwxdu"]
 [ext_resource type="Script" uid="uid://cqr4gkov8vd7t" path="res://grid_nav.gd" id="31_cqwbg"]
+[ext_resource type="PackedScene" uid="uid://b666emurxqxc8" path="res://actors/animal_agent.tscn" id="34_q3kex"]
 [ext_resource type="PackedScene" uid="uid://bp27ax8mxaxmy" path="res://fish/fish.tscn" id="35_ll3gq"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_7iits"]
@@ -186,6 +187,10 @@ critter_scene = ExtResource("35_ll3gq")
 _ground = NodePath("../../VisualSync/Ground")
 _Tchange = NodePath("../../Systems/TileChange")
 _dur = NodePath("../../Systems/Durability")
+
+[node name="AnimalAgent" parent="Actors" instance=ExtResource("34_q3kex")]
+grid_nav_path = NodePath("../../Systems/GridNav")
+overlay_path = NodePath("../../VisualSync/OverlayManager/OverlayLayer/NavigationOverlay")
 
 [node name="Managers" type="Node" parent="."]
 

@@ -238,3 +238,16 @@ func _on_tool_manager_request_spawn_plant(cell: Vector2i) -> void:
 			push_warning("[PlantTest] place failed (unknown)")
 	else:
 		push_warning("[PlantTest] cannot place: not_soil/out_of_bounds/occupied")
+
+@onready var agent: AnimalAgent = $Actors/AnimalAgent
+
+func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed:
+		match event.keycode:
+			KEY_G:  # G 키 → 마우스 위치로 이동
+				agent.move_to_world(get_global_mouse_position())
+			KEY_S:  # S 키 → 정지
+				agent.stop()
+			KEY_F:  # F 키 → 플레이어 따라가기
+				if has_node("Player"):
+					agent.follow_node($Player)
