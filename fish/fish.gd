@@ -193,31 +193,27 @@ func _spawn_corpse() -> void:
 	parent.add_child(corpse)
 
 func _resolve_corpse_parent() -> Node:
+	var tree := get_tree()
+
 	# 1) 그룹으로 Actors 찾기
-	var actors := get_tree().get_first_node_in_group("actors_root")
-	if actors:
-		# 1-1) 하위 Corpses 사용 또는 생성
-		var cc := actors.get_node_or_null("Corpses")
-		if cc: 
-			return cc
-		var new_cc := Node.new()
-		new_cc.name = "Corpses"
-		actors.add_child(new_cc)
-		return new_cc
+	var actors := tree.get_first_node_in_group("actors_root")
+	if actors == null:
+		if not tree.has_meta("actors_root_missing_warned"):
+			tree.set_meta("actors_root_missing_warned", true)
+			push_warning("[Fish] Group 'actors_root' not found. Falling back to local parent for corpses.")
+		return get_parent()
 
-	# 2) 폴백: 상위로 올라가며 Actors/Corpses 탐색, 없으면 생성
-	var n := get_parent()
-	while n:
-		var a := n.get_node_or_null("Actors")
-		if a:
-			var cc2 := a.get_node_or_null("Corpses")
-			if cc2:
-				return cc2
-			var new_cc2 := Node.new()
-			new_cc2.name = "Corpses"
-			a.add_child(new_cc2)
-			return new_cc2
-		n = n.get_parent()
+	# 2) Actors/Corpses 사용 또는 생성
+	var cc := actors.get_node_or_null("Corpses")
+	if cc:
+		return cc
 
-	# 3) 최후 폴백: 현 부모
-	return get_parent()
+	var new_cc := Node.new()
+	new_cc.name = "Corpses"
+	actors.add_child(new_cc)
+
+	if not tree.has_meta("corpses_autocreated_info"):
+		tree.set_meta("corpses_autocreated_info", true)
+		print("[Fish] Created 'Actors/Corpses' container at runtime.")
+
+	return new_cc
