@@ -1,6 +1,8 @@
 extends Node2D
 class_name Fish
 
+signal died(fish_id: int, world_pos: Vector2, reason: StringName)
+
 const EDGE_AVOID_K := 0.5
 const RANDOM_SKIP_RATIO := 0.3
 
@@ -11,15 +13,15 @@ const EIGHT_DIRS: Array[Vector2i] = [
 	Vector2i(-1,  1), Vector2i(0,  1), Vector2i(1,  1),
 ]
 
-var tick_mod := 4
+@export var tick_mod := 4
 
-## 현재 좌표
+## 위치·상태
 var cell: Vector2i
 var update_phase := 0
 var stuck_count := 0
 var rng := RandomNumberGenerator.new()
 
-# 의존성
+# ── 의존성 ───────────────────────────────────────────────────────────
 var _data: DataLayer
 var index: GridIndex
 var s_store: SubstanceStore
@@ -33,21 +35,40 @@ func setup(data: DataLayer, ground: Ground, plant: Plant) -> void:
 	_ground = ground
 	_plant = plant
 
+# ── 생애 주기 ────────────────────────────────────────────────────────
+@export var fish_id: int = 0
+@export var lifespan_sec := 600.0
+@export var lifespan_jitter_sec := 120.0
+var age_sec := 0.0
+var _lifespan_target_sec := 0.0
+
+@export var fish_corpse_scene: PackedScene
+@export var corpse_mass_g := 120.0
+@export var corpse_nutrition_j := 5000.0
+
 func _ready():
 	rng.randomize()
-	update_phase = rng.randi_range(0, tick_mod - 1)
+	update_phase = rng.randi_range(0, max(1, tick_mod) - 1)
+	var jitter := rng.randf_range(-lifespan_jitter_sec, lifespan_jitter_sec)
+	_lifespan_target_sec = max(1.0, lifespan_sec + jitter)
 
-# 5번씩 이동하는 이유: int(sim_time)이, 같은 값을 5번씩 출력해서.
+# ── 시뮬 틱 진입 ────────────────────────────────────────────────────
 func _on_sim_tick(dt: float, sim_time: float):
 	_last_sim_time = sim_time
 	if eligible_at_simtime < 0.0:
 		eligible_at_simtime = sim_time + reproduction_cooldown_sec
 
-	if int(sim_time) % tick_mod != update_phase:
+	# 나이 증가 및 사망 판정
+	age_sec += dt
+	if age_sec >= _lifespan_target_sec:
+		_die("lifespan")
 		return
 
+	# 이동 주기 제어
+	if int(sim_time) % tick_mod != update_phase:
+		return
 	if not is_water(cell):
-		return  # 물이 아니면 이동 비활성화
+		return
 
 	var moved := attempt_move()
 	if moved:
@@ -57,6 +78,7 @@ func _on_sim_tick(dt: float, sim_time: float):
 		if stuck_count >= 20:
 			on_stuck()
 
+# ── 이동 로직 ───────────────────────────────────────────────────────
 func attempt_move() -> bool:
 	var water_cells := get_adjacent_water_cells(cell)
 	if water_cells.is_empty():
@@ -64,7 +86,6 @@ func attempt_move() -> bool:
 
 	var use_weight := rng.randf() > RANDOM_SKIP_RATIO
 	var target_cell: Vector2i
-
 	if use_weight:
 		var weights := []
 		for c in water_cells:
@@ -80,11 +101,9 @@ func attempt_move() -> bool:
 	move_to_cell(target_cell)
 	return true
 
-## 셀 좌표를 입력하면 sid가 Water인지 여부를 반환한다.
 func is_water(c: Vector2i) -> bool:
 	return s_store.get_is_water(c)
 
-## 셀 좌표를 입력하면, 주변 8타일 중 Water인 셀들의 좌표를 배열로 반환한다.
 func get_adjacent_water_cells(c: Vector2i) -> Array:
 	var result := []
 	for dir in EIGHT_DIRS:
@@ -129,25 +148,20 @@ func warp_to_cell(_cell: Vector2i) -> void:
 	global_position = _ground.to_global(local_origin + half)
 	cell = _cell
 
-# 동일 셀 과일 수확만 시도(8방 탐색 X: 후속 단계)
+# ── 섭식/번식 ───────────────────────────────────────────────────────
 func _try_harvest_current_cell() -> void:
 	if _plant == null:
 		return
-	# 쿨다운 중이면 harvest 자체 차단
 	if _last_sim_time < eligible_at_simtime:
 		return
-
-	# 물 위 전용 제약 없음(디자인 상). Fish가 물 셀에만 존재하더라도 여기선 제약 두지 않음.
 	var ok := _plant.try_harvest_fruit_at_cell(cell)
 	if ok:
 		on_eat_fruit()
 
-# 수확 성공 시 Fish 내부 처리
 func on_eat_fruit() -> void:
 	if _spawn_fish_cb.is_valid():
 		_spawn_fish_cb.call(cell)
 
-# ── Reproduction (공통 쿨다운) ─────────────────────────────────────────
 @export var reproduction_cooldown_sec: float = 5.0
 var eligible_at_simtime: float = -1.0
 var _last_sim_time: float = 0.0
@@ -155,3 +169,55 @@ var _spawn_fish_cb: Callable = Callable()
 
 func set_spawn_fish_callable(cb: Callable) -> void:
 	_spawn_fish_cb = cb
+
+# ── 사망 처리 ───────────────────────────────────────────────────────
+func _die(reason: StringName) -> void:
+	emit_signal("died", fish_id, global_position, reason)
+	_spawn_corpse()
+	queue_free()
+
+func _spawn_corpse() -> void:
+	if fish_corpse_scene == null:
+		return
+	var corpse := fish_corpse_scene.instantiate()
+	if corpse == null:
+		return
+	if corpse.has_method("set_stats"):
+		corpse.call("set_stats", corpse_mass_g, corpse_nutrition_j)
+	elif "mass_g" in corpse and "nutrition_j" in corpse:
+		corpse.mass_g = corpse_mass_g
+		corpse.nutrition_j = corpse_nutrition_j
+	corpse.global_position = global_position
+
+	var parent := _resolve_corpse_parent()
+	parent.add_child(corpse)
+
+func _resolve_corpse_parent() -> Node:
+	# 1) 그룹으로 Actors 찾기
+	var actors := get_tree().get_first_node_in_group("actors_root")
+	if actors:
+		# 1-1) 하위 Corpses 사용 또는 생성
+		var cc := actors.get_node_or_null("Corpses")
+		if cc: 
+			return cc
+		var new_cc := Node.new()
+		new_cc.name = "Corpses"
+		actors.add_child(new_cc)
+		return new_cc
+
+	# 2) 폴백: 상위로 올라가며 Actors/Corpses 탐색, 없으면 생성
+	var n := get_parent()
+	while n:
+		var a := n.get_node_or_null("Actors")
+		if a:
+			var cc2 := a.get_node_or_null("Corpses")
+			if cc2:
+				return cc2
+			var new_cc2 := Node.new()
+			new_cc2.name = "Corpses"
+			a.add_child(new_cc2)
+			return new_cc2
+		n = n.get_parent()
+
+	# 3) 최후 폴백: 현 부모
+	return get_parent()

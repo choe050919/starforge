@@ -1,7 +1,7 @@
 [gd_scene load_steps=3 format=3 uid="uid://b666emurxqxc8"]
 
 [ext_resource type="Script" uid="uid://dcif84yyj5bpk" path="res://actors/animal_agent.gd" id="1_bhfv4"]
-[ext_resource type="Texture2D" uid="uid://k1f3uyoxbo1b" path="res://icon32.svg" id="2_h6h6y"]
+[ext_resource type="Texture2D" uid="uid://k1f3uyoxbo1b" path="res://icon_32.svg" id="2_h6h6y"]
 
 [node name="AnimalAgent" type="Node2D"]
 script = ExtResource("1_bhfv4")

@@ -1,4 +1,4 @@
-[gd_scene load_steps=40 format=3 uid="uid://c5gv3n6byiin7"]
+[gd_scene load_steps=41 format=3 uid="uid://c5gv3n6byiin7"]
 
 [ext_resource type="Script" uid="uid://dgppaejvd18y0" path="res://world/world.gd" id="1_j7vgi"]
 [ext_resource type="TileSet" uid="uid://dnn0uacxq48mh" path="res://tilesets/world.tres" id="3_bwxdu"]
@@ -37,6 +37,7 @@
 [ext_resource type="PackedScene" uid="uid://cqinatbhx3krc" path="res://UI/hud.tscn" id="31_bwxdu"]
 [ext_resource type="Script" uid="uid://cqr4gkov8vd7t" path="res://grid_nav.gd" id="31_cqwbg"]
 [ext_resource type="PackedScene" uid="uid://b666emurxqxc8" path="res://actors/animal_agent.tscn" id="34_q3kex"]
+[ext_resource type="Script" uid="uid://dhp47bqyrhke1" path="res://corpses_container.gd" id="35_hm5b2"]
 [ext_resource type="PackedScene" uid="uid://bp27ax8mxaxmy" path="res://fish/fish.tscn" id="35_ll3gq"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_7iits"]
@@ -178,7 +179,7 @@ plant_base_scene = ExtResource("29_ll3gq")
 unique_name_in_owner = true
 script = ExtResource("31_cqwbg")
 
-[node name="Actors" type="Node2D" parent="."]
+[node name="Actors" type="Node2D" parent="." groups=["actors_root"]]
 
 [node name="Spawner" type="Node2D" parent="Actors" node_paths=PackedStringArray("_ground", "_Tchange", "_dur")]
 unique_name_in_owner = true
@@ -191,6 +192,9 @@ _dur = NodePath("../../Systems/Durability")
 [node name="AnimalAgent" parent="Actors" instance=ExtResource("34_q3kex")]
 grid_nav_path = NodePath("../../Systems/GridNav")
 overlay_path = NodePath("../../VisualSync/OverlayManager/OverlayLayer/NavigationOverlay")
+
+[node name="Corpses" type="Node2D" parent="Actors"]
+script = ExtResource("35_hm5b2")
 
 [node name="Managers" type="Node" parent="."]
 
