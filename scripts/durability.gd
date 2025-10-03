@@ -20,8 +20,12 @@ var _grid_size: Vector2i = Vector2i.ZERO
 
 ## 재질 경도 테이블(HP per kg). 예) {"10002":0.2, "10001":0.3, "10004":0.8, "10003":1.2}
 ## 키는 SID를 문자열로 넣는 걸 권장(Inspector 편의). 코드에서는 int로 변환해 사용.
-@export var hardness_by_sid: Dictionary = {
-	"0": 0.0 # 진공/비채굴
+@export var hardness_by_sid := {
+	"0": 0.0,
+	"10001": 0.3, # ICE
+	"10002": 0.2, # SOIL
+	"10003": 1.2, # URANIUM
+	"10004": 0.8, # COPPER
 }
 
 ## 디버그 로그
