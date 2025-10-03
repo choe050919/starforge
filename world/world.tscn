@@ -1,4 +1,4 @@
-[gd_scene load_steps=44 format=3 uid="uid://c5gv3n6byiin7"]
+[gd_scene load_steps=45 format=3 uid="uid://c5gv3n6byiin7"]
 
 [ext_resource type="Script" uid="uid://dgppaejvd18y0" path="res://world/world.gd" id="1_j7vgi"]
 [ext_resource type="TileSet" uid="uid://dnn0uacxq48mh" path="res://tilesets/world.tres" id="3_bwxdu"]
@@ -42,6 +42,7 @@
 [ext_resource type="PackedScene" uid="uid://b666emurxqxc8" path="res://actors/animal_agent.tscn" id="34_q3kex"]
 [ext_resource type="Script" uid="uid://dhp47bqyrhke1" path="res://corpses_container.gd" id="35_hm5b2"]
 [ext_resource type="PackedScene" uid="uid://bp27ax8mxaxmy" path="res://fish/fish.tscn" id="35_ll3gq"]
+[ext_resource type="Script" uid="uid://bwaacf1284t0l" path="res://items_root.gd" id="39_behgl"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_7iits"]
 shader = ExtResource("12_hnpqp")
@@ -114,6 +115,7 @@ script = ExtResource("4_lwhbe")
 [node name="Map" type="Sprite2D" parent="Terrain/LiquidOverlay"]
 
 [node name="CrackOverlay" type="TileMapLayer" parent="Terrain"]
+z_index = 1
 tile_set = ExtResource("5_ftqqi")
 script = ExtResource("6_avd5l")
 
@@ -214,6 +216,8 @@ overlay_path = NodePath("../../VisualSync/OverlayManager/OverlayLayer/Navigation
 script = ExtResource("35_hm5b2")
 
 [node name="ItemsRoot" type="Node2D" parent="Actors"]
+script = ExtResource("39_behgl")
+ground_item_registry_path = NodePath("../../Systems/GroundItemRegistry")
 
 [node name="Managers" type="Node" parent="."]
 
