@@ -114,9 +114,10 @@ func _apply_worldgen_result(
 	data_layer.tiles_changed.connect(visual_sync.on_tiles_changed)
 
 	# 시스템들 (데이터 준비 이후)
-	durability.setup_from_tiles(tiles, size)
+	durability.setup(data_layer)
 	temp.setup(data_layer, rule_cache)
 	tchange.setup(data_layer)
+	tchange.seed_durability(durability)
 	liquid.setup(data_layer, springs); liquid.set_liquid_sids()
 	phase_change.setup(data_layer, rule_cache)
 	light.setup(data_layer, rule_cache)

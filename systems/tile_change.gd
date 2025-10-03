@@ -28,6 +28,19 @@ func setup(data: DataLayer) -> void:
 	_index = _data.index
 	_size = _index.size
 
+# TileChange.gd
+func seed_durability(dur: Durability) -> void:
+	if _data == null:
+		push_warning("[TileChange] seed_durability: DataLayer not set")
+		return
+	var size := _index.size
+	for y in size.y:
+		for x in size.x:
+			var cell := Vector2i(x, y)
+			var sid := _data.substance.get_by_cell(cell)
+			var mass := _data.mass.get_by_cell(cell)
+			dur.reset_cell(cell, sid, mass)
+
 # ── API ─────────────────────────────────────────────────────────────────────
 ## 교체: 단일 셀 교체
 func replace_cell(cell: Vector2i, to_tile: int, reason: StringName = &"") -> void:

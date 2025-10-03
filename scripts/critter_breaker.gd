@@ -36,7 +36,7 @@ func _process(delta: float) -> void:
 func _find_target_cell() -> Vector2i:
 	var center: Vector2i = _world_to_cell(global_position)
 	var attempts := 20
-	var s := _durability.size
+	var s := _durability._grid_size
 	while attempts > 0:
 		attempts -= 1
 		var dx: int = _rng.randi_range(-scan_radius, scan_radius)

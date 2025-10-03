@@ -131,6 +131,7 @@ profile = ExtResource("15_avd5l")
 [node name="Durability" type="Node" parent="Systems"]
 unique_name_in_owner = true
 script = ExtResource("14_ifjjt")
+debug_log = true
 
 [node name="Temperature" type="Node" parent="Systems"]
 unique_name_in_owner = true
@@ -184,6 +185,11 @@ script = ExtResource("31_cqwbg")
 [node name="Mining" type="Node" parent="Systems"]
 unique_name_in_owner = true
 script = ExtResource("32_hnpqp")
+durability_path = NodePath("../Durability")
+tile_change_path = NodePath("../TileChange")
+ground_item_registry_path = NodePath("../GroundItemRegistry")
+
+[node name="GroundItemRegistry" type="Node" parent="Systems"]
 
 [node name="Actors" type="Node2D" parent="." groups=["actors_root"]]
 z_index = 1
@@ -204,6 +210,8 @@ overlay_path = NodePath("../../VisualSync/OverlayManager/OverlayLayer/Navigation
 
 [node name="Corpses" type="Node2D" parent="Actors"]
 script = ExtResource("35_hm5b2")
+
+[node name="ItemsRoot" type="Node2D" parent="Actors"]
 
 [node name="Managers" type="Node" parent="."]
 
