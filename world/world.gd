@@ -30,6 +30,7 @@ class_name World
 @onready var light:        Light           = %Light
 @onready var plant:        Plant           = %Plant
 @onready var grid_nav:     GridNav         = %GridNav
+@onready var mining:       Mining          = %Mining
 
 # ── Actors ───────────────────────────────────────────────────────
 @onready var spawner: CritterSpawner = %Spawner

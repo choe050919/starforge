@@ -23,26 +23,26 @@ const TILE_WATER:   int = 20001
 const TILE_STEAM:   int = 30001
 const TILE_VACUUM:  int = 0
 
-
 func setup(data: DataLayer) -> void:
 	_data = data
 	_index = _data.index
 	_size = _index.size
 
-## 편의: 단일 셀 교체
+# ── API ─────────────────────────────────────────────────────────────────────
+## 교체: 단일 셀 교체
 func replace_cell(cell: Vector2i, to_tile: int, reason: StringName = &"") -> void:
 	# TODO to_tile을 적용할 필요.
 	_data.apply_cells_with_spec([cell], { "sid" : 0 }, reason)
 
-## 편의: 파괴(= VACUUM으로 교체)
+## 파괴: 단일 셀 VACUUM으로 교체
 func destroy_cell(cell: Vector2i, reason: StringName = &"destroy") -> void:
+	var from_sid := _data.substance.get_by_cell(cell)
 	_data.set_cell_with_spec(cell, { "sid" : 0 , "phase" : 0 , "mass" : 0 , "temp" : 0 }, reason)
-	#_data.apply_cells_with_spec([cell], { "sid" : 0 }, reason)
+	tile_destroyed.emit(cell, from_sid, reason)
 
 # ── 내부 유틸 ────────────────────────────────────────────────────────────────
 static func _key(cell: Vector2i) -> int:
 	return (cell.y << 16) | (cell.x & 0xFFFF)
-
 
 func _on_tool_manager_request_vacuum(cell: Vector2i) -> void:
 	destroy_cell(cell)

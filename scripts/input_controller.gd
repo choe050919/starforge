@@ -50,7 +50,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event.is_action_pressed("overlay_toggle_nav"):
 		overlay_toggle_requested.emit(OverlayManager.OverlayMode.NAVIGATION)
 
-	# 툴 전환(핫키): 1 → VACUUM, 2 → SPAWN_FISH
+	# 툴 전환(핫키)
 	if event.is_action_pressed("tool_select_1"):
 		_select_tool_by_index(1)
 	elif event.is_action_pressed("tool_select_2"):
