@@ -14,7 +14,7 @@ var tile_px: Vector2i = Vector2i(32, 32)
 func _ready() -> void:
 	sprite.centered = false
 	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	z_index = 900
+	z_index = 0
 	position = Vector2.ZERO
 	rotation = 0.0
 	scale = Vector2.ONE

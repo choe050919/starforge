@@ -5,17 +5,18 @@ class_name ToolManager
 ## 1) 도구 enum
 ##    - 에디터에서 current_tool을 드롭다운으로 선택 가능
 ##    - NONE의 경우 현재 의미 없지만 일단 0의 자리에 추가해둠.
-enum Tool { NONE, VACUUM, SPAWN_FISH, SPAWN_PLANT }
+enum Tool { NONE, MINE, VACUUM, SPAWN_FISH, SPAWN_PLANT }
 
 ## 현재 선택된 도구 (기본: 물고기 소환)
 @export var current_tool: int = Tool.SPAWN_FISH
 
 # ─────────────────────────────────────────────────────────
 # 2) 방송 시그널
-##    - UI/하이라이트용
+#    - UI/하이라이트용
 signal tool_changed(new_tool: int)
-##    - 도메인 시스템에게 “의미 있는 행동”을 요청
-##      (InputController는 이 신호에 관여하지 않음)
+#    - 도메인 시스템에게 “의미 있는 행동”을 요청
+#      (InputController는 이 신호에 관여하지 않음)
+signal request_mine(cell: Vector2i)
 signal request_vacuum(cell: Vector2i)
 signal request_spawn_fish(world_pos: Vector2, cell: Vector2i)
 signal request_spawn_plant(cell: Vector2i)
@@ -47,6 +48,8 @@ func select_tool_by_index(idx: int) -> void:
 ## - 클릭 좌표는 cell & world_pos 둘 다 전달(도구별 필요 좌표가 다를 수 있으므로)
 func handle_click(cell: Vector2i, world_pos: Vector2, modifiers: int = 0) -> void:
 	match current_tool:
+		Tool.MINE:
+			request_mine.emit(cell)
 		Tool.VACUUM:
 			request_vacuum.emit(cell)
 		Tool.SPAWN_FISH:
@@ -68,6 +71,7 @@ func cycle_tool(step: int) -> void:
 ## 디버깅/로그/툴팁용 이름 변환기
 static func tool_name(t: int) -> StringName:
 	match t:
+		Tool.MINE:       return &"MINE"
 		Tool.VACUUM:     return &"VACUUM"
 		Tool.SPAWN_FISH: return &"SPAWN_FISH"
 		_:               return &"UNKNOWN"

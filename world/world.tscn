@@ -180,6 +180,7 @@ unique_name_in_owner = true
 script = ExtResource("31_cqwbg")
 
 [node name="Actors" type="Node2D" parent="." groups=["actors_root"]]
+z_index = 1
 
 [node name="Spawner" type="Node2D" parent="Actors" node_paths=PackedStringArray("_ground", "_Tchange", "_dur")]
 unique_name_in_owner = true
