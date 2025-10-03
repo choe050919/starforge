@@ -31,8 +31,13 @@ var _grid_size: Vector2i = Vector2i.ZERO
 ## 디버그 로그
 @export var debug_log: bool = false
 
-## HP 비교용 epsilon
-const EPS := 1e-6
+# Epsilon / Snap
+const EPS := 1e-6                ## HP/비율 비교용 (기존)
+const MASS_SNAP_KG := 1e-6       ## 1 mg in kg (질량 스냅 격자)
+
+func _snap_mass_kg(x: float) -> float:
+	# 1 mg 격자로 반올림 스냅
+	return floor((x / MASS_SNAP_KG) + 0.5) * MASS_SNAP_KG
 
 # ─────────────────────────────────────────────────────────
 # Per-cell state
@@ -198,8 +203,8 @@ func _process_threshold_cross(cell: Vector2i, idx: int, hp_prev: float, hp_new: 
 			# 이전 문턱은 (next_i == 0 ? 1.0 : _thresholds[next_i - 1])
 			var t_prev := 1.0 if next_i == 0 else _thresholds[next_i - 1]
 			var quota_ratio: float = max(0.0, t_prev - t) # 이 구간에 할당된 질량 비율
-			var chunk_mass := _initial_mass_kg[idx] * quota_ratio
-			if chunk_mass > 0.0:
+			var chunk_mass := _snap_mass_kg(_initial_mass_kg[idx] * quota_ratio)
+			if chunk_mass > MASS_SNAP_KG:
 				if debug_log:
 					print("[Dur] threshold cell=", cell,
 						" t=", t, " t_prev=", t_prev,
