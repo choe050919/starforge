@@ -76,7 +76,7 @@ func _ready() -> void:
 	worldgen.generate()
 
 	# 내구도↔타일 변경, 크랙 오버레이
-	durability.break_requested.connect(func(cell: Vector2i): tchange.queue_destroy(cell, &"durability"))
+	durability.break_requested.connect(func(cell: Vector2i): tchange.destroy_cell(cell, &"durability"))
 	durability.hp_changed.connect(crack_overlay.on_hp_changed)
 	durability.break_requested.connect(crack_overlay.on_break_requested)
 
