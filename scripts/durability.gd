@@ -22,10 +22,10 @@ var _grid_size: Vector2i = Vector2i.ZERO
 ## 키는 SID를 문자열로 넣는 걸 권장(Inspector 편의). 코드에서는 int로 변환해 사용.
 @export var hardness_by_sid := {
 	"0": 0.0,
-	"10001": 0.3, # ICE
-	"10002": 0.2, # SOIL
-	"10003": 1.2, # URANIUM
-	"10004": 0.8, # COPPER
+	"10001": 30, # ICE
+	"10002": 20, # SOIL
+	"10003": 120, # URANIUM
+	"10004": 80, # COPPER
 }
 
 ## 디버그 로그
@@ -102,6 +102,10 @@ func reset_cell(cell: Vector2i, sid: int, mass_kg: float) -> void:
 	_hp[idx] = _max_hp[idx]
 	_next_threshold_index[idx] = 0
 	_is_initialized[idx] = 1
+	#if debug_log and sid != 0:
+		#print("[Dur] reset_cell cell=", cell, " sid=", sid, 
+			#" mass_kg=", mass_kg, " hardness=", hardness, 
+			#" → max_hp=", mass_kg * hardness)
 
 	#if debug_log:
 		#print("[Dur] reset_cell cell=", cell,

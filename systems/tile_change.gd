@@ -38,7 +38,7 @@ func seed_durability(dur: Durability) -> void:
 		for x in size.x:
 			var cell := Vector2i(x, y)
 			var sid := _data.substance.get_by_cell(cell)
-			var mass := _data.mass.get_by_cell(cell)
+			var mass := _data.mass.get_mass_kg(_index.idx(cell))
 			dur.reset_cell(cell, sid, mass)
 
 # ── API ─────────────────────────────────────────────────────────────────────
