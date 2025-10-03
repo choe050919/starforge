@@ -12,11 +12,11 @@ var _rng := RandomNumberGenerator.new()
 func _ready() -> void:
 	_rng.randomize()
 
-var data: DataLayer
+var _data: DataLayer
 var _plant: Plant
 
-func setup(_data: DataLayer, plant: Plant):
-	data = _data
+func setup(data: DataLayer, plant: Plant):
+	_data = data
 	_plant = plant
 
 func _spawn_at_mouse(scene := critter_scene) -> void:
@@ -44,13 +44,8 @@ func _spawn_at_mouse(scene := critter_scene) -> void:
 	print("[Spawner] %s가 생성됨" % critter.name)
 
 	if critter is Fish:
-		critter.setup(data, _ground, _plant)
+		critter.setup(_data, _ground, _plant)
 		critter.set_spawn_fish_callable(Callable(self, "spawn_fish_at_cell"))
-
-	if (critter is CritterChanger or critter is CritterBuilder) and _Tchange != null:
-		critter.set_dependencies(_Tchange, _ground)
-	elif critter is CritterBreaker and _dur != null:
-		critter.set_dependencies(_dur, _ground)
 
 	if critter.has_method("warp_to_cell"):
 		critter.warp_to_cell(cell)
@@ -84,14 +79,9 @@ func spawn_fish_at_cell(cell: Vector2i) -> bool:
 	add_child(critter)
 
 	if critter is Fish:
-		critter.setup(data, _ground, _plant)
+		critter.setup(_data, _ground, _plant)
 		# ★ 새끼도 동일 콜백 보유 → 이후 번식 시 동일 경로 재사용
 		critter.set_spawn_fish_callable(Callable(self, "spawn_fish_at_cell"))
-
-	if (critter is CritterChanger or critter is CritterBuilder) and _Tchange != null:
-		critter.set_dependencies(_Tchange, _ground)
-	elif critter is CritterBreaker and _dur != null:
-		critter.set_dependencies(_dur, _ground)
 
 	if critter.has_method("warp_to_cell"):
 		critter.warp_to_cell(cell)

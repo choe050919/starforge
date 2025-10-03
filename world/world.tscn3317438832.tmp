@@ -1,0 +1,639 @@
+[gd_scene load_steps=45 format=3 uid="uid://c5gv3n6byiin7"]
+
+[ext_resource type="Script" uid="uid://dgppaejvd18y0" path="res://world/world.gd" id="1_j7vgi"]
+[ext_resource type="TileSet" uid="uid://dnn0uacxq48mh" path="res://tilesets/world.tres" id="3_bwxdu"]
+[ext_resource type="Script" uid="uid://ov5own12ue54" path="res://visualsync/ground.gd" id="4_ll3gq"]
+[ext_resource type="Script" uid="uid://da160trn2ljp2" path="res://world/terrain/liquid_overlay.gd" id="4_lwhbe"]
+[ext_resource type="TileSet" uid="uid://dyepojxtr2r7l" path="res://tilesets/cracks.tres" id="5_ftqqi"]
+[ext_resource type="Script" uid="uid://374ii1yhg7u8" path="res://world/terrain/crack_overlay.gd" id="6_avd5l"]
+[ext_resource type="Texture2D" uid="uid://drcw3d5sjondu" path="res://icon.svg" id="7_ll3gq"]
+[ext_resource type="Script" uid="uid://pcc844o8d3cu" path="res://visualsync/light_overlay.gd" id="8_ftqqi"]
+[ext_resource type="Script" uid="uid://dwqjgykotlorq" path="res://UI/corner_highlight.gd" id="8_jgi7c"]
+[ext_resource type="Script" uid="uid://c7wi2g2m2x6vj" path="res://visualsync/overlay_manager.gd" id="9_cqwbg"]
+[ext_resource type="Script" uid="uid://bb0qa3t5ousut" path="res://visualsync/navigation_overlay.gd" id="10_jgi7c"]
+[ext_resource type="Script" uid="uid://cheovfjbqki2h" path="res://visualsync/heatmap_overlay.gd" id="10_q3kex"]
+[ext_resource type="Script" uid="uid://bbb78kl6w5u70" path="res://visualsync/heat_source_overlay.gd" id="11_hm5b2"]
+[ext_resource type="Shader" uid="uid://bqtbrwxs4stbe" path="res://shaders/gray_scale.gdshader" id="12_hnpqp"]
+[ext_resource type="Script" uid="uid://dfoy07ausxoqo" path="res://world/world_gen/world_gen.gd" id="13_33qpb"]
+[ext_resource type="Resource" uid="uid://birychudug5xe" path="res://world/world_gen/world_gen_profile.tres" id="15_avd5l"]
+[ext_resource type="Script" uid="uid://bxaqs1pu0ncum" path="res://systems/temperature/temperature.gd" id="16_inp7a"]
+[ext_resource type="Script" uid="uid://dtjuedvsbwjng" path="res://scripts/sim_clock.gd" id="16_k83x5"]
+[ext_resource type="Script" uid="uid://db07wrr6kyq4v" path="res://systems/liquid/liquid.gd" id="18_en1oy"]
+[ext_resource type="Script" uid="uid://by6y82yoenlkc" path="res://systems/gas.gd" id="19_pfbnl"]
+[ext_resource type="Script" uid="uid://n7d0orcaljj3" path="res://systems/phasechange/phase_change.gd" id="20_gwdna"]
+[ext_resource type="Script" uid="uid://dou5of5j8rehy" path="res://scripts/input_controller.gd" id="21_h4vgh"]
+[ext_resource type="Script" uid="uid://dcuvrt05007wb" path="res://scripts/hover_manager.gd" id="22_kvuv0"]
+[ext_resource type="Script" uid="uid://dsk25alr21kno" path="res://systems/tool_manager.gd" id="23_sg5c8"]
+[ext_resource type="Script" uid="uid://0y3dr3nwo17m" path="res://visualsync/visual_sync.gd" id="24_inp7a"]
+[ext_resource type="Script" uid="uid://b2776qmf4l0o" path="res://scripts/critter_spawner.gd" id="24_vu62d"]
+[ext_resource type="Script" uid="uid://b13uaqbvmpwfv" path="res://systems/light.gd" id="26_lwhbe"]
+[ext_resource type="Script" uid="uid://cqchm53g3n0d1" path="res://scripts/pan_zoom.gd" id="27_o7xkw"]
+[ext_resource type="Script" uid="uid://dcexf27r2r044" path="res://plants/plant.gd" id="28_avd5l"]
+[ext_resource type="PackedScene" uid="uid://balj4m27d4euf" path="res://UI/tile_info_hud.tscn" id="28_bfrib"]
+[ext_resource type="PackedScene" uid="uid://k8y4dxb2r3q8" path="res://plants/plant_view.tscn" id="29_ll3gq"]
+[ext_resource type="Script" uid="uid://j3edpypdb7d7" path="res://scripts/fps_mem_monitor.gd" id="29_mip0j"]
+[ext_resource type="PackedScene" uid="uid://cqinatbhx3krc" path="res://UI/hud.tscn" id="31_bwxdu"]
+[ext_resource type="Script" uid="uid://cqr4gkov8vd7t" path="res://grid_nav.gd" id="31_cqwbg"]
+[ext_resource type="Script" uid="uid://bvco3ekilg6rf" path="res://mining.gd" id="32_hnpqp"]
+[ext_resource type="PackedScene" uid="uid://cncr3a3qqdd14" path="res://controller_actor.tscn" id="33_33qpb"]
+[ext_resource type="Script" uid="uid://cf2egr1e2vgg2" path="res://ground_item_registry.gd" id="33_ifjjt"]
+[ext_resource type="PackedScene" uid="uid://b666emurxqxc8" path="res://actors/animal_agent.tscn" id="34_q3kex"]
+[ext_resource type="Script" uid="uid://dhp47bqyrhke1" path="res://corpses_container.gd" id="35_hm5b2"]
+[ext_resource type="PackedScene" uid="uid://bp27ax8mxaxmy" path="res://fish/fish.tscn" id="35_ll3gq"]
+[ext_resource type="Script" uid="uid://bwaacf1284t0l" path="res://items_root.gd" id="39_behgl"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_7iits"]
+shader = ExtResource("12_hnpqp")
+
+[sub_resource type="GDScript" id="GDScript_33qpb"]
+script/source = "extends Node
+class_name Durability
+
+# ─────────────────────────────────────────────────────────
+# 시그널
+signal hp_changed(cell: Vector2i, hp: float, max_hp: float)
+signal threshold_chunk_requested(cell: Vector2i, chunk_mass_kg: float, threshold_value: float)
+signal break_requested(cell: Vector2i)
+
+# ─────────────────────────────────────────────────────────
+# 외부 참조
+var _data: DataLayer
+var _index: GridIndex
+var _grid_size: Vector2i = Vector2i.ZERO
+
+# ─────────────────────────────────────────────────────────
+# Config
+## 문턱 비율(내림차순) — 기본: 80/60/40/20/0%
+@export var threshold_ratios: PackedFloat32Array = PackedFloat32Array([0.8, 0.6, 0.4, 0.2, 0.0])
+
+## 재질 경도 테이블(HP per kg). 예) {\"10002\":0.2, \"10001\":0.3, \"10004\":0.8, \"10003\":1.2}
+## 키는 SID를 문자열로 넣는 걸 권장(Inspector 편의). 코드에서는 int로 변환해 사용.
+@export var hardness_by_sid := {
+	\"0\": 0.0,
+	\"10001\": 30, # ICE
+	\"10002\": 20, # SOIL
+	\"10003\": 120, # URANIUM
+	\"10004\": 80, # COPPER
+}
+
+## 디버그 로그
+@export var debug_log: bool = false
+
+# Epsilon / Snap
+const EPS := 1e-6                ## HP/비율 비교용 (기존)
+const MASS_SNAP_KG := 1e-6       ## 1 mg in kg (질량 스냅 격자)
+
+func _snap_mass_kg(x: float) -> float:
+	# 1 mg 격자로 반올림 스냅
+	return floor((x / MASS_SNAP_KG) + 0.5) * MASS_SNAP_KG
+
+# ─────────────────────────────────────────────────────────
+# Per-cell state
+var _hp: PackedFloat32Array = PackedFloat32Array()
+var _max_hp: PackedFloat32Array = PackedFloat32Array()
+var _initial_mass_kg: PackedFloat32Array = PackedFloat32Array()
+var _hardness_hp_per_kg: PackedFloat32Array = PackedFloat32Array()
+var _next_threshold_index: PackedInt32Array = PackedInt32Array()
+var _is_initialized: PackedByteArray = PackedByteArray()
+
+## Preprocessed thresholds (descending, clamped)
+var _thresholds: PackedFloat32Array = PackedFloat32Array()
+
+func _ready() -> void:
+	# 정렬·정합성 보정
+	var arr: Array = []
+	for i in threshold_ratios.size():
+		arr.append(float(threshold_ratios[i]))
+	arr.sort()                # 오름차순
+	arr.reverse()             # 내림차순
+	# 0.0이 없다면 끝에 추가
+	if arr.is_empty() or abs(arr.back() - 0.0) > EPS:
+		arr.append(0.0)
+	_thresholds = PackedFloat32Array(arr)
+	if debug_log:
+		print(\"[Dur] thresholds(desc) = \", _thresholds)
+
+func _allocate_arrays(size: Vector2i) -> void:
+	var total := size.x * size.y
+	if debug_log:
+		print(\"[Dur] allocate arrays: total=\", total, \" size=\", size)
+	_hp.resize(total)
+	_max_hp.resize(total)
+	_initial_mass_kg.resize(total)
+	_hardness_hp_per_kg.resize(total)
+	_next_threshold_index.resize(total)
+	_is_initialized.resize(total)
+	for i in total:
+		_hp[i] = 0.0
+		_max_hp[i] = 0.0
+		_initial_mass_kg[i] = 0.0
+		_hardness_hp_per_kg[i] = 0.0
+		_next_threshold_index[i] = 0
+		_is_initialized[i] = 0
+
+# ─────────────────────────────────────────────────────────
+# Public API
+
+func setup(data: DataLayer) -> void:
+	_data = data
+	_index = data.index
+	_grid_size = _index.size
+	_allocate_arrays(_grid_size)
+	if debug_log:
+		print(\"[Dur] setup done. grid=\", _grid_size)
+
+## 셀 초기화/재설정: 타일 배치/교체 시 호출
+## sid: 재질 식별자(int), mass_kg: 초기 질량(kg)
+func reset_cell(cell: Vector2i, sid: int, mass_kg: float) -> void:
+	if not _in_bounds(cell): return
+	var idx := _idx(cell)
+
+	var hardness := _get_hardness_for_sid(sid)
+	_initial_mass_kg[idx] = max(0.0, mass_kg)
+	_hardness_hp_per_kg[idx] = max(0.0, hardness)
+	_max_hp[idx] = _initial_mass_kg[idx] * _hardness_hp_per_kg[idx]
+	_hp[idx] = _max_hp[idx]
+	_next_threshold_index[idx] = 0
+	_is_initialized[idx] = 1
+	#if debug_log and sid != 0:
+		#print(\"[Dur] reset_cell cell=\", cell, \" sid=\", sid, 
+			#\" mass_kg=\", mass_kg, \" hardness=\", hardness, 
+			#\" → max_hp=\", mass_kg * hardness)
+
+	#if debug_log:
+		#print(\"[Dur] reset_cell cell=\", cell,
+			#\" sid=\", sid,
+			#\" mass_kg=\", _initial_mass_kg[idx],
+			#\" hardness=\", _hardness_hp_per_kg[idx],
+			#\" max_hp=\", _max_hp[idx])
+
+	_emit_hp_changed(cell, idx)
+
+## 타일 교체 시 편의용(외부 TileChange에서 호출 가능)
+func on_tile_replaced(cell: Vector2i, _from_sid: int, to_sid: int, new_mass_kg: float, _reason: StringName = &\"\") -> void:
+	if debug_log:
+		print(\"[Dur] on_tile_replaced cell=\", cell,
+			\" from=\", _from_sid, \" to=\", to_sid,
+			\" mass_kg=\", new_mass_kg, \" reason=\", _reason)
+	reset_cell(cell, to_sid, new_mass_kg)
+
+## 채굴/피해 적용(HP 단위)
+func apply_damage(cell: Vector2i, amount_hp: float) -> void:
+	if amount_hp <= 0.0: return
+	if not _in_bounds(cell): return
+	var idx := _idx(cell)
+	if _is_initialized[idx] == 0:
+		if debug_log:
+			print(\"[Dur] apply_damage ignored: not initialized cell=\", cell)
+		return # 초기화 안 된 셀 무시
+	if _max_hp[idx] <= EPS:
+		if debug_log:
+			print(\"[Dur] apply_damage ignored: max_hp≈0 cell=\", cell)
+		return       # 채굴 불가(경도=0 또는 질량=0)
+
+	var hp_prev := _hp[idx]
+	var hp_new: float = max(0.0, hp_prev - amount_hp)
+	_hp[idx] = hp_new
+
+	if debug_log:
+		print(\"[Dur] dmg cell=\", cell,
+			\" amount=\", amount_hp,
+			\" hp \", hp_prev, \"→\", hp_new, \" / max=\", _max_hp[idx])
+
+	# HP 변경 방송
+	_emit_hp_changed(cell, idx)
+
+	# 문턱 처리
+	_process_threshold_cross(cell, idx, hp_prev, hp_new)
+
+	# 파괴 처리
+	if _hp[idx] <= EPS:
+		if debug_log:
+			print(\"[Dur] break emit cell=\", cell)
+		break_requested.emit(cell)
+
+## UI/디버깅용 Getter
+func get_hp(cell: Vector2i) -> float:
+	if not _in_bounds(cell): return 0.0
+	return _hp[_idx(cell)]
+
+func get_max_hp(cell: Vector2i) -> float:
+	if not _in_bounds(cell): return 0.0
+	return _max_hp[_idx(cell)]
+
+func get_hp_ratio(cell: Vector2i) -> float:
+	if not _in_bounds(cell): return 0.0
+	var idx := _idx(cell)
+	if _max_hp[idx] <= EPS: return 0.0
+	return clamp(_hp[idx] / _max_hp[idx], 0.0, 1.0)
+
+# ─────────────────────────────────────────────────────────
+# Internal
+
+func _emit_hp_changed(cell: Vector2i, idx: int) -> void:
+	hp_changed.emit(cell, _hp[idx], _max_hp[idx])
+
+func _process_threshold_cross(cell: Vector2i, idx: int, hp_prev: float, hp_new: float) -> void:
+	if _max_hp[idx] <= EPS:
+		return
+
+	var ratio_prev: float = clamp(hp_prev / _max_hp[idx], 0.0, 1.0)
+	var ratio_new: float = clamp(hp_new / _max_hp[idx], 0.0, 1.0)
+	var next_i := _next_threshold_index[idx]
+
+	# 문턱은 내림차순으로 저장되어 있음.
+	# 현재 next_i가 가리키는 문턱 값 이하로 내려갔으면,
+	# 그 문턱 구간에 해당하는 '드롭 쿼터'를 순차적으로 요청한다.
+	while next_i < _thresholds.size():
+		var t := _thresholds[next_i]
+		# ratio_new가 문턱(t) 이하로 내려갔는가?
+		if ratio_new <= t + EPS:
+			# 이전 문턱은 (next_i == 0 ? 1.0 : _thresholds[next_i - 1])
+			var t_prev := 1.0 if next_i == 0 else _thresholds[next_i - 1]
+			var quota_ratio: float = max(0.0, t_prev - t) # 이 구간에 할당된 질량 비율
+			var chunk_mass := _snap_mass_kg(_initial_mass_kg[idx] * quota_ratio)
+			if chunk_mass > MASS_SNAP_KG:
+				if debug_log:
+					print(\"[Dur] threshold cell=\", cell,
+						\" t=\", t, \" t_prev=\", t_prev,
+						\" quota_ratio=\", quota_ratio,
+						\" chunk_mass_kg=\", chunk_mass)
+				threshold_chunk_requested.emit(cell, chunk_mass, t)
+			next_i += 1
+			_next_threshold_index[idx] = next_i
+			# 다음 문턱도 동시에 뛰어넘었을 수 있으므로 루프 지속
+		else:
+			break
+
+func _get_hardness_for_sid(sid: int) -> float:
+	# Inspector에서 키를 문자열로 넣는 걸 권장했으므로 우선 문자열 키 조회
+	var k := str(sid)
+	if hardness_by_sid.has(k):
+		return float(hardness_by_sid[k])
+	# 정수 키로도 시도(개발자가 코드에서 직접 넣었을 수도 있음)
+	if hardness_by_sid.has(sid):
+		return float(hardness_by_sid[sid])
+	# 미정이면 0(채굴 불가)
+	return 0.0
+
+func _in_bounds(cell: Vector2i) -> bool:
+	return cell.x >= 0 and cell.y >= 0 and cell.x < _grid_size.x and cell.y < _grid_size.y
+
+func _idx(cell: Vector2i) -> int:
+	return cell.y * _grid_size.x + cell.x
+"
+
+[sub_resource type="GDScript" id="GDScript_ifjjt"]
+script/source = "## TileChange
+## - DataLayer에 직접 접근하여 타일을 동기 배치로 변경
+## - Terrain 적용 & 시그널 발행만 담당
+## - 최소 책임: 경계검사, 타일 타입 쓰기, 가시화 반영, 시그널
+extends Node
+class_name TileChange
+
+signal tile_replaced(cell: Vector2i, from_tile: int, to_tile: int, reason: StringName)
+signal tile_destroyed(cell: Vector2i, from_tile: int, reason: StringName)
+signal mass_harvested(cell: Vector2i, material_sid: int, mass_kg: float, temperature_K: float, reason: StringName)
+signal cells_changed() # 필요 시 AABB/리스트로 확장, 아직 연결 X. TODO
+
+var _data: DataLayer
+var _index: GridIndex
+var _size: Vector2i = Vector2i.ZERO
+
+# ── 타일/물질 ID 매핑 ────────────────────────────────────────────────────────
+# JSON 스키마 기준
+const TILE_ICE:     int = 10001
+const TILE_SOIL:    int = 10002
+const TILE_URANIUM: int = 10003
+const TILE_COPPER:  int = 10004
+const TILE_WATER:   int = 20001
+const TILE_STEAM:   int = 30001
+const TILE_VACUUM:  int = 0
+
+# ── 단위 변환/스냅 ───────────────────────────────────────────────────────────
+const MASS_SNAP_KG := 1e-6 # 1 mg
+
+static func _snap_mass_kg(x: float) -> float:
+	return floor((x / MASS_SNAP_KG) + 0.5) * MASS_SNAP_KG
+
+static func _kg_to_mg(kg: float) -> int:
+	return int(round(kg * 1_000_000.0))
+
+static func _mg_to_kg(mg: int) -> float:
+	return float(mg) / 1_000_000.0
+
+static func _centiK_to_K(ck: int) -> float:
+	return float(ck) / 100.0
+
+# ── 수명주기 ─────────────────────────────────────────────────────────────────
+func setup(data: DataLayer) -> void:
+	_data = data
+	_index = _data.index
+	_size = _index.size
+
+# Durability 초기 시딩: DataLayer 단위(mg) → Durability 단위(kg) 변환
+func seed_durability(dur: Durability) -> void:
+	if _data == null:
+		push_warning(\"[TileChange] seed_durability: DataLayer not set\")
+		return
+	var size := _index.size
+	for y in size.y:
+		for x in size.x:
+			var cell := Vector2i(x, y)
+			var i := _index.idx(cell)
+			var sid := _data.substance.get_by_index(i)
+			var mass_mg := _data.mass.get_by_index(i)       # int mg
+			var mass_kg := _mg_to_kg(mass_mg)               # float kg
+			dur.reset_cell(cell, sid, mass_kg)
+
+# ── API ─────────────────────────────────────────────────────────────────────
+## 교체: 단일 셀 교체 (스키마 기본값을 활용하여 phase/mass/temp 초기화)
+func replace_cell(cell: Vector2i, to_tile: int, reason: StringName = &\"replace\") -> void:
+	if _data == null:
+		push_warning(\"[TileChange] replace_cell: DataLayer not set\")
+		return
+	if not _index.in_bounds_cell(cell):
+		return
+	var i := _index.idx(cell)
+	var from_sid := _data.substance.get_by_index(i)
+
+	# sid만 명시, 나머지는 null → DataLayer 스키마 기본값을 적용
+	_data.set_cell_with_spec(cell, {
+		\"sid\": to_tile,
+		\"phase\": null,
+		\"mass\": null,
+		\"temp\": null,
+	}, reason)
+
+	tile_replaced.emit(cell, from_sid, to_tile, reason)
+	cells_changed.emit()
+
+## 파괴: 단일 셀 VACUUM으로 교체
+func destroy_cell(cell: Vector2i, reason: StringName = &\"destroy\") -> void:
+	if _data == null:
+		push_warning(\"[TileChange] destroy_cell: DataLayer not set\")
+		return
+	if not _index.in_bounds_cell(cell):
+		return
+	var i := _index.idx(cell)
+	var from_sid := _data.substance.get_by_index(i)
+
+	# 명시적으로 진공으로 설정(스키마 의존 X)
+	_data.set_cell_with_spec(cell, {
+		\"sid\": TILE_VACUUM,
+		\"phase\": PhaseStore.Phase.VACUUM,
+		\"mass\": 0,
+		\"temp\": 0,
+	}, reason)
+
+	tile_destroyed.emit(cell, from_sid, reason)
+	cells_changed.emit()
+
+## 질량 수확(부분/전량): Mining/Durability에서 호출
+func harvest_mass_from_cell(cell: Vector2i, requested_mass_kg: float, reason: StringName = &\"\") -> void:
+	if _data == null:
+		push_warning(\"[TileChange] harvest_mass_from_cell: DataLayer not set\")
+		return
+	if not _index.in_bounds_cell(cell):
+		return
+	if requested_mass_kg <= 0.0:
+		return
+
+	var i := _index.idx(cell)
+	var sid := _data.substance.get_by_index(i)
+	if sid == TILE_VACUUM:
+		return
+
+	# DataLayer 단위: mass=mg(int), temp=centi-K(int)
+	var cur_mg : int = _data.mass.get_by_index(i)
+	if cur_mg <= 0:
+		return
+	var cur_ck : int = _data.temperature.get_by_index(i)
+	var cur_K  : float = _centiK_to_K(cur_ck)
+
+	# 요청값 스냅/변환/클램프
+	var req_kg  := _snap_mass_kg(requested_mass_kg) # 1 mg 격자에 스냅
+	var req_mg  : int = _kg_to_mg(req_kg)
+	var take_mg : int = min(req_mg, cur_mg)
+	if take_mg <= 0:
+		return
+
+	var rest_mg : int = cur_mg - take_mg
+
+	# 월드 반영: 남으면 mass만, 0이면 VACUUM으로
+	if rest_mg > 0:
+		# 보존 규칙: sid/phase/temp는 보존, mass만 새 값
+		_data.set_cell_with_spec(cell, { \"mass\": rest_mg }, reason)
+	else:
+		# 전량 채굴: 명시적으로 진공
+		destroy_cell(cell, reason)  # 내부에서 tile_destroyed emit
+
+	# 드롭 알림(kg & K로 변환하여 상위 계층과 단위 일관성 유지)
+	mass_harvested.emit(cell, sid, _mg_to_kg(take_mg), cur_K, reason)
+
+# ── 내부 유틸 ────────────────────────────────────────────────────────────────
+static func _key(cell: Vector2i) -> int:
+	return (cell.y << 16) | (cell.x & 0xFFFF)
+
+func _on_tool_manager_request_vacuum(cell: Vector2i) -> void:
+	destroy_cell(cell)
+"
+
+[node name="World" type="Node2D"]
+script = ExtResource("1_j7vgi")
+
+[node name="VisualSync" type="Node" parent="."]
+unique_name_in_owner = true
+script = ExtResource("24_inp7a")
+
+[node name="Ground" type="TileMapLayer" parent="VisualSync"]
+unique_name_in_owner = true
+tile_set = ExtResource("3_bwxdu")
+script = ExtResource("4_ll3gq")
+
+[node name="OverlayManager" type="Node" parent="VisualSync"]
+unique_name_in_owner = true
+script = ExtResource("9_cqwbg")
+
+[node name="OverlayLayer" type="CanvasLayer" parent="VisualSync/OverlayManager"]
+layer = 2
+follow_viewport_enabled = true
+
+[node name="HeatmapOverlay" type="Node2D" parent="VisualSync/OverlayManager/OverlayLayer"]
+unique_name_in_owner = true
+visible = false
+z_index = 2
+script = ExtResource("10_q3kex")
+
+[node name="Map" type="Sprite2D" parent="VisualSync/OverlayManager/OverlayLayer/HeatmapOverlay"]
+
+[node name="HeatSourceOverlay" type="Node2D" parent="VisualSync/OverlayManager/OverlayLayer"]
+visible = false
+z_index = 2
+script = ExtResource("11_hm5b2")
+
+[node name="Map" type="Sprite2D" parent="VisualSync/OverlayManager/OverlayLayer/HeatSourceOverlay"]
+
+[node name="LightOverlay" type="Node2D" parent="VisualSync/OverlayManager/OverlayLayer"]
+unique_name_in_owner = true
+visible = false
+script = ExtResource("8_ftqqi")
+
+[node name="Map" type="Sprite2D" parent="VisualSync/OverlayManager/OverlayLayer/LightOverlay"]
+
+[node name="NavigationOverlay" type="Node2D" parent="VisualSync/OverlayManager/OverlayLayer"]
+visible = false
+script = ExtResource("10_jgi7c")
+grid_nav_path = NodePath("../../../../Systems/GridNav")
+
+[node name="FXLayer" type="CanvasLayer" parent="VisualSync/OverlayManager"]
+
+[node name="Grayscale" type="ColorRect" parent="VisualSync/OverlayManager/FXLayer"]
+visible = false
+z_index = 2
+material = SubResource("ShaderMaterial_7iits")
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="Terrain" type="Node2D" parent="."]
+
+[node name="LiquidOverlay" type="Node2D" parent="Terrain"]
+script = ExtResource("4_lwhbe")
+
+[node name="Map" type="Sprite2D" parent="Terrain/LiquidOverlay"]
+
+[node name="CrackOverlay" type="TileMapLayer" parent="Terrain"]
+z_index = 1
+tile_set = ExtResource("5_ftqqi")
+script = ExtResource("6_avd5l")
+
+[node name="CornerHighlight" type="Sprite2D" parent="Terrain"]
+texture = ExtResource("7_ll3gq")
+centered = false
+script = ExtResource("8_jgi7c")
+
+[node name="Systems" type="Node" parent="."]
+
+[node name="WorldGen" type="Node" parent="Systems"]
+unique_name_in_owner = true
+script = ExtResource("13_33qpb")
+profile = ExtResource("15_avd5l")
+
+[node name="Durability" type="Node" parent="Systems"]
+unique_name_in_owner = true
+script = SubResource("GDScript_33qpb")
+debug_log = true
+
+[node name="Temperature" type="Node" parent="Systems"]
+unique_name_in_owner = true
+script = ExtResource("16_inp7a")
+
+[node name="SimClock" type="Node" parent="Systems"]
+unique_name_in_owner = true
+script = ExtResource("16_k83x5")
+
+[node name="TileChange" type="Node" parent="Systems"]
+unique_name_in_owner = true
+script = SubResource("GDScript_ifjjt")
+
+[node name="Liquid" type="Node" parent="Systems"]
+unique_name_in_owner = true
+script = ExtResource("18_en1oy")
+
+[node name="Gas" type="Node" parent="Systems"]
+script = ExtResource("19_pfbnl")
+
+[node name="PhaseChange" type="Node" parent="Systems"]
+unique_name_in_owner = true
+script = ExtResource("20_gwdna")
+
+[node name="InputController" type="Node" parent="Systems" node_paths=PackedStringArray("_tool_manager")]
+unique_name_in_owner = true
+script = ExtResource("21_h4vgh")
+_tool_manager = NodePath("../ToolManager")
+
+[node name="HoverManager" type="Node" parent="Systems"]
+unique_name_in_owner = true
+script = ExtResource("22_kvuv0")
+
+[node name="ToolManager" type="Node" parent="Systems"]
+script = ExtResource("23_sg5c8")
+
+[node name="Light" type="Node" parent="Systems"]
+unique_name_in_owner = true
+script = ExtResource("26_lwhbe")
+
+[node name="Plant" type="Node" parent="Systems"]
+unique_name_in_owner = true
+script = ExtResource("28_avd5l")
+debug_enabled = true
+plant_base_scene = ExtResource("29_ll3gq")
+
+[node name="GridNav" type="Node" parent="Systems"]
+unique_name_in_owner = true
+script = ExtResource("31_cqwbg")
+
+[node name="Mining" type="Node" parent="Systems"]
+unique_name_in_owner = true
+script = ExtResource("32_hnpqp")
+durability_path = NodePath("../Durability")
+tile_change_path = NodePath("../TileChange")
+ground_item_registry_path = NodePath("../GroundItemRegistry")
+
+[node name="GroundItemRegistry" type="Node" parent="Systems"]
+script = ExtResource("33_ifjjt")
+
+[node name="Actors" type="Node2D" parent="." groups=["actors_root"]]
+z_index = 1
+
+[node name="ControllerActor" parent="Actors" instance=ExtResource("33_33qpb")]
+
+[node name="Spawner" type="Node2D" parent="Actors" node_paths=PackedStringArray("_ground", "_Tchange", "_dur")]
+unique_name_in_owner = true
+script = ExtResource("24_vu62d")
+critter_scene = ExtResource("35_ll3gq")
+_ground = NodePath("../../VisualSync/Ground")
+_Tchange = NodePath("../../Systems/TileChange")
+_dur = NodePath("../../Systems/Durability")
+
+[node name="AnimalAgent" parent="Actors" instance=ExtResource("34_q3kex")]
+grid_nav_path = NodePath("../../Systems/GridNav")
+overlay_path = NodePath("../../VisualSync/OverlayManager/OverlayLayer/NavigationOverlay")
+
+[node name="Corpses" type="Node2D" parent="Actors"]
+script = ExtResource("35_hm5b2")
+
+[node name="ItemsRoot" type="Node2D" parent="Actors"]
+script = ExtResource("39_behgl")
+ground_item_registry_path = NodePath("../../Systems/GroundItemRegistry")
+
+[node name="Managers" type="Node" parent="."]
+
+[node name="ChunkManager" type="Node" parent="Managers"]
+
+[node name="Camera2D" type="Camera2D" parent="."]
+script = ExtResource("27_o7xkw")
+pan_speed = 1.5
+
+[node name="UIFXLayer" type="CanvasLayer" parent="."]
+layer = 3
+
+[node name="TileInfoHUD" parent="UIFXLayer" instance=ExtResource("28_bfrib")]
+
+[node name="HUD" parent="." instance=ExtResource("31_bwxdu")]
+
+[node name="FpsMemMonitor" type="Control" parent="HUD"]
+layout_mode = 3
+anchors_preset = 0
+offset_left = 300.0
+offset_right = 300.0
+script = ExtResource("29_mip0j")
+
+[connection signal="request_mine" from="Systems/ToolManager" to="Systems/Mining" method="_on_tool_manager_request_mine"]
+[connection signal="request_spawn_fish" from="Systems/ToolManager" to="Actors/Spawner" method="_on_tool_manager_request_spawn_fish"]
+[connection signal="request_spawn_plant" from="Systems/ToolManager" to="." method="_on_tool_manager_request_spawn_plant"]
+[connection signal="request_vacuum" from="Systems/ToolManager" to="Systems/TileChange" method="_on_tool_manager_request_vacuum"]
