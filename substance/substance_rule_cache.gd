@@ -22,6 +22,12 @@ const PH_SOLID  := 1
 const PH_LIQUID := 2
 const PH_GAS    := 3
 
+# 기본값 캐시 (DataLayer 브리지용)
+var def_phase_str_by_sid: Dictionary = {}  # sid -> "solid"/"liquid"/"gas"/"vacuum"
+var def_mass_by_sid: Dictionary = {}       # sid -> int (mg)
+var def_temp_by_sid: Dictionary = {}       # sid -> int (cC)
+var def_light_by_sid: Dictionary = {}      # sid -> float
+
 # 파일에서 로드
 func load_from_file(path: String = "res://substance/substance.json") -> void:
 	var file := FileAccess.open(path, FileAccess.READ)
@@ -46,6 +52,10 @@ func _load_from_text(text: String) -> void:
 	opt_k_by_sid.clear()
 	opt_alpha_by_sid.clear()
 	opt_albedo_by_sid.clear()
+	def_phase_str_by_sid.clear()
+	def_mass_by_sid.clear()
+	def_temp_by_sid.clear()
+	def_light_by_sid.clear()
 
 	# 가정: JSON은 정상.
 	var j := JSON.new()
@@ -54,7 +64,7 @@ func _load_from_text(text: String) -> void:
 	if not root.has("phase"): return
 	var phases: Dictionary = root["phase"]
 
-	# 패스1: sid/phase/path + thermal + optical 수집
+	# 패스1: sid/phase/path + thermal + optical 수집 + defaults 파싱
 	for phase_str in phases.keys():
 		var phase_dict: Dictionary = phases[phase_str]
 		var phase_kind := _phase_kind(phase_str)
@@ -85,6 +95,19 @@ func _load_from_text(text: String) -> void:
 			# 성능 위해 칸당 감쇠계수 사전계산 (Δz=1m 가정)
 			# k=0이면 alpha=1.0
 			opt_alpha_by_sid[sid] = 1.0 if (k_m_inv == 0.0) else exp(-k_m_inv)
+
+			var defs: Dictionary = sdata.get("defaults", {})
+			if not defs.is_empty():
+				# phase 문자열 그대로 보관 (DataLayer에서 enum으로 변환해도 되고,
+				# 여기서 바로 변환해도 됨. 우선 문자열을 보관하는 방식을 권장)
+				if defs.has("phase"):
+					def_phase_str_by_sid[sid] = String(defs["phase"])
+				if defs.has("mass"):
+					def_mass_by_sid[sid] = int(defs["mass"])
+				if defs.has("temp"):
+					def_temp_by_sid[sid] = int(defs["temp"])
+				if defs.has("light"):
+					def_light_by_sid[sid] = float(defs["light"])
 
 	# 패스2: 전이 규칙 컴파일
 	for phase_str in phases.keys():
@@ -128,3 +151,12 @@ func has_sid(sid: int) -> bool:
 
 func path_of_sid(sid: int, default_val: String = "") -> String:
 	return String(sid_to_path.get(sid, default_val))
+
+# DataLayer용: defaults 딕셔너리 리턴 (phase는 문자열 그대로)
+func get_defaults_for_sid(sid: int) -> Dictionary:
+	var res := {}
+	if def_phase_str_by_sid.has(sid): res["phase"] = def_phase_str_by_sid[sid]
+	if def_mass_by_sid.has(sid):      res["mass"] = def_mass_by_sid[sid]
+	if def_temp_by_sid.has(sid):      res["temp"] = def_temp_by_sid[sid]
+	if def_light_by_sid.has(sid):     res["light"] = def_light_by_sid[sid]
+	return res

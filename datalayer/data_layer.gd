@@ -9,6 +9,8 @@ var mass: MassStore = MassStore.new()
 var temperature: TemperatureStore = TemperatureStore.new()
 var light: LightStore = LightStore.new()
 
+var _rule_cache: SubstanceRuleCache
+
 func setup(
 	size: Vector2i,
 	substances: PackedInt32Array,
@@ -31,21 +33,8 @@ func setup(
 	_log_counts()
 	_validate()
 
-# ───────────────────────────────────────────────────────────────
-const SID  := "sid"
-const PHASE:= "phase"
-const MASS := "mass"
-const TEMP := "temp"
-const LIGHT := "light"
-
-# 임시 조치. 규모 커지면 Resource로 분리 필요. TODO
-var _schema := { # sid 값을 기준으로 찾을 수 있다.
-	0: { "phase": PhaseStore.Phase.VACUUM, "mass": 0, "temp": 0 }, # VACCUM
-	10001: { "phase": PhaseStore.Phase.SOLID, "mass": 1_000_000, "temp": 27315 }, # ICE
-	10002: { "phase": PhaseStore.Phase.SOLID, "mass": 1_000_000, "temp": 30015 }, # SOIL
-	20001: { "phase": PhaseStore.Phase.LIQUID, "mass": 1_000_000, "temp": 29315 }, # WATER
-	30001: { "phase": PhaseStore.Phase.GAS,    "mass": 1_000,    "temp": 37315 }  # STEAM
-}
+func bind_rule_cache(cache: SubstanceRuleCache) -> void:
+	_rule_cache = cache
 
 # ───────────────────────────────────────────────────────────────
 ## 단일 진입점(Write-API) → 복수 셀 배치 버전
@@ -240,10 +229,35 @@ func set_store_bulk(target: StringName, values: Variant, reason: StringName = &"
 			push_error("[DataLayer.set_store_bulk] unknown target: %s" % [target])
 
 func get_spec(tile_id: int) -> Dictionary:
-	if not _schema.has(tile_id):
-		push_error("[DataLayer] Unknown tile id %s" % tile_id)
+	if tile_id == 0:
+		return {"phase": PhaseStore.Phase.VACUUM, "mass": 0, "temp": 0, "light": 0.0}
+
+	if _rule_cache == null:
+		push_error("[DataLayer] _rule_cache is null"); return {}
+
+	var d := _rule_cache.get_defaults_for_sid(tile_id)
+	if d.is_empty():
+		push_error("[DataLayer] defaults not found for sid=%s" % tile_id)
 		return {}
-	return _schema[tile_id].duplicate(true) # 복사본 리턴 (원본 보호)
+
+	# phase 문자열 → PhaseStore.Phase enum
+	var ph: String = d.get("phase", "vacuum")
+	var ph_enum := _phase_string_to_enum(String(ph))
+
+	return {
+		"phase": ph_enum,
+		"mass":  int(d.get("mass", 0)),
+		"temp":  int(d.get("temp", 0)),
+		"light": float(d.get("light", 0.0)),
+	}
+
+func _phase_string_to_enum(s: String) -> int:
+	match s:
+		"solid":  return PhaseStore.Phase.SOLID
+		"liquid": return PhaseStore.Phase.LIQUID
+		"gas":    return PhaseStore.Phase.GAS
+		"vacuum": return PhaseStore.Phase.VACUUM
+		_:        return PhaseStore.Phase.VACUUM
 
 ## 규칙 해석 헬퍼: 없음=보존 / null=기본 / 값=설정
 func _resolve_field(field: String,current: Variant, default_spec: Dictionary, spec: Dictionary) -> Variant:

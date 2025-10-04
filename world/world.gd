@@ -75,6 +75,10 @@ func _ready() -> void:
 	worldgen.bind_rule_cache(rule_cache)
 	worldgen.generate()
 
+	# TODO 어떻게 하는 거지? 모르겠음.
+	#var args: Array = await worldgen.generated
+	#callv("_on_world_generated", args)
+
 	# 내구도↔타일 변경, 크랙 오버레이
 	durability.break_requested.connect(func(cell: Vector2i): tchange.destroy_cell(cell, &"durability"))
 	durability.hp_changed.connect(crack_overlay.on_hp_changed)
@@ -110,7 +114,7 @@ func _apply_worldgen_result(
 	visual_sync.setup(data_layer)
 
 	data_layer.setup(size, substances, phases, mass, temperatures)
-
+	data_layer.bind_rule_cache(rule_cache)
 	data_layer.tiles_changed.connect(visual_sync.on_tiles_changed)
 
 	# 시스템들 (데이터 준비 이후)

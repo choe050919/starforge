@@ -11,7 +11,8 @@
 					"transparent": true,
 					"attenuation_m_inv": 1.0,
 					"albedo": 0.4
-				}
+				},
+				"defaults": { "phase": "solid", "mass": 1000000, "temp": 27315, "light": 0.0 }
 			},
 			"soil": {
 				"id": 10002,
@@ -22,16 +23,19 @@
 					"infiltration_limit_mg_per_tick": 2000,
 					"leak_down_mg_per_tick": 1000,
 					"soil2soil_diffusivity_mg_per_tick": 100
-				}
+				},
+				"defaults": { "phase": "solid", "mass": 1000000, "temp": 30015, "light": 0.0 }
 			},
 			"uranium": {
 				"id": 10003,
 				"optical": { "transparent": false },
+				"defaults": { "phase": "solid", "mass": 1000000, "temp": 30015, "light": 0.0 }
 			},
 			"copper": {
 				"id": 10004,
 				"thermal": { "c_J_per_kgK": 385, "k_W_per_mK": 400 },
 				"optical": { "transparent": false },
+				"defaults": { "phase": "solid", "mass": 1000000, "temp": 30015, "light": 0.0 }
 			}
 
 		},
@@ -46,7 +50,8 @@
 				"optical": {
 					"transparent": true,
 					"attenuation_m_inv": 0.2
-				}
+				},
+				"defaults": { "phase": "liquid", "mass": 1000000, "temp": 29315, "light": 0.0 }
 			}
 		},
 		"gas": {
@@ -58,7 +63,8 @@
 				"optical": {
 					"transparent": true,
 					"attenuation_m_inv": 0.0
-				}
+				},
+				"defaults": { "phase": "gas", "mass": 1000, "temp": 37315, "light": 0.0 }
 			}
 		}
 	}
