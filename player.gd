@@ -6,11 +6,11 @@ signal arrived_at_destination
 # ── 외부 참조 ───────────────────────────────────────────────────────
 @export var grid_nav_path: NodePath
 @export var overlay_path: NodePath
-@export var ground_path: NodePath
+@export var mining_path: NodePath
 
 var _grid_nav: GridNav = null
 var _overlay: Node = null
-var _ground: Ground = null
+var _mining: Node = null
 
 # ── 이동 튜닝 ───────────────────────────────────────────────────────
 @export var move_speed: float = 180.0
@@ -27,8 +27,17 @@ var _repath_cooldown_left := 0.0
 # ── 셀 판정 안정화 ──────────────────────────────────────────────────
 @export var cell_hysteresis_px: float = 10.0
 
+# ── 채굴 ────────────────────────────────────────────────────────────
+@export var mining_reach_cells: int = 3
+@export var mining_damage_per_sec: float = 5.0
+@export var auto_move_to_mining_target: bool = true
+
+var _mining_timer: float = 0.0
+var _mining_interval_sec: float = 0.2
+var _mining_queue: Array[Vector2i] = []
+
 # ── 내부 상태 ───────────────────────────────────────────────────────
-enum Mode { IDLE, MOVING }
+enum Mode { IDLE, MOVING, MINING }
 var _mode: int = Mode.IDLE
 
 var _cell_px: Vector2 = Vector2(32, 32)
@@ -36,6 +45,7 @@ var _path: PackedVector2Array = []
 var _path_index: int = 0
 var _goal_cell: Vector2i = Vector2i(-9999, -9999)
 var _last_start_cell: Vector2i = Vector2i(-9999, -9999)
+var _mining_target_cell: Vector2i = Vector2i(-9999, -9999)
 
 # ────────────────────────────────────────────────────────────────────
 func _ready() -> void:
@@ -45,7 +55,6 @@ func _ready() -> void:
 		if cs is Vector2:
 			_cell_px = cs
 		
-		# 네비 변경 신호 연결
 		if _grid_nav.has_signal("navigation_cell_changed"):
 			_grid_nav.navigation_cell_changed.connect(_on_nav_changed)
 		if _grid_nav.has_signal("navigation_bulk_changed"):
@@ -54,47 +63,112 @@ func _ready() -> void:
 	if overlay_path != NodePath() and has_node(overlay_path):
 		_overlay = get_node(overlay_path)
 	
-	if ground_path != NodePath() and has_node(ground_path):
-		_ground = get_node(ground_path)
+	if mining_path != NodePath() and has_node(mining_path):
+		_mining = get_node(mining_path)
 	
 	call_deferred("_snap_start_to_surface")
 
 func _physics_process(delta: float) -> void:
 	_repath_cooldown_left = max(_repath_cooldown_left - delta, 0.0)
 	
-	if _mode == Mode.MOVING:
-		_time_since_repath += delta
+	match _mode:
+		Mode.MOVING:
+			_time_since_repath += delta
+			
+			if _time_since_repath >= repath_interval_sec and _repath_cooldown_left <= 0.0:
+				_time_since_repath = 0.0
+				_repath_to_goal()
+			
+			_move_along_path(delta)
 		
-		# 주기적 재탐색 (환경 변화 대응)
-		if _time_since_repath >= repath_interval_sec and _repath_cooldown_left <= 0.0:
-			_time_since_repath = 0.0
-			_repath_to_goal()
+		Mode.MINING:
+			# 현재 타겟이 유효한지 확인
+			if _mining_target_cell.x < -9998 or not _is_cell_valid_for_mining(_mining_target_cell):
+				_advance_mining_queue()
+				return
+			
+			# 거리 밖이면 자동 이동 또는 스킵
+			if not _is_in_mining_range(_mining_target_cell):
+				if auto_move_to_mining_target:
+					move_to_cell(_mining_target_cell)
+				else:
+					_advance_mining_queue()
+				return
+			
+			# 연속 채굴
+			_mining_timer += delta
+			if _mining_timer >= _mining_interval_sec:
+				_mining_timer = 0.0
+				_apply_mining_damage()
 		
-		_move_along_path(delta)
+		Mode.IDLE:
+			pass
 
 # ────────────────────────────────────────────────────────────────────
-# 퍼블릭 API
+# 퍼블릭 API: 이동
 
-## 월드 좌표로 이동 명령
 func move_to_world(world_pos: Vector2) -> void:
 	var target_cell := _world_to_cell(world_pos)
 	move_to_cell(target_cell)
 
-## 셀 좌표로 이동 명령
 func move_to_cell(cell: Vector2i) -> void:
+	# 이동 시작하면 채굴은 일시 중단 (큐는 유지)
+	if _mode == Mode.MINING:
+		_mode = Mode.MOVING
+	
 	_goal_cell = cell
 	_rebuild_path_to(cell)
 	_mode = (Mode.MOVING if _path.size() >= 2 else Mode.IDLE)
 
-## 정지
 func stop() -> void:
+	stop_mining()
 	_mode = Mode.IDLE
 	_path.clear()
 	_path_index = 0
 	_show_path_preview([])
 
 # ────────────────────────────────────────────────────────────────────
-# 내부: 시작 위치 스냅 (표면으로)
+# 퍼블릭 API: 채굴
+
+func add_mining_target(cell: Vector2i) -> void:
+	# 이미 큐에 있으면 무시
+	if cell in _mining_queue:
+		return
+	
+	_mining_queue.append(cell)
+	
+	# 현재 채굴 중이 아니면 즉시 시작
+	if _mode != Mode.MINING:
+		_start_next_mining_task()
+
+func start_mining(cell: Vector2i) -> void:
+	# 기존 큐를 비우고 새로 시작
+	_mining_queue.clear()
+	add_mining_target(cell)
+
+func stop_mining() -> void:
+	_mining_queue.clear()
+	_mining_target_cell = Vector2i(-9999, -9999)
+	_mining_timer = 0.0
+	if _mode == Mode.MINING:
+		_mode = Mode.IDLE
+
+func clear_mining_queue() -> void:
+	_mining_queue.clear()
+	if _mode == Mode.MINING:
+		stop_mining()
+
+func is_mining() -> bool:
+	return _mode == Mode.MINING
+
+func get_mining_target() -> Vector2i:
+	return _mining_target_cell if _mode == Mode.MINING else Vector2i(-9999, -9999)
+
+func get_mining_queue() -> Array[Vector2i]:
+	return _mining_queue.duplicate()
+
+# ────────────────────────────────────────────────────────────────────
+# 내부: 시작 위치 스냅
 
 func _snap_start_to_surface() -> void:
 	if _grid_nav == null:
@@ -106,7 +180,6 @@ func _snap_start_to_surface() -> void:
 	var cell := _world_to_cell(global_position)
 	cell.x = clamp(cell.x, b.position.x, b.position.x + b.size.x - 1)
 	
-	# 아래로 표면 탐색
 	for y in range(cell.y, b.position.y + b.size.y):
 		var c := Vector2i(cell.x, y)
 		if _grid_nav.is_walkable_player(c):
@@ -114,7 +187,6 @@ func _snap_start_to_surface() -> void:
 			_last_start_cell = c
 			return
 	
-	# 위로 표면 탐색
 	for y in range(cell.y - 1, b.position.y - 1, -1):
 		var c := Vector2i(cell.x, y)
 		if _grid_nav.is_walkable_player(c):
@@ -123,7 +195,7 @@ func _snap_start_to_surface() -> void:
 			return
 
 # ────────────────────────────────────────────────────────────────────
-# 내부: 이동 (오버슈트 방지)
+# 내부: 이동
 
 func _move_along_path(delta: float) -> void:
 	if _path.is_empty():
@@ -159,9 +231,14 @@ func _move_along_path(delta: float) -> void:
 		_finish_path()
 
 func _finish_path() -> void:
-	_mode = Mode.IDLE
-	_show_path_preview([])
-	arrived_at_destination.emit()
+	if _mode == Mode.MOVING:
+		_mode = Mode.IDLE
+		_show_path_preview([])
+		arrived_at_destination.emit()
+		
+		# 이동 완료 후 채굴 큐가 있으면 재개
+		if not _mining_queue.is_empty():
+			_start_next_mining_task()
 
 # ────────────────────────────────────────────────────────────────────
 # 내부: 경로 재생성
@@ -182,7 +259,6 @@ func _rebuild_path_to(cell: Vector2i) -> void:
 		_show_path_preview(_path)
 		return
 	
-	# 현재 위치 기준으로 경로 당겨 채택
 	_adopt_path_from_current_position(pts)
 	_show_path_preview(_path)
 
@@ -202,6 +278,44 @@ func _on_nav_changed(_cell: Vector2i) -> void:
 func _on_nav_bulk_changed(_rect: Rect2i) -> void:
 	if _mode != Mode.IDLE:
 		_repath_cooldown_left = repath_cooldown_sec
+
+# ────────────────────────────────────────────────────────────────────
+# 내부: 채굴
+
+func _start_next_mining_task() -> void:
+	if _mining_queue.is_empty():
+		if _mode == Mode.MINING:
+			_mode = Mode.IDLE
+		_mining_target_cell = Vector2i(-9999, -9999)
+		return
+	
+	_mining_target_cell = _mining_queue[0]
+	_mode = Mode.MINING
+	_mining_timer = 0.0
+
+func _advance_mining_queue() -> void:
+	if not _mining_queue.is_empty():
+		_mining_queue.pop_front()
+	_start_next_mining_task()
+
+func _apply_mining_damage() -> void:
+	if _mining == null or _mining_target_cell.x < -9998:
+		_advance_mining_queue()
+		return
+	
+	if _mining.has_method("_on_tool_manager_request_mine"):
+		_mining._on_tool_manager_request_mine(_mining_target_cell)
+
+func _is_cell_valid_for_mining(cell: Vector2i) -> bool:
+	# TODO: DataLayer에서 타일 존재 및 채굴 가능 여부 확인
+	return true
+
+func _is_in_mining_range(cell: Vector2i) -> bool:
+	var player_cell := _world_to_cell(global_position)
+	var dx: int = abs(cell.x - player_cell.x)
+	var dy: int = abs(cell.y - player_cell.y)
+	var dist: int = max(dx, dy)
+	return dist <= mining_reach_cells
 
 # ────────────────────────────────────────────────────────────────────
 # 내부: 유틸

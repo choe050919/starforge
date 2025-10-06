@@ -1,4 +1,4 @@
-[gd_scene load_steps=46 format=3 uid="uid://c5gv3n6byiin7"]
+[gd_scene load_steps=47 format=3 uid="uid://c5gv3n6byiin7"]
 
 [ext_resource type="Script" uid="uid://dgppaejvd18y0" path="res://world/world.gd" id="1_j7vgi"]
 [ext_resource type="TileSet" uid="uid://dnn0uacxq48mh" path="res://tilesets/world.tres" id="3_bwxdu"]
@@ -44,6 +44,7 @@
 [ext_resource type="PackedScene" uid="uid://bp27ax8mxaxmy" path="res://fish/fish.tscn" id="35_ll3gq"]
 [ext_resource type="Script" uid="uid://bwaacf1284t0l" path="res://items_root.gd" id="39_behgl"]
 [ext_resource type="PackedScene" uid="uid://bblxu6lirpxxj" path="res://player.tscn" id="40_k83x5"]
+[ext_resource type="Script" uid="uid://bni2ouqgyis0j" path="res://mining_visual.gd" id="43_b8tmp"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_7iits"]
 shader = ExtResource("12_hnpqp")
@@ -224,6 +225,7 @@ ground_item_registry_path = NodePath("../../Systems/GroundItemRegistry")
 unique_name_in_owner = true
 grid_nav_path = NodePath("../../Systems/GridNav")
 overlay_path = NodePath("../../VisualSync/OverlayManager/OverlayLayer/NavigationOverlay")
+mining_path = NodePath("../../Systems/Mining")
 
 [node name="Managers" type="Node" parent="."]
 
@@ -237,6 +239,12 @@ pan_speed = 1.5
 layer = 3
 
 [node name="TileInfoHUD" parent="UIFXLayer" instance=ExtResource("28_bfrib")]
+
+[node name="MiningVisual" type="Node2D" parent="UIFXLayer"]
+unique_name_in_owner = true
+script = ExtResource("43_b8tmp")
+player_path = NodePath("../../Actors/Player")
+ground_path = NodePath("../../VisualSync/Ground")
 
 [node name="HUD" parent="." instance=ExtResource("31_bwxdu")]
 

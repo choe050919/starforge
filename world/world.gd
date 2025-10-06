@@ -39,6 +39,7 @@ class_name World
 # ── UI ───────────────────────────────────────────────────────────
 @onready var tile_info_hud: TileInfoHUD = $UIFXLayer/TileInfoHUD
 @onready var hud: HUD = $HUD
+@onready var mining_visual: MiningVisual = %MiningVisual
 
 # ── State ────────────────────────────────────────────────────────
 var _is_running := true
@@ -85,11 +86,18 @@ func _ready() -> void:
 	durability.hp_changed.connect(crack_overlay.on_hp_changed)
 	durability.break_requested.connect(crack_overlay.on_break_requested)
 
+	# 플레이어 설정
 	player.grid_nav_path = NodePath("%GridNav")
 	player.overlay_path = NodePath("%OverlayManager/OverlayLayer/NavigationOverlay")
-
+	player.mining_path = NodePath("%Mining")
+	
 	# 입력 연결
 	input.player_move_requested.connect(_on_player_move_requested)
+	input.mining_requested.connect(_on_mining_requested)
+	
+	# 채굴 시각화 설정
+	mining_visual.player_path = NodePath("../Actors/Player")
+	mining_visual.ground_path = NodePath("%Ground")
 
 func _on_world_generated(
 		size: Vector2i,
@@ -252,19 +260,6 @@ func _on_tool_manager_request_spawn_plant(cell: Vector2i) -> void:
 	else:
 		push_warning("[PlantTest] cannot place: not_soil/out_of_bounds/occupied")
 
-@onready var agent: AnimalAgent = $Actors/AnimalAgent
-
-func _unhandled_input(event: InputEvent) -> void:
-	if event is InputEventKey and event.pressed:
-		match event.keycode:
-			KEY_G:  # G 키 → 마우스 위치로 이동
-				agent.move_to_world(get_global_mouse_position())
-			KEY_S:  # S 키 → 정지
-				agent.stop()
-			KEY_F:  # F 키 → 플레이어 따라가기
-				if has_node("Player"):
-					agent.follow_node($Player)
-
 func _on_tool_manager_request_add_temp(cell: Vector2i) -> void:
 	var old_temp := data_layer.temperature.get_by_cell(cell)
 	var new_temp := old_temp + 1000
@@ -273,3 +268,7 @@ func _on_tool_manager_request_add_temp(cell: Vector2i) -> void:
 func _on_player_move_requested(world_pos: Vector2) -> void:
 	if is_instance_valid(player):
 		player.move_to_world(world_pos)
+
+func _on_mining_requested(cell: Vector2i) -> void:
+	if is_instance_valid(player):
+		player.add_mining_target(cell)

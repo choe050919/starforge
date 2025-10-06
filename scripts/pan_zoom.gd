@@ -12,7 +12,7 @@ func _ready() -> void:
 	_target_zoom = zoom.x
 
 func pan(delta: Vector2) -> void:
-	position -= delta * (_target_zoom * pan_speed)
+	position += delta * (_target_zoom * pan_speed)
 
 func apply_zoom(direction: float) -> void:
 	_zoom_towards_cursor(direction * zoom_step)
