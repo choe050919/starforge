@@ -5,9 +5,11 @@ var size: Vector2i = Vector2i.ZERO
 func setup(new_size: Vector2i) -> void:
 	size = new_size
 
+## Convert 2D cell coordinate to 1D array index
 func idx(c: Vector2i) -> int:
 	return c.y * size.x + c.x
 
+## Convert 1D array index to 2D cell coordinate
 func cell(i: int) -> Vector2i:
 	@warning_ignore("integer_division")
 	return Vector2i(i % size.x, i / size.x)
@@ -25,12 +27,12 @@ func in_bounds_cell(c: Vector2i) -> bool:
 func in_bounds_index(i: int) -> bool:
 	return i >= 0 and i < size.x * size.y
 
-## index와 cell 둘 중 무엇을 받든 검사해주는 간단 래퍼
+## Generic bounds checker that accepts both cell and index
 func in_bounds(value) -> bool:
 	if value is int:
 		return in_bounds_index(value)
 	elif value is Vector2i:
 		return in_bounds_cell(value)
 	else:
-		push_warning("[GridIndex.in_bounds] type wrong: only int or Vecter2i")
+		push_warning("[GridIndex] Invalid type for in_bounds(): expected int or Vector2i, got %s" % type_string(typeof(value)))
 		return false

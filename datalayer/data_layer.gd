@@ -1,6 +1,93 @@
+## DataLayer manages the core game state data across multiple stores.
+##
+## [b]Overview[/b]
+## DataLayer acts as a unified interface for accessing and modifying game world data,
+## including substances, phases, mass, temperature, and lighting. It provides both
+## granular cell-level updates and bulk replacement operations.
+##
+## [b]Core Stores[/b]
+## - [code]index[/code]: GridIndex for coordinate/index conversion
+## - [code]substance[/code]: SubstanceStore tracking material types (SID)
+## - [code]phase[/code]: PhaseStore tracking matter states (solid/liquid/gas/vacuum)
+## - [code]mass[/code]: MassStore tracking cell mass in milligrams
+## - [code]temperature[/code]: TemperatureStore tracking temperature in centi-Kelvin
+## - [code]light[/code]: LightStore tracking light intensity values
+##
+## [b]Write API - Spec-based Updates[/b]
+## Use spec dictionaries to update cells with flexible field control:
+## [codeblock]
+## # Update a single cell
+## data_layer.set_cell_with_spec(Vector2i(10, 5), {
+##     "sid": 10001,      # Set substance ID
+##     "phase": null,     # Use schema default for phase
+##     "mass": 50000,     # Set mass to 50000mg
+##     "temp": 29315      # Set temperature
+## })
+##
+## # Update multiple cells at once
+## data_layer.set_cells_with_spec([cell1, cell2, cell3], {
+##     "temp": 35000      # Only change temperature, preserve other fields
+## })
+## [/codeblock]
+##
+## [b]Spec Field Rules[/b]
+## - [b]Key absent[/b]: Current value is preserved
+## - [b]Key with value[/b]: Set to the specified value
+## - [b]Key with null[/b]: Set to schema default for that substance
+## - Available keys: [code]"sid"[/code], [code]"phase"[/code], [code]"mass"[/code], [code]"temp"[/code], [code]"light"[/code]
+## - Special: [code]"sid"[/code] cannot be null
+##
+## [b]Write API - Bulk Operations[/b]
+## Replace entire store arrays for performance-critical full updates:
+## [codeblock]
+## # Replace all substance IDs at once
+## data_layer.set_bulk_sid(new_substances, &"world_generation")
+##
+## # Replace all temperatures
+## data_layer.set_bulk_temp(new_temperatures, &"thermal_equilibrium")
+##
+## # Generic bulk setter
+## data_layer.set_store_bulk(&"mass", new_masses, &"liquid_flow")
+## [/codeblock]
+##
+## [b]Available Bulk Methods[/b]
+## - [code]set_bulk_sid(PackedInt32Array)[/code]
+## - [code]set_bulk_phase(PackedByteArray)[/code]
+## - [code]set_bulk_mass(PackedInt64Array)[/code]
+## - [code]set_bulk_temp(PackedInt32Array)[/code]
+## - [code]set_bulk_light(PackedFloat32Array)[/code]
+## - [code]set_store_bulk(target, values)[/code] - Generic dispatcher
+##
+## [b]Signals[/b]
+## [code]tiles_changed(indices, reason, payload)[/code] emits after any modification:
+## - [code]indices[/code]: PackedInt32Array of changed cell indices (empty for bulk)
+## - [code]reason[/code]: StringName describing the change source
+## - [code]payload[/code]: Dictionary with flags like [code]sid_changed[/code], [code]phase_changed[/code], etc.
+##
+## [b]Spec Resolution[/b]
+## Get default values for any substance ID:
+## [codeblock]
+## var spec = data_layer.get_spec(10001)  # Returns { "phase": 0, "mass": 50000, ... }
+## [/codeblock]
+##
+## [b]Transaction Model[/b]
+## All write operations use begin_write() → commit() internally per store.
+## Multiple cells can be updated efficiently in a single transaction.
+##
+## [b]Validation[/b]
+## DataLayer enforces invariants:
+## - VACUUM cells must have zero mass
+## - SOLID/LIQUID cells must have positive mass
+## - GAS cells currently have zero mass (not tracked)
+## Violations are logged during setup and validation passes.
+
 class_name DataLayer
 
 signal tiles_changed(changed_indices: PackedInt32Array, reason: StringName, payload: Dictionary)
+
+# ══════════════════════════════════════════════════════════════════
+# Stores
+# ══════════════════════════════════════════════════════════════════
 
 var index: GridIndex = GridIndex.new()
 var substance: SubstanceStore = SubstanceStore.new()
@@ -9,7 +96,17 @@ var mass: MassStore = MassStore.new()
 var temperature: TemperatureStore = TemperatureStore.new()
 var light: LightStore = LightStore.new()
 
+# ══════════════════════════════════════════════════════════════════
+# Dependencies & Constants
+# ══════════════════════════════════════════════════════════════════
+
 var _rule_cache: SubstanceRuleCache
+
+const VACUUM_SID := 0
+
+# ══════════════════════════════════════════════════════════════════
+# Lifecycle
+# ══════════════════════════════════════════════════════════════════
 
 func setup(
 	size: Vector2i,
@@ -29,277 +126,400 @@ func setup(
 	for i in n: L0[i] = 0.0
 	light.setup(index, L0)
 
-	# 로깅 및 검증 단계
-	_log_counts()
-	_validate()
+	# 로깅 및 검증
+	_log_setup_statistics()
+	_validate_invariants()
 
 func bind_rule_cache(cache: SubstanceRuleCache) -> void:
 	_rule_cache = cache
 
-# ───────────────────────────────────────────────────────────────
-## 단일 진입점(Write-API) → 복수 셀 배치 버전
-## 받는 키: "sid" | "phase" | "mass" | "temp"
-## 키가 없음 → 보존(preserve)
-## 키가 있고 값이 not null → 새 값으로 설정(set)
-## 키가 있고 값이 null → 스키마 기본값(default)으로 설정
+# ══════════════════════════════════════════════════════════════════
+# Write API - Spec-based Cell Updates
+# ══════════════════════════════════════════════════════════════════
+
+## Update multiple cells with a specification dictionary
+## Spec keys: "sid" | "phase" | "mass" | "temp" | "light"
+## - Key absent → preserve current value
+## - Key present with non-null value → set to new value
+## - Key present with null value → set to schema default
 func set_cells_with_spec(cells: Array[Vector2i], spec: Dictionary, reason: StringName = &"") -> void:
 	if cells.is_empty():
 		return
-
-	# ── Pass 1: 타깃 계산 & 변경 여부 수집 ────────────────────────────────
-	var idxs: Array[int] = []
-	var tgt_sids  : Array[int] = []
-	var tgt_phases: Array[int] = []
-	var tgt_masses: Array[int] = []
-	var tgt_temps : Array[int] = []
-	var tgt_lights: Array[float] = []
-
-	var ch_sid_arr  : Array[bool] = []
-	var ch_phase_arr: Array[bool] = []
-	var ch_mass_arr : Array[bool] = []
-	var ch_temp_arr : Array[bool] = []
-	var ch_light_arr: Array[bool] = []
-
-	var any_ch_sid   := false
-	var any_ch_phase := false
-	var any_ch_mass  := false
-	var any_ch_temp  := false
-	var any_ch_light := false
-
-	for cell in cells:
-		if not index.in_bounds_cell(cell):
-			push_error("[DataLayer.set_cells_with_spec] invalid cell: %s" % [cell])
-			continue
-		var i := index.idx(cell)
-
-		# 현재값
-		var cur_sid   : int = substance.get_by_index(i)
-		var cur_phase : int = phase.get_by_index(i)
-		var cur_mass  : int = mass.get_by_index(i)
-		var cur_temp  : int = temperature.get_by_index(i)
-
-		# 타깃 sid
-		var tgt_sid := cur_sid
-		if spec.has("sid"):
-			if spec["sid"] == null:
-				push_error("[DataLayer.set_cells_with_spec] sid cannot be null"); 
-				continue
-			tgt_sid = int(spec["sid"])
-
-		# 해당 sid 기준 기본 스펙
-		var default_spec := get_spec(tgt_sid)
-
-		# 타깃 필드 해석
-		var tgt_phase : int = int(_resolve_field("phase", cur_phase, default_spec, spec))
-		var tgt_mass  : int = int(_resolve_field("mass",  cur_mass,  default_spec, spec))
-		var tgt_temp  : int = int(_resolve_field("temp",  cur_temp,  default_spec, spec))
-
-		# 변경 여부
-		var ch_sid   : bool = spec.has("sid") and (tgt_sid != cur_sid)
-		var ch_phase : bool = (tgt_phase != cur_phase)
-		var ch_mass  : bool = (tgt_mass  != cur_mass)
-		var ch_temp  : bool = (tgt_temp  != cur_temp)
-
-		if not (ch_sid or ch_phase or ch_mass or ch_temp):
-			continue
-
-		# accumulate
-		idxs.append(i)
-		tgt_sids.append(tgt_sid)
-		tgt_phases.append(tgt_phase)
-		tgt_masses.append(tgt_mass)
-		tgt_temps.append(tgt_temp)
-
-		ch_sid_arr.append(ch_sid)
-		ch_phase_arr.append(ch_phase)
-		ch_mass_arr.append(ch_mass)
-		ch_temp_arr.append(ch_temp)
-
-		any_ch_sid   = any_ch_sid   or ch_sid
-		any_ch_phase = any_ch_phase or ch_phase
-		any_ch_mass  = any_ch_mass  or ch_mass
-		any_ch_temp  = any_ch_temp  or ch_temp
-
-	# 변경된 셀이 하나도 없으면 종료
-	if idxs.is_empty():
+	
+	var update_data := _calculate_cell_updates(cells, spec)
+	
+	if update_data.indices.is_empty():
 		return
+	
+	_apply_cell_updates(update_data)
+	_emit_tile_changes(update_data, reason)
 
-	# ── Pass 2: 스토어별 일괄 begin/set/commit ────────────────────────────
-	if any_ch_sid:   substance.begin_write()
-	if any_ch_phase: phase.begin_write()
-	if any_ch_mass:  mass.begin_write()
-	if any_ch_temp:  temperature.begin_write()
-
-	for k in idxs.size():
-		var ii := idxs[k]
-		if any_ch_sid and ch_sid_arr[k]:
-			substance.set_by_index(ii, tgt_sids[k])
-		if any_ch_phase and ch_phase_arr[k]:
-			phase.set_by_index(ii, tgt_phases[k])
-		if any_ch_mass and ch_mass_arr[k]:
-			mass.set_by_index(ii, tgt_masses[k])
-		if any_ch_temp and ch_temp_arr[k]:
-			temperature.set_by_index(ii, tgt_temps[k])
-
-	if any_ch_sid:   substance.commit()
-	if any_ch_phase: phase.commit()
-	if any_ch_mass:  mass.commit()
-	if any_ch_temp:  temperature.commit()
-
-	tiles_changed.emit(
-		PackedInt32Array(idxs),
-		(reason if reason != &"" else &"apply_spec_cells"),
-		{
-			"sid_changed": any_ch_sid,
-			"phase_changed": any_ch_phase,
-			"mass_changed": any_ch_mass,
-			"temp_changed": any_ch_temp,
-		}
-	)
-
-## 하위 호환/편의를 위한 단수 래퍼
-## 받는 키: "sid" | "phase" | "mass" | "temp"
-## 키가 없음 → 보존(preserve)
-## 키가 있고 값이 not null → 새 값으로 설정(set)
-## 키가 있고 값이 null → 스키마 기본값(default)으로 설정
+## Single-cell convenience wrapper for set_cells_with_spec
 func set_cell_with_spec(cell: Vector2i, spec: Dictionary, reason: StringName = &"") -> void:
 	set_cells_with_spec([cell], spec, reason)
 
-# 스토어 전체 교체 (개별 스토어 전용)
+# ── Update Calculation ───────────────────────────────────────────
+
+func _calculate_cell_updates(cells: Array[Vector2i], spec: Dictionary) -> Dictionary:
+	var indices: Array[int] = []
+	var target_sids: Array[int] = []
+	var target_phases: Array[int] = []
+	var target_masses: Array[int] = []
+	var target_temps: Array[int] = []
+	
+	var changed_sid: Array[bool] = []
+	var changed_phase: Array[bool] = []
+	var changed_mass: Array[bool] = []
+	var changed_temp: Array[bool] = []
+	
+	var any_sid_changed := false
+	var any_phase_changed := false
+	var any_mass_changed := false
+	var any_temp_changed := false
+	
+	for cell in cells:
+		if not index.in_bounds_cell(cell):
+			push_error("[DataLayer] Invalid cell: %s" % cell)
+			continue
+		
+		var update := _calculate_single_cell_update(cell, spec)
+		
+		if not update.has_changes:
+			continue
+		
+		indices.append(update.index)
+		target_sids.append(update.target_sid)
+		target_phases.append(update.target_phase)
+		target_masses.append(update.target_mass)
+		target_temps.append(update.target_temp)
+		
+		changed_sid.append(update.changed_sid)
+		changed_phase.append(update.changed_phase)
+		changed_mass.append(update.changed_mass)
+		changed_temp.append(update.changed_temp)
+		
+		any_sid_changed = any_sid_changed or update.changed_sid
+		any_phase_changed = any_phase_changed or update.changed_phase
+		any_mass_changed = any_mass_changed or update.changed_mass
+		any_temp_changed = any_temp_changed or update.changed_temp
+	
+	return {
+		"indices": indices,
+		"target_sids": target_sids,
+		"target_phases": target_phases,
+		"target_masses": target_masses,
+		"target_temps": target_temps,
+		"changed_sid": changed_sid,
+		"changed_phase": changed_phase,
+		"changed_mass": changed_mass,
+		"changed_temp": changed_temp,
+		"any_sid_changed": any_sid_changed,
+		"any_phase_changed": any_phase_changed,
+		"any_mass_changed": any_mass_changed,
+		"any_temp_changed": any_temp_changed
+	}
+
+func _calculate_single_cell_update(cell: Vector2i, spec: Dictionary) -> Dictionary:
+	var i := index.idx(cell)
+	
+	# Current values
+	var cur_sid := substance.get_by_index(i)
+	var cur_phase := phase.get_by_index(i)
+	var cur_mass := mass.get_by_index(i)
+	var cur_temp := temperature.get_by_index(i)
+	
+	# Target SID
+	var target_sid := cur_sid
+	if spec.has("sid"):
+		if spec["sid"] == null:
+			push_error("[DataLayer] SID cannot be null")
+			return {"has_changes": false}
+		target_sid = int(spec["sid"])
+	
+	# Get defaults for target SID
+	var default_spec := get_spec(target_sid)
+	
+	# Resolve target values
+	var target_phase := int(_resolve_field("phase", cur_phase, default_spec, spec))
+	var target_mass := int(_resolve_field("mass", cur_mass, default_spec, spec))
+	var target_temp := int(_resolve_field("temp", cur_temp, default_spec, spec))
+	
+	# Determine what changed
+	var changed_sid := spec.has("sid") and (target_sid != cur_sid)
+	var changed_phase := (target_phase != cur_phase)
+	var changed_mass := (target_mass != cur_mass)
+	var changed_temp := (target_temp != cur_temp)
+	
+	var has_changes := changed_sid or changed_phase or changed_mass or changed_temp
+	
+	return {
+		"has_changes": has_changes,
+		"index": i,
+		"target_sid": target_sid,
+		"target_phase": target_phase,
+		"target_mass": target_mass,
+		"target_temp": target_temp,
+		"changed_sid": changed_sid,
+		"changed_phase": changed_phase,
+		"changed_mass": changed_mass,
+		"changed_temp": changed_temp
+	}
+
+# ── Update Application ───────────────────────────────────────────
+
+func _apply_cell_updates(update_data: Dictionary) -> void:
+	var indices: Array = update_data.indices
+	
+	# Begin write transactions
+	if update_data.any_sid_changed:
+		substance.begin_write()
+	if update_data.any_phase_changed:
+		phase.begin_write()
+	if update_data.any_mass_changed:
+		mass.begin_write()
+	if update_data.any_temp_changed:
+		temperature.begin_write()
+	
+	# Apply updates
+	for k in indices.size():
+		var idx: int = indices[k]
+		
+		if update_data.any_sid_changed and update_data.changed_sid[k]:
+			substance.set_by_index(idx, update_data.target_sids[k])
+		
+		if update_data.any_phase_changed and update_data.changed_phase[k]:
+			phase.set_by_index(idx, update_data.target_phases[k])
+		
+		if update_data.any_mass_changed and update_data.changed_mass[k]:
+			mass.set_by_index(idx, update_data.target_masses[k])
+		
+		if update_data.any_temp_changed and update_data.changed_temp[k]:
+			temperature.set_by_index(idx, update_data.target_temps[k])
+	
+	# Commit transactions
+	if update_data.any_sid_changed:
+		substance.commit()
+	if update_data.any_phase_changed:
+		phase.commit()
+	if update_data.any_mass_changed:
+		mass.commit()
+	if update_data.any_temp_changed:
+		temperature.commit()
+
+func _emit_tile_changes(update_data: Dictionary, reason: StringName) -> void:
+	var final_reason := reason if reason != &"" else &"apply_spec_cells"
+	
+	tiles_changed.emit(
+		PackedInt32Array(update_data.indices),
+		final_reason,
+		{
+			"sid_changed": update_data.any_sid_changed,
+			"phase_changed": update_data.any_phase_changed,
+			"mass_changed": update_data.any_mass_changed,
+			"temp_changed": update_data.any_temp_changed
+		}
+	)
+
+# ══════════════════════════════════════════════════════════════════
+# Write API - Bulk Store Replacement
+# ══════════════════════════════════════════════════════════════════
+
 func set_bulk_sid(arr: PackedInt32Array, reason: StringName = &"") -> void:
-	var n := index.size.x * index.size.y
-	if arr.size() != n:
-		push_error("[DataLayer.set_bulk_sid] size mismatch: need=%d, got=%d" % [n, arr.size()]); return
+	if not _validate_bulk_array_size(arr.size()):
+		return
+	
 	substance.replace_all(arr, reason if reason != &"" else &"bulk_sid")
-	tiles_changed.emit(PackedInt32Array(), &"bulk_sid",
-		{"sid_changed": true, "full_refresh": true})
+	_emit_bulk_change(&"bulk_sid", {"sid_changed": true})
 
 func set_bulk_phase(arr: PackedByteArray, reason: StringName = &"") -> void:
-	var n := index.size.x * index.size.y
-	if arr.size() != n:
-		push_error("[DataLayer.set_bulk_phase] size mismatch: need=%d, got=%d" % [n, arr.size()]); return
+	if not _validate_bulk_array_size(arr.size()):
+		return
+	
 	phase.replace_all(arr, reason if reason != &"" else &"bulk_phase")
-	tiles_changed.emit(PackedInt32Array(), &"bulk_phase",
-		{"phase_changed": true, "full_refresh": true})
+	_emit_bulk_change(&"bulk_phase", {"phase_changed": true})
 
 func set_bulk_mass(arr: PackedInt64Array, reason: StringName = &"") -> void:
-	var n := index.size.x * index.size.y
-	if arr.size() != n:
-		push_error("[DataLayer.set_bulk_mass] size mismatch: need=%d, got=%d" % [n, arr.size()]); return
+	if not _validate_bulk_array_size(arr.size()):
+		return
+	
 	mass.replace_all(arr, reason if reason != &"" else &"bulk_mass")
-	tiles_changed.emit(PackedInt32Array(), &"bulk_mass",
-		{"mass_changed": true, "full_refresh": true})
+	_emit_bulk_change(&"bulk_mass", {"mass_changed": true})
 
 func set_bulk_temp(arr: PackedInt32Array, reason: StringName = &"") -> void:
-	var n := index.size.x * index.size.y
-	if arr.size() != n:
-		push_error("[DataLayer.set_bulk_temp] size mismatch: need=%d, got=%d" % [n, arr.size()]); return
+	if not _validate_bulk_array_size(arr.size()):
+		return
+	
 	temperature.replace_all(arr, reason if reason != &"" else &"bulk_temp")
-	tiles_changed.emit(PackedInt32Array(), &"bulk_temp",
-		{"temp_changed": true, "full_refresh": true})
+	_emit_bulk_change(&"bulk_temp", {"temp_changed": true})
 
 func set_bulk_light(arr: PackedFloat32Array, reason: StringName = &"") -> void:
-	var n := index.size.x * index.size.y
-	if arr.size() != n:
-		push_error("[DataLayer.set_bulk_light] size mismatch: need=%d, got=%d" % [n, arr.size()]); return
+	if not _validate_bulk_array_size(arr.size()):
+		return
+	
 	light.replace_all(arr, reason if reason != &"" else &"bulk_light")
-	tiles_changed.emit(PackedInt32Array(), &"bulk_light",
-		{"light_changed": true, "full_refresh": true})
+	_emit_bulk_change(&"bulk_light", {"light_changed": true})
 
-## 제네릭 버전
-## target: "sid" | "phase" | "mass" | "temp"
+## Generic bulk setter with type validation
 func set_store_bulk(target: StringName, values: Variant, reason: StringName = &"") -> void:
 	match String(target):
 		"sid":
-			if values is PackedInt32Array: set_bulk_sid(values, reason)
-			else: push_error("[DataLayer.set_store_bulk] sid expects PackedInt32Array")
+			if values is PackedInt32Array:
+				set_bulk_sid(values, reason)
+			else:
+				push_error("[DataLayer] 'sid' expects PackedInt32Array")
 		"phase":
-			if values is PackedByteArray: set_bulk_phase(values, reason)
-			else: push_error("[DataLayer.set_store_bulk] phase expects PackedByteArray")
+			if values is PackedByteArray:
+				set_bulk_phase(values, reason)
+			else:
+				push_error("[DataLayer] 'phase' expects PackedByteArray")
 		"mass":
-			if values is PackedInt64Array: set_bulk_mass(values, reason)
-			else: push_error("[DataLayer.set_store_bulk] mass expects PackedInt64Array")
+			if values is PackedInt64Array:
+				set_bulk_mass(values, reason)
+			else:
+				push_error("[DataLayer] 'mass' expects PackedInt64Array")
 		"temp":
-			if values is PackedInt32Array: set_bulk_temp(values, reason)
-			else: push_error("[DataLayer.set_store_bulk] temp expects PackedInt32Array")
+			if values is PackedInt32Array:
+				set_bulk_temp(values, reason)
+			else:
+				push_error("[DataLayer] 'temp' expects PackedInt32Array")
 		"light":
-			if values is PackedFloat32Array: set_bulk_light(values, reason)
-			else: push_error("[DataLayer.set_store_bulk] light expects PackedFloat32Array")
+			if values is PackedFloat32Array:
+				set_bulk_light(values, reason)
+			else:
+				push_error("[DataLayer] 'light' expects PackedFloat32Array")
 		_:
-			push_error("[DataLayer.set_store_bulk] unknown target: %s" % [target])
+			push_error("[DataLayer] Unknown bulk target: %s" % target)
+
+# ── Bulk Update Helpers ──────────────────────────────────────────
+
+func _validate_bulk_array_size(array_size: int) -> bool:
+	var expected_size := index.size.x * index.size.y
+	
+	if array_size != expected_size:
+		push_error("[DataLayer] Array size mismatch: expected=%d, got=%d" 
+			% [expected_size, array_size])
+		return false
+	
+	return true
+
+func _emit_bulk_change(reason: StringName, changes: Dictionary) -> void:
+	var payload := changes.duplicate()
+	payload["full_refresh"] = true
+	tiles_changed.emit(PackedInt32Array(), reason, payload)
+
+# ══════════════════════════════════════════════════════════════════
+# Spec Resolution
+# ══════════════════════════════════════════════════════════════════
 
 func get_spec(tile_id: int) -> Dictionary:
-	if tile_id == 0:
-		return {"phase": PhaseStore.Phase.VACUUM, "mass": 0, "temp": 0, "light": 0.0}
-
+	if tile_id == VACUUM_SID:
+		return _get_vacuum_spec()
+	
 	if _rule_cache == null:
-		push_error("[DataLayer] _rule_cache is null"); return {}
-
-	var d := _rule_cache.get_defaults_for_sid(tile_id)
-	if d.is_empty():
-		push_error("[DataLayer] defaults not found for sid=%s" % tile_id)
+		push_error("[DataLayer] Rule cache not bound")
 		return {}
+	
+	var defaults := _rule_cache.get_defaults_for_sid(tile_id)
+	if defaults.is_empty():
+		push_error("[DataLayer] No defaults found for SID=%d" % tile_id)
+		return {}
+	
+	return _convert_defaults_to_spec(defaults)
 
-	# phase 문자열 → PhaseStore.Phase enum
-	var ph: String = d.get("phase", "vacuum")
-	var ph_enum := _phase_string_to_enum(String(ph))
-
+func _get_vacuum_spec() -> Dictionary:
 	return {
-		"phase": ph_enum,
-		"mass":  int(d.get("mass", 0)),
-		"temp":  int(d.get("temp", 0)),
-		"light": float(d.get("light", 0.0)),
+		"phase": PhaseStore.Phase.VACUUM,
+		"mass": 0,
+		"temp": 0,
+		"light": 0.0
 	}
 
-func _phase_string_to_enum(s: String) -> int:
-	match s:
-		"solid":  return PhaseStore.Phase.SOLID
-		"liquid": return PhaseStore.Phase.LIQUID
-		"gas":    return PhaseStore.Phase.GAS
-		"vacuum": return PhaseStore.Phase.VACUUM
-		_:        return PhaseStore.Phase.VACUUM
+func _convert_defaults_to_spec(defaults: Dictionary) -> Dictionary:
+	var phase_str := String(defaults.get("phase", "vacuum"))
+	var phase_enum := _phase_string_to_enum(phase_str)
+	
+	return {
+		"phase": phase_enum,
+		"mass": int(defaults.get("mass", 0)),
+		"temp": int(defaults.get("temp", 0)),
+		"light": float(defaults.get("light", 0.0))
+	}
 
-## 규칙 해석 헬퍼: 없음=보존 / null=기본 / 값=설정
-func _resolve_field(field: String,current: Variant, default_spec: Dictionary, spec: Dictionary) -> Variant:
+func _phase_string_to_enum(phase_str: String) -> int:
+	match phase_str:
+		"solid":
+			return PhaseStore.Phase.SOLID
+		"liquid":
+			return PhaseStore.Phase.LIQUID
+		"gas":
+			return PhaseStore.Phase.GAS
+		"vacuum":
+			return PhaseStore.Phase.VACUUM
+		_:
+			return PhaseStore.Phase.VACUUM
+
+## Resolve field value: absent=preserve / null=default / value=set
+func _resolve_field(
+	field: String,
+	current: Variant,
+	default_spec: Dictionary,
+	spec: Dictionary
+) -> Variant:
 	if not spec.has(field):
 		return current
-	var v = spec[field]
-	if v == null:
-		return default_spec.get(field, current) # 기본값 없으면 보존 fallback
-	return v
+	
+	var value = spec[field]
+	
+	if value == null:
+		return default_spec.get(field, current)
+	
+	return value
 
-# ───────────────────────────────────────────────────────────────
-## 각 phase 수 집계
-func _log_counts() -> void:
-	var counts := [0, 0, 0, 0]
-	var data := phase.get_raw_read()
-	for i in data.size():
-		counts[data[i]] += 1
-	print("[DataLayer] SOLID=%d LIQUID=%d GAS=%d VACUUM=%d" % [counts[PhaseStore.Phase.SOLID], counts[PhaseStore.Phase.LIQUID], counts[PhaseStore.Phase.GAS], counts[PhaseStore.Phase.VACUUM]])
+# ══════════════════════════════════════════════════════════════════
+# Statistics & Validation
+# ══════════════════════════════════════════════════════════════════
 
-## 무결성 검증(기존 + 물질/phase 일관성 체크 옵션)
-func _validate() -> void:
-	var p := phase.get_raw_read()
-	var m := mass.get_raw_read()
-	var violations: int = 0
-	for i in p.size():
-		match p[i]:
-			PhaseStore.Phase.VACUUM:
-				if m[i] != 0:
-					violations += 1
-			PhaseStore.Phase.LIQUID:
-				if m[i] <= 0:
-					violations += 1
-			PhaseStore.Phase.SOLID:
-				if m[i] <= 0:
-					violations += 1
-			PhaseStore.Phase.GAS:
-				# 현재 가스 질량은 추적하지 않는다고 가정
-				if m[i] != 0:
-					violations += 1
-			_:
-				pass
+func _log_setup_statistics() -> void:
+	var phase_counts := _count_phases()
+	
+	print("[DataLayer] Phase distribution: SOLID=%d LIQUID=%d GAS=%d VACUUM=%d" % [
+		phase_counts[PhaseStore.Phase.SOLID],
+		phase_counts[PhaseStore.Phase.LIQUID],
+		phase_counts[PhaseStore.Phase.GAS],
+		phase_counts[PhaseStore.Phase.VACUUM]
+	])
+
+func _count_phases() -> Array[int]:
+	var counts: Array[int] = [0, 0, 0, 0]
+	var phases := phase.get_raw_read()
+	
+	for i in phases.size():
+		counts[phases[i]] += 1
+	
+	return counts
+
+func _validate_invariants() -> void:
+	var phases := phase.get_raw_read()
+	var masses := mass.get_raw_read()
+	var violations := 0
+	
+	for i in phases.size():
+		if not _check_phase_mass_invariant(phases[i], masses[i]):
+			violations += 1
+	
 	if violations > 0:
-		push_error("[DataLayer] invariant violations: %d" % violations)
+		push_error("[DataLayer] Invariant violations: %d" % violations)
 	else:
-		print("[DataLayer] invariants: OK")
+		print("[DataLayer] Invariants: OK")
+
+func _check_phase_mass_invariant(phase_value: int, mass_value: int) -> bool:
+	match phase_value:
+		PhaseStore.Phase.VACUUM:
+			return mass_value == 0
+		PhaseStore.Phase.LIQUID, PhaseStore.Phase.SOLID:
+			return mass_value > 0
+		PhaseStore.Phase.GAS:
+			# Gas mass is not currently tracked
+			return mass_value == 0
+		_:
+			return true
