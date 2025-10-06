@@ -26,10 +26,13 @@ var _sid_uran  : int
 var _sid_copper: int
 const SID_VACUUM := 0
 
-# °cC(= °C*100) → cK: cK = cC + 27315
-const CK_0C := 27315
-static func _cc_to_ck(cC: int) -> int:
-	return cC + CK_0C
+# ── Constants ────────────────────────────────────────────────────
+const CK_0C := 27315  # Conversion offset: °C*100 → cK
+const CAVE_MIN_DEPTH := 6
+const CAVE_INIT_FILL := 0.42
+const CAVE_SURVIVE_LIMIT := 4
+const CAVE_BIRTH_LIMIT := 5
+const CAVE_SMOOTH_STEPS := 4
 
 # ══════════════════════════════════════════════════════════════════
 # Setup & Generation Entry Point
@@ -39,317 +42,474 @@ func bind_rule_cache(cache: SubstanceRuleCache) -> void:
 	_rule_cache = cache
 
 func generate() -> void:
-	if profile == null: push_error("[WorldGen.generate] profile not found")
-	if _rule_cache == null:
-		push_error("[WorldGen] rule_cache not bound")
+	if not _validate_setup():
 		return
-
+	
 	size = profile.size
+	_cache_substance_ids()
 
-	# SID 캐시
-	_sid_water  = _rule_cache.sid_of("liquid/water")
-	_sid_ice    = _rule_cache.sid_of("solid/ice")
+	var world_data := _generate_world_data()
+	_emit_generated_signal(world_data)
+
+# ── Validation ───────────────────────────────────────────────────
+
+func _validate_setup() -> bool:
+	if profile == null:
+		push_error("[WorldGen] Profile not found")
+		return false
+	
+	if _rule_cache == null:
+		push_error("[WorldGen] Rule cache not bound")
+		return false
+	
+	return true
+
+func _cache_substance_ids() -> void:
+	_sid_water = _rule_cache.sid_of("liquid/water")
+	_sid_ice = _rule_cache.sid_of("solid/ice")
 	_sid_ground = _rule_cache.sid_of("solid/soil")
-	_sid_uran   = _rule_cache.sid_of("solid/uranium")
+	_sid_uran = _rule_cache.sid_of("solid/uranium")
 	_sid_copper = _rule_cache.sid_of("solid/copper")
 
-	# ── 1) 소스 레이어 생성 ───────────────────────────────────────────────
-	var hmap := generate_heightmap()
-	var base := build_base_solid_layer(hmap)        # PackedInt32Array (sid)
-	var mask_cave := build_mask_cave(hmap)          # PackedByteArray  (0/1)
-	var feat_u := build_feat_uranium(hmap, base)    # PackedByteArray  (0/1)
-	var feat_c := build_feat_copper(hmap, base)     # PackedByteArray  (0/1)
-	var liquid := build_liquid_layer(hmap)          # {amount, springs}
+# ══════════════════════════════════════════════════════════════════
+# World Data Generation
+# ══════════════════════════════════════════════════════════════════
 
-	# ── 2) 레이어 합성(타일용 고체/진공만 확정) ───────────────────────────
-	var tiles_composed: PackedInt32Array = base.duplicate()  # 고체/진공 결과(액체는 별도)
-	var n := tiles_composed.size()
+func _generate_world_data() -> Dictionary:
+	# 1) Generate source layers
+	var hmap := _generate_heightmap()
+	var base := _build_base_solid_layer(hmap)
+	var mask_cave := _build_mask_cave(hmap)
+	var feat_uranium := _build_feat_uranium(hmap, base)
+	var feat_copper := _build_feat_copper(hmap, base)
+	var liquid := _build_liquid_layer(hmap)
+	
+	# 2) Compose layers (solid/vacuum only, liquid handled separately)
+	var tiles_composed := _compose_tile_layers(base, mask_cave, feat_uranium, feat_copper)
+	
+	# 3) Finalize arrays (apply liquid priority)
+	return _finalize_world_arrays(tiles_composed, liquid)
+
+func _compose_tile_layers(
+	base: PackedInt32Array,
+	mask_cave: PackedByteArray,
+	feat_uranium: PackedByteArray,
+	feat_copper: PackedByteArray
+) -> PackedInt32Array:
+	var tiles := base.duplicate()
+	var n := tiles.size()
+	
 	for i in n:
-		# 2-1) 동굴 마스크: 비우기(진공)
+		# Apply cave mask (vacuum)
 		if mask_cave[i] == 1:
-			tiles_composed[i] = SID_VACUUM
+			tiles[i] = SID_VACUUM
 			continue
+		
+		# Apply feature overlays (priority: uranium > copper), skip vacuum
+		if tiles[i] != SID_VACUUM:
+			if feat_uranium[i] == 1:
+				tiles[i] = _sid_uran
+			elif feat_copper[i] == 1:
+				tiles[i] = _sid_copper
+	
+	return tiles
 
-		# 2-2) 피처 덮어쓰기(우선순위: 우라늄 > 구리), 진공은 제외
-		if tiles_composed[i] != SID_VACUUM:
-			if feat_u[i] == 1:
-				tiles_composed[i] = _sid_uran
-			elif feat_c[i] == 1:
-				tiles_composed[i] = _sid_copper
-	# 이제 tiles_composed = (Base → Mask → Feature) 합성 결과
-
-	# ── 3) 최종 배열 확정(액체는 최종 단계에서 우선 적용) ────────────────
-	var phases := PackedByteArray();   phases.resize(n)
-	var mass := PackedInt64Array();    mass.resize(n)
-	var substances := PackedInt32Array(); substances.resize(n)
-	var temperatures := PackedInt32Array(); temperatures.resize(n)
-
+func _finalize_world_arrays(tiles_composed: PackedInt32Array, liquid: Dictionary) -> Dictionary:
+	var n := tiles_composed.size()
+	
+	var phases := PackedByteArray()
+	var mass := PackedInt64Array()
+	var substances := PackedInt32Array()
+	var temperatures := PackedInt32Array()
+	
+	phases.resize(n)
+	mass.resize(n)
+	substances.resize(n)
+	temperatures.resize(n)
+	
 	for i in n:
-		var liq: int = liquid.amount[i]
-
-		# 3-1) 액체가 있으면 최종적으로 물/액체로 확정
-		if liq > 0:
-			phases[i] = PhaseStore.Phase.LIQUID
-			mass[i] = liq
-			substances[i] = _sid_water
-			temperatures[i] = _cc_to_ck(profile.water_temp_init_cC)
-			continue
-
-		# 3-2) 액체가 없으면 합성된 tiles를 기준으로 상/질량/온도 확정
-		match tiles_composed[i]:
-			_sid_ground:
-				phases[i] = PhaseStore.Phase.SOLID
-				mass[i] = profile.ground_mass_mg_per_cell
-				substances[i] = _sid_ground
-				temperatures[i] = _cc_to_ck(profile.ground_temp_init_cC)
-			_sid_ice:
-				phases[i] = PhaseStore.Phase.SOLID
-				mass[i] = profile.ice_mass_mg_per_cell
-				substances[i] = _sid_ice
-				temperatures[i] = _cc_to_ck(profile.ice_temp_init_cC)
-			_sid_uran:
-				phases[i] = PhaseStore.Phase.SOLID
-				mass[i] = profile.uranium_mass_mg_per_cell
-				substances[i] = _sid_uran
-				temperatures[i] = _cc_to_ck(profile.uranium_temp_init_cC)
-			_sid_copper:
-				phases[i] = PhaseStore.Phase.SOLID
-				mass[i] = profile.copper_mass_mg_per_cell
-				substances[i] = _sid_copper
-				temperatures[i] = _cc_to_ck(profile.copper_temp_init_cC)
-			_:
-				phases[i] = PhaseStore.Phase.VACUUM
-				mass[i] = 0
-				substances[i] = SID_VACUUM
-				temperatures[i] = 0
-
+		var liq_amount: int = liquid.amount[i]
+		
+		# Liquid has final priority
+		if liq_amount > 0:
+			_set_cell_as_liquid(i, liq_amount, phases, mass, substances, temperatures)
+		else:
+			_set_cell_from_tile(i, tiles_composed[i], phases, mass, substances, temperatures)
+	
 	_assert_world_arrays(substances, phases, mass, temperatures, tiles_composed)
+	
+	return {
+		"substances": substances,
+		"phases": phases,
+		"mass": mass,
+		"temperatures": temperatures,
+		"tiles": tiles_composed,
+		"springs": liquid.springs
+	}
 
-	generated.emit(size, substances, phases, mass, temperatures, tiles_composed, liquid.springs)
+func _set_cell_as_liquid(
+	idx: int,
+	liq_amount: int,
+	phases: PackedByteArray,
+	mass: PackedInt64Array,
+	substances: PackedInt32Array,
+	temperatures: PackedInt32Array
+) -> void:
+	phases[idx] = PhaseStore.Phase.LIQUID
+	mass[idx] = liq_amount
+	substances[idx] = _sid_water
+	temperatures[idx] = _cc_to_ck(profile.water_temp_init_cC)
 
-# ─────────────────────────────────────────────────────────────────────────────
+func _set_cell_from_tile(
+	idx: int,
+	tile_sid: int,
+	phases: PackedByteArray,
+	mass: PackedInt64Array,
+	substances: PackedInt32Array,
+	temperatures: PackedInt32Array
+) -> void:
+	match tile_sid:
+		_sid_ground:
+			_set_cell_data(idx, PhaseStore.Phase.SOLID, profile.ground_mass_mg_per_cell,
+				_sid_ground, profile.ground_temp_init_cC, phases, mass, substances, temperatures)
+		_sid_ice:
+			_set_cell_data(idx, PhaseStore.Phase.SOLID, profile.ice_mass_mg_per_cell,
+				_sid_ice, profile.ice_temp_init_cC, phases, mass, substances, temperatures)
+		_sid_uran:
+			_set_cell_data(idx, PhaseStore.Phase.SOLID, profile.uranium_mass_mg_per_cell,
+				_sid_uran, profile.uranium_temp_init_cC, phases, mass, substances, temperatures)
+		_sid_copper:
+			_set_cell_data(idx, PhaseStore.Phase.SOLID, profile.copper_mass_mg_per_cell,
+				_sid_copper, profile.copper_temp_init_cC, phases, mass, substances, temperatures)
+		_:
+			_set_cell_data(idx, PhaseStore.Phase.VACUUM, 0, SID_VACUUM, 0,
+				phases, mass, substances, temperatures)
+
+func _set_cell_data(
+	idx: int,
+	phase: int,
+	cell_mass: int,
+	sid: int,
+	temp_cC: int,
+	phases: PackedByteArray,
+	mass: PackedInt64Array,
+	substances: PackedInt32Array,
+	temperatures: PackedInt32Array
+) -> void:
+	phases[idx] = phase
+	mass[idx] = cell_mass
+	substances[idx] = sid
+	temperatures[idx] = _cc_to_ck(temp_cC)
+
+func _emit_generated_signal(data: Dictionary) -> void:
+	generated.emit(
+		size,
+		data.substances,
+		data.phases,
+		data.mass,
+		data.temperatures,
+		data.tiles,
+		data.springs
+	)
+
+# ══════════════════════════════════════════════════════════════════
+# Layer Generators
+# ══════════════════════════════════════════════════════════════════
+
 ## Build a 1D heightmap representing surface level per column
-func generate_heightmap() -> PackedInt32Array:
-	var hmap: PackedInt32Array = PackedInt32Array()
+func _generate_heightmap() -> PackedInt32Array:
+	var hmap := PackedInt32Array()
 	hmap.resize(size.x)
-
-	var n_height := FastNoiseLite.new()
-	n_height.seed = profile.seed_height
-	n_height.noise_type = FastNoiseLite.TYPE_SIMPLEX
-	n_height.frequency = profile.height_freq
-
+	
+	var noise := _create_noise(profile.seed_height, profile.height_freq)
+	
 	for x in size.x:
-		var h:int = int(n_height.get_noise_1d(float(x)) * 12.0) + int(size.y * 0.55)
-		h = clamp(h, 16, size.y - 8)
-		hmap[x] = h
-
+		var h := int(noise.get_noise_1d(float(x)) * 12.0) + int(size.y * 0.55)
+		hmap[x] = clamp(h, 16, size.y - 8)
+	
 	return hmap
 
-# ─────────────────────────────────────────────────────────────────────────────
-## Base Layer: ground/ice/vac 결정 (기존 classify_tiles)
-func build_base_solid_layer(hmap: PackedInt32Array) -> PackedInt32Array:
-	var n_ice := FastNoiseLite.new()
-	n_ice.seed = profile.ice_seed
-	n_ice.noise_type = FastNoiseLite.TYPE_SIMPLEX
-	n_ice.frequency = profile.ice_freq
-
-	var tiles_base: PackedInt32Array = PackedInt32Array()
+## Base Layer: ground/ice/vacuum determination
+func _build_base_solid_layer(hmap: PackedInt32Array) -> PackedInt32Array:
+	var noise := _create_noise(profile.ice_seed, profile.ice_freq)
+	var tiles_base := PackedInt32Array()
 	tiles_base.resize(size.x * size.y)
-
+	
 	for y in size.y:
 		for x in size.x:
-			var idx:int = y * size.x + x
+			var idx := y * size.x + x
+			
 			if y < hmap[x]:
 				tiles_base[idx] = SID_VACUUM
 				continue
-
-			var depth:int = y - hmap[x]
-			var surface_bonus: float = 0.0
-			if depth <= profile.ice_max_depth:
-				var t: float = 1.0 - (float(depth) / float(profile.ice_max_depth))
-				surface_bonus = t * profile.ice_edge_bonus
-
-			var m: float = (n_ice.get_noise_2d(float(x), float(y)) + 1.0) * 0.5 # [0,1]
-			var score: float = m + surface_bonus
-			tiles_base[idx] = _sid_ice if score >= profile.ice_threshold else _sid_ground
-
+			
+			var depth := y - hmap[x]
+			var ice_score := _calculate_ice_score(noise, x, y, depth)
+			tiles_base[idx] = _sid_ice if ice_score >= profile.ice_threshold else _sid_ground
+	
 	return tiles_base
 
-# ─────────────────────────────────────────────────────────────────────────────
-## Mask: Cave (기존 compute_cave_mask)
-func build_mask_cave(hmap: PackedInt32Array) -> PackedByteArray:
-	const MIN_DEPTH := 6
-	const INIT_FILL := 0.42
-	const SURVIVE_LIMIT := 4
-	const BIRTH_LIMIT := 5
-	const STEPS := 4
+func _calculate_ice_score(noise: FastNoiseLite, x: int, y: int, depth: int) -> float:
+	var surface_bonus := 0.0
+	
+	if depth <= profile.ice_max_depth:
+		var t := 1.0 - (float(depth) / float(profile.ice_max_depth))
+		surface_bonus = t * profile.ice_edge_bonus
+	
+	var noise_value := (noise.get_noise_2d(float(x), float(y)) + 1.0) * 0.5  # Normalize to [0,1]
+	return noise_value + surface_bonus
 
+## Mask: Cave generation with cellular automata
+func _build_mask_cave(hmap: PackedInt32Array) -> PackedByteArray:
+	var mask := _initialize_cave_mask(hmap)
+	mask = _smooth_cave_mask(mask, hmap)
+	_seal_surface_connections(mask, hmap)
+	_seal_boundaries(mask)
+	
+	return mask
+
+func _initialize_cave_mask(hmap: PackedInt32Array) -> PackedByteArray:
 	var w := size.x
 	var h := size.y
-	var n := w * h
-
-	var mask_cave := PackedByteArray(); mask_cave.resize(n)
-	for i in n: mask_cave[i] = 0
-
+	var mask := PackedByteArray()
+	mask.resize(w * h)
+	mask.fill(0)
+	
 	var rng := RandomNumberGenerator.new()
 	rng.seed = int(profile.seed_height) ^ String("cave").hash()
-
+	
 	for x in w:
-		var start_y: float = clamp(hmap[x] + MIN_DEPTH, 0, h)
+		var start_y := int(clamp(hmap[x] + CAVE_MIN_DEPTH, 0, h))
 		for y in range(start_y, h):
 			var idx := y * w + x
-			mask_cave[idx] = 1 if rng.randf() < INIT_FILL else 0
+			mask[idx] = 1 if rng.randf() < CAVE_INIT_FILL else 0
+	
+	return mask
 
-	var neigh := [
-		Vector2i(-1,-1), Vector2i(0,-1), Vector2i(1,-1),
-		Vector2i(-1, 0),                 Vector2i(1, 0),
-		Vector2i(-1, 1), Vector2i(0, 1), Vector2i(1, 1)
+func _smooth_cave_mask(mask: PackedByteArray, hmap: PackedInt32Array) -> PackedByteArray:
+	var current_mask := mask
+	
+	for _step in CAVE_SMOOTH_STEPS:
+		current_mask = _apply_cellular_automata_step(current_mask, hmap)
+	
+	return current_mask
+
+func _apply_cellular_automata_step(mask: PackedByteArray, hmap: PackedInt32Array) -> PackedByteArray:
+	var w := size.x
+	var h := size.y
+	var next_mask := PackedByteArray()
+	next_mask.resize(w * h)
+	next_mask.fill(0)
+	
+	const NEIGHBORS := [
+		Vector2i(-1, -1), Vector2i(0, -1), Vector2i(1, -1),
+		Vector2i(-1,  0),                  Vector2i(1,  0),
+		Vector2i(-1,  1), Vector2i(0,  1), Vector2i(1,  1)
 	]
-	for _step in STEPS:
-		var mask_next := PackedByteArray(); mask_next.resize(n) ## temporary buffer for smoothing step
-		for i in n: mask_next[i] = 0
-
-		for y in h:
-			for x in w:
-				if y < hmap[x] + MIN_DEPTH:
-					continue
-				var idx := y * w + x
-				var cur := int(mask_cave[idx])
-				var cnt := 0
-				for d in neigh:
-					var nx: int = x + d.x
-					var ny: int = y + d.y
-					if nx < 0 or nx >= w or ny < 0 or ny >= h:
-						continue
-					if ny >= hmap[nx] + MIN_DEPTH and mask_cave[ny * w + nx] == 1:
-						cnt += 1
-				if cur == 1 and cnt >= SURVIVE_LIMIT:
-					mask_next[idx] = 1
-				elif cur == 0 and cnt >= BIRTH_LIMIT:
-					mask_next[idx] = 1
-				else:
-					mask_next[idx] = 0
-		mask_cave = mask_next
-
-	# 표면 연결 제거(입구 봉인)
-	var stack := []
-	var visited := PackedByteArray(); visited.resize(n)
-	for i in n: visited[i] = 0
-
-	for x in w:
-		var y0 := hmap[x] + MIN_DEPTH
-		if y0 < 0 or y0 >= h: continue
-		var i0 := y0 * w + x
-		if mask_cave[i0] != 1: continue
-		stack.clear()
-		stack.append(i0)
-		while stack.size() > 0:
-			var ii: int = stack.pop_back()
-			if ii < 0 or ii >= n: continue
-			if visited[ii] == 1: continue
-			visited[ii] = 1
-			if mask_cave[ii] != 1: continue
-			mask_cave[ii] = 0
-			var cx := ii % w
-			@warning_ignore("integer_division")
-			var cy := ii / w
-			if cx > 0:         stack.append(ii - 1)
-			if cx < w - 1:     stack.append(ii + 1)
-			if cy > 0:         stack.append(ii - w)
-			if cy < h - 1:     stack.append(ii + w)
-
-	# 외곽 0
+	
 	for y in h:
-		mask_cave[y * w + 0] = 0
-		mask_cave[y * w + (w - 1)] = 0
-	for x in w:
-		mask_cave[(h - 1) * w + x] = 0
+		for x in w:
+			if y < hmap[x] + CAVE_MIN_DEPTH:
+				continue
+			
+			var idx := y * w + x
+			var is_cave := mask[idx] == 1
+			var cave_neighbors := _count_cave_neighbors(mask, hmap, x, y, NEIGHBORS)
+			
+			if is_cave and cave_neighbors >= CAVE_SURVIVE_LIMIT:
+				next_mask[idx] = 1
+			elif not is_cave and cave_neighbors >= CAVE_BIRTH_LIMIT:
+				next_mask[idx] = 1
+	
+	return next_mask
 
-	return mask_cave
+func _count_cave_neighbors(
+	mask: PackedByteArray,
+	hmap: PackedInt32Array,
+	x: int,
+	y: int,
+	neighbors: Array
+) -> int:
+	var w := size.x
+	var h := size.y
+	var count := 0
+	
+	for delta in neighbors:
+		var nx: int = x + delta.x
+		var ny: int = y + delta.y
+		
+		if nx < 0 or nx >= w or ny < 0 or ny >= h:
+			continue
+		
+		if ny >= hmap[nx] + CAVE_MIN_DEPTH and mask[ny * w + nx] == 1:
+			count += 1
+	
+	return count
 
-# ─────────────────────────────────────────────────────────────────────────────
-## Feature: Uranium (0/1 마스크로 출력, ground에만 스폰)
-func build_feat_uranium(hmap: PackedInt32Array, base: PackedInt32Array) -> PackedByteArray:
+func _seal_surface_connections(mask: PackedByteArray, hmap: PackedInt32Array) -> void:
 	var w := size.x
 	var h := size.y
 	var n := w * h
+	var visited := PackedByteArray()
+	visited.resize(n)
+	visited.fill(0)
+	
+	for x in w:
+		var surface_y := hmap[x] + CAVE_MIN_DEPTH
+		if surface_y < 0 or surface_y >= h:
+			continue
+		
+		var surface_idx := surface_y * w + x
+		if mask[surface_idx] != 1:
+			continue
+		
+		_flood_fill_remove_cave(mask, visited, surface_idx, w, h)
 
-	var mask_feat_uranium := PackedByteArray(); mask_feat_uranium.resize(n)
-	for i in n: mask_feat_uranium[i] = 0
+func _flood_fill_remove_cave(
+	mask: PackedByteArray,
+	visited: PackedByteArray,
+	start_idx: int,
+	w: int,
+	h: int
+) -> void:
+	var stack := [start_idx]
+	var n := w * h
+	
+	while stack.size() > 0:
+		var idx: int = stack.pop_back()
+		
+		if idx < 0 or idx >= n or visited[idx] == 1:
+			continue
+		
+		visited[idx] = 1
+		
+		if mask[idx] != 1:
+			continue
+		
+		mask[idx] = 0
+		
+		var cx: int = idx % w
+		var cy: int = idx / w
+		
+		if cx > 0:
+			stack.append(idx - 1)
+		if cx < w - 1:
+			stack.append(idx + 1)
+		if cy > 0:
+			stack.append(idx - w)
+		if cy < h - 1:
+			stack.append(idx + w)
 
-	var n_u := FastNoiseLite.new()
-	n_u.seed = profile.uranium_seed
-	n_u.noise_type = FastNoiseLite.TYPE_SIMPLEX
-	n_u.frequency = profile.uranium_freq
-
-	var rng := RandomNumberGenerator.new()
-	rng.seed = int(profile.uranium_seed)
-
+func _seal_boundaries(mask: PackedByteArray) -> void:
+	var w := size.x
+	var h := size.y
+	
+	# Seal left and right edges
 	for y in h:
-		for x in w:
-			var idx := y * w + x
-			if base[idx] != _sid_ground:
-				continue
+		mask[y * w] = 0
+		mask[y * w + (w - 1)] = 0
+	
+	# Seal bottom edge
+	for x in w:
+		mask[(h - 1) * w + x] = 0
 
-			var depth2: int = y - hmap[x]
-			if depth2 < profile.uranium_depth_min or depth2 > profile.uranium_depth_max:
-				continue
+## Feature: Uranium ore generation
+func _build_feat_uranium(hmap: PackedInt32Array, base: PackedInt32Array) -> PackedByteArray:
+	return _build_feature_layer(
+		hmap,
+		base,
+		profile.uranium_seed,
+		profile.uranium_freq,
+		profile.uranium_depth_min,
+		profile.uranium_depth_max,
+		profile.uranium_threshold,
+		profile.uranium_density
+	)
 
-			var nu: float = (n_u.get_noise_2d(float(x), float(y)) + 1.0) * 0.5
-			var hit_noise: bool = (nu >= profile.uranium_threshold)
-			var hit_rand: bool = (rng.randf() < profile.uranium_density)
-			if hit_noise or hit_rand:
-				mask_feat_uranium[idx] = 1
-	return mask_feat_uranium
+## Feature: Copper ore generation
+func _build_feat_copper(hmap: PackedInt32Array, base: PackedInt32Array) -> PackedByteArray:
+	return _build_feature_layer(
+		hmap,
+		base,
+		profile.copper_seed,
+		profile.copper_freq,
+		profile.copper_depth_min,
+		profile.copper_depth_max,
+		profile.copper_threshold,
+		profile.copper_density
+	)
 
-# ─────────────────────────────────────────────────────────────────────────────
-## Feature: Copper (0/1 마스크로 출력, ground에만 스폰)
-func build_feat_copper(hmap: PackedInt32Array, base: PackedInt32Array) -> PackedByteArray:
+func _build_feature_layer(
+	hmap: PackedInt32Array,
+	base: PackedInt32Array,
+	seed: int,
+	freq: float,
+	depth_min: int,
+	depth_max: int,
+	threshold: float,
+	density: float
+) -> PackedByteArray:
 	var w := size.x
 	var h := size.y
 	var n := w * h
-
-	var mask_feat_copper := PackedByteArray(); mask_feat_copper.resize(n)
-	for i in n: mask_feat_copper[i] = 0
-
-	var n_c := FastNoiseLite.new()
-	n_c.seed = profile.copper_seed
-	n_c.noise_type = FastNoiseLite.TYPE_SIMPLEX
-	n_c.frequency = profile.copper_freq
-
+	
+	var mask := PackedByteArray()
+	mask.resize(n)
+	mask.fill(0)
+	
+	var noise := _create_noise(seed, freq)
 	var rng := RandomNumberGenerator.new()
-	rng.seed = int(profile.copper_seed)
-
+	rng.seed = seed
+	
 	for y in h:
 		for x in w:
 			var idx := y * w + x
+			
+			# Only spawn on ground tiles
 			if base[idx] != _sid_ground:
 				continue
-
-			var depth: int = y - hmap[x]
-			if depth < profile.copper_depth_min or depth > profile.copper_depth_max:
+			
+			# Check depth range
+			var depth := y - hmap[x]
+			if depth < depth_min or depth > depth_max:
 				continue
+			
+			# Check noise and random thresholds
+			var noise_value := (noise.get_noise_2d(float(x), float(y)) + 1.0) * 0.5
+			var hit_noise := noise_value >= threshold
+			var hit_random := rng.randf() < density
+			
+			if hit_noise or hit_random:
+				mask[idx] = 1
+	
+	return mask
 
-			var nc: float = (n_c.get_noise_2d(float(x), float(y)) + 1.0) * 0.5
-			var hit_noise: bool = (nc >= profile.copper_threshold)
-			var hit_rand: bool = (rng.randf() < profile.copper_density)
-			if hit_noise or hit_rand:
-				mask_feat_copper[idx] = 1
-	return mask_feat_copper
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Liquid Layer (기존 generate_liquids)
-func build_liquid_layer(hmap: PackedInt32Array) -> Dictionary:
+## Liquid Layer: water bodies and springs
+func _build_liquid_layer(hmap: PackedInt32Array) -> Dictionary:
 	var amount := PackedInt64Array()
 	amount.resize(size.x * size.y)
-	var springs := PackedVector2Array()
-	var min_h: int = hmap[0]
-	var max_h: int = hmap[0]
+	
+	var water_level := _calculate_water_level(hmap)
+	var springs := _generate_springs(hmap, water_level)
+	
+	_fill_water_bodies(amount, hmap, water_level)
+	_log_liquid_stats(amount, springs, water_level)
+	
+	return {"amount": amount, "springs": springs}
+
+func _calculate_water_level(hmap: PackedInt32Array) -> int:
+	var min_h := hmap[0]
+	var max_h := hmap[0]
+	
 	for x in size.x:
 		min_h = min(min_h, hmap[x])
 		max_h = max(max_h, hmap[x])
-	var water_level: int = int(lerp(float(min_h), float(max_h), profile.water_level_ratio))
-	var seg_start: int = -1
+	
+	return int(lerp(float(min_h), float(max_h), profile.water_level_ratio))
+
+func _fill_water_bodies(amount: PackedInt64Array, hmap: PackedInt32Array, water_level: int) -> void:
+	var seg_start := -1
+	
 	for x in size.x:
 		if hmap[x] >= water_level:
 			if seg_start == -1:
@@ -358,54 +518,101 @@ func build_liquid_layer(hmap: PackedInt32Array) -> Dictionary:
 			if seg_start != -1:
 				_fill_lake(amount, hmap, seg_start, x - 1, water_level)
 				seg_start = -1
+	
+	# Handle segment extending to right edge
 	if seg_start != -1:
 		_fill_lake(amount, hmap, seg_start, size.x - 1, water_level)
 
-	var rng := RandomNumberGenerator.new()
-	rng.seed = profile.seed_height
-	var prob: float = profile.springs_per_k / 1000.0
-	for x in range(1, size.x - 1):
-		var h0: int = hmap[x]
-		if h0 >= water_level:
-			continue
-		var slope_l: float = abs(h0 - hmap[x - 1])
-		var slope_r: float = abs(h0 - hmap[x + 1])
-		if max(slope_l, slope_r) < 2:
-			continue
-		if rng.randf() < prob:
-			springs.append(Vector2i(x, h0))
-
-	# 로그
-	var cnt:int = 0
-	var minv:int = 0
-	var maxv:int = 0
-	for i in amount.size():
-		var v:int = amount[i]
-		if v > 0:
-			cnt += 1
-			if minv == 0 or v < minv: minv = v
-			if v > maxv: maxv = v
-	print("[WorldGen] liquids: cells=%d min=%d max=%d springs=%d water_level=%d"
-		% [cnt, minv, maxv, springs.size(), water_level])
-
-	return {"amount": amount, "springs": springs}
-
-func _fill_lake(amount: PackedInt64Array, hmap: PackedInt32Array, sx: int, ex: int, water_level: int) -> void:
-	var width: int = ex - sx + 1
+func _fill_lake(
+	amount: PackedInt64Array,
+	hmap: PackedInt32Array,
+	start_x: int,
+	end_x: int,
+	water_level: int
+) -> void:
+	var width := end_x - start_x + 1
+	
 	if width < profile.min_lake_size:
 		return
-	for x in range(sx, ex + 1):
-		var ground: int = hmap[x]
-		for y in range(water_level, ground):
-			var depth_from_surface: int = y - water_level + 1
-			var fill: float = clamp(float(depth_from_surface) / profile.depth_scale, 0.0, 1.0)
-			var idx: int = y * size.x + x
-			amount[idx] = int(round(fill * profile.water_capacity_mg_per_cell))
+	
+	for x in range(start_x, end_x + 1):
+		var ground_y := hmap[x]
+		for y in range(water_level, ground_y):
+			var depth_from_surface := y - water_level + 1
+			var fill_ratio: float = clamp(float(depth_from_surface) / profile.depth_scale, 0.0, 1.0)
+			var idx := y * size.x + x
+			amount[idx] = int(round(fill_ratio * profile.water_capacity_mg_per_cell))
+
+func _generate_springs(hmap: PackedInt32Array, water_level: int) -> PackedVector2Array:
+	var springs := PackedVector2Array()
+	var rng := RandomNumberGenerator.new()
+	rng.seed = profile.seed_height
+	var spawn_prob := profile.springs_per_k / 1000.0
+	
+	for x in range(1, size.x - 1):
+		var h := hmap[x]
+		
+		# Only generate springs above water level with sufficient slope
+		if h >= water_level:
+			continue
+		
+		var slope_left: int = abs(h - hmap[x - 1])
+		var slope_right: int = abs(h - hmap[x + 1])
+		
+		if max(slope_left, slope_right) < 2:
+			continue
+		
+		if rng.randf() < spawn_prob:
+			springs.append(Vector2i(x, h))
+	
+	return springs
+
+func _log_liquid_stats(amount: PackedInt64Array, springs: PackedVector2Array, water_level: int) -> void:
+	var cell_count := 0
+	var min_amount := 0
+	var max_amount := 0
+	
+	for i in amount.size():
+		var v := amount[i]
+		if v > 0:
+			cell_count += 1
+			if min_amount == 0 or v < min_amount:
+				min_amount = v
+			if v > max_amount:
+				max_amount = v
+	
+	print("[WorldGen] Liquids: cells=%d min=%d max=%d springs=%d water_level=%d"
+		% [cell_count, min_amount, max_amount, springs.size(), water_level])
+
+# ══════════════════════════════════════════════════════════════════
+# Utilities
+# ══════════════════════════════════════════════════════════════════
+
+func _create_noise(seed_value: int, frequency: float) -> FastNoiseLite:
+	var noise := FastNoiseLite.new()
+	noise.seed = seed_value
+	noise.noise_type = FastNoiseLite.TYPE_SIMPLEX
+	noise.frequency = frequency
+	return noise
+
+static func _cc_to_ck(cC: int) -> int:
+	return cC + CK_0C
 
 func _assert_world_arrays(
-	substances: PackedInt32Array, phases: PackedByteArray,
-	mass: PackedInt64Array, temperatures: PackedInt32Array, tiles: PackedInt32Array
+	substances: PackedInt32Array,
+	phases: PackedByteArray,
+	mass: PackedInt64Array,
+	temperatures: PackedInt32Array,
+	tiles: PackedInt32Array
 ) -> void:
-	var n := size.x * size.y
-	if [substances.size(), phases.size(), mass.size(), temperatures.size(), tiles.size()].any(func(s): return s != n):
-		push_error("[WorldGen] array size mismatch")
+	var expected_size := size.x * size.y
+	var sizes := [
+		substances.size(),
+		phases.size(),
+		mass.size(),
+		temperatures.size(),
+		tiles.size()
+	]
+	
+	if sizes.any(func(s): return s != expected_size):
+		push_error("[WorldGen] Array size mismatch: expected=%d" % expected_size)
