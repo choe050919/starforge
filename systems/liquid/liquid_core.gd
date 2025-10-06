@@ -1,16 +1,12 @@
-# liquid_core.gd
 extends RefCounted
 class_name LiquidCore
 
-## 표면장력에 의해 옆으로 완전히 흐르지 않고 남는 액체의 질량 값
 const RESIDUAL_SURFACE_MASS := 1000
-
 const PH_VACUUM := 0
 const PH_SOLID  := 1
 const PH_LIQUID := 2
 
-## 활성 액체 셀 추적
-var _active_cells: Array[int] = []  # PackedInt32Array → Array[int]
+var _active_cells: Array[int] = []
 
 func rebuild_active_cells(ph: PackedByteArray, m: PackedInt64Array) -> void:
 	_active_cells.clear()
@@ -30,7 +26,6 @@ func compute_diff(R: Dictionary, _dt: float) -> Dictionary:
 	var h: int = idx.size.y
 	var n: int = w * h
 
-	# 활성 셀 재구축
 	rebuild_active_cells(ph_read, m_read)
 
 	var mass_delta := PackedInt64Array()
@@ -38,15 +33,9 @@ func compute_diff(R: Dictionary, _dt: float) -> Dictionary:
 	for i in n: 
 		mass_delta[i] = 0
 
-	var temp_writes: Array = []
-	var temp_written := PackedByteArray()
-	temp_written.resize(n)
-	for i in n: 
-		temp_written[i] = 0
-
+	var flows: Array = []
 	var moved_total: int = 0
 
-	# 수신 잔여 용량 버퍼
 	var free := PackedInt64Array()
 	free.resize(n)
 	for i in n:
@@ -56,16 +45,13 @@ func compute_diff(R: Dictionary, _dt: float) -> Dictionary:
 			var liquid_mass := m_read[i] if ph_read[i] == PH_LIQUID else 0
 			free[i] = cap - liquid_mass
 
-	# ── Y좌표 기준 정렬 (하단부터) ──
 	_active_cells.sort_custom(func(a: int, b: int) -> bool:
 		var ya := a / w
 		var yb := b / w
-		return ya > yb  # 내림차순
+		return ya > yb
 	)
 
-	# ── 활성 셀만 순회 ──
 	for i in _active_cells:
-		# 이미 비워진 경우 스킵
 		if ph_read[i] != PH_LIQUID or m_read[i] <= 0:
 			continue
 
@@ -82,15 +68,18 @@ func compute_diff(R: Dictionary, _dt: float) -> Dictionary:
 			if ph_read[di] != PH_SOLID:
 				var can := int(min(m_here - sent, free[di]))
 				if can > 0:
-					if m_read[di] == 0 and temp_written[di] == 0:
-						temp_writes.push_back({"i": di, "T": T_read[i]})
-						temp_written[di] = 1
-					
 					mass_delta[di] += can
 					mass_delta[i]  -= can
 					sent          += can
 					moved_total   += can
 					free[di]      -= can
+					
+					flows.append({
+						"from": i,
+						"to": di,
+						"amount": can,
+						"temp": T_read[i]
+					})
 
 		# ── 2) 좌/우 평형 ──
 		var remain := m_here - sent
@@ -105,15 +94,18 @@ func compute_diff(R: Dictionary, _dt: float) -> Dictionary:
 					if diff_l > 0:
 						var can_l := int(min(diff_l, remain, free[li]))
 						if can_l > 0:
-							if m_l == 0 and temp_written[li] == 0:
-								temp_writes.push_back({"i": li, "T": T_read[i]})
-								temp_written[li] = 1
-							
 							mass_delta[li] += can_l
 							mass_delta[i]  -= can_l
 							remain         -= can_l
 							moved_total    += can_l
 							free[li]       -= can_l
+							
+							flows.append({
+								"from": i,
+								"to": li,
+								"amount": can_l,
+								"temp": T_read[i]
+							})
 
 			# → 오른쪽
 			if remain > 0:
@@ -126,18 +118,87 @@ func compute_diff(R: Dictionary, _dt: float) -> Dictionary:
 						if diff_r > 0:
 							var can_r := int(min(diff_r, remain, free[ri]))
 							if can_r > 0:
-								if m_r == 0 and temp_written[ri] == 0:
-									temp_writes.push_back({"i": ri, "T": T_read[i]})
-									temp_written[ri] = 1
-								
 								mass_delta[ri] += can_r
 								mass_delta[i]  -= can_r
 								remain         -= can_r
 								moved_total    += can_r
 								free[ri]       -= can_r
+								
+								flows.append({
+									"from": i,
+									"to": ri,
+									"amount": can_r,
+									"temp": T_read[i]
+								})
+
+	# 새 질량 계산
+	var m_new := PackedInt64Array()
+	m_new.resize(n)
+	for i in n:
+		var v := m_read[i] + mass_delta[i]
+		if v < 0: v = 0
+		elif v > cap: v = cap
+		m_new[i] = v
+
+	# 새 온도 계산
+	var T_new := _compute_temperatures(ph_read, m_read, T_read, m_new, flows)
 
 	return {
-		"mass_delta": mass_delta,
-		"temp_writes": temp_writes,
+		"mass_new": m_new,
+		"temp_new": T_new,
 		"moved_total": moved_total,
 	}
+
+func _compute_temperatures(
+	ph: PackedByteArray,
+	m_old: PackedInt64Array,
+	T_old: PackedInt32Array,
+	m_new: PackedInt64Array,
+	flows: Array
+) -> PackedInt32Array:
+	var n := m_old.size()
+	var T_new := T_old.duplicate()
+	
+	var energy_map: Dictionary = {}
+	
+	# 기존 액체 에너지
+	for i in n:
+		if ph[i] == PH_LIQUID and m_old[i] > 0:
+			energy_map[i] = {
+				"energy": float(m_old[i]) * float(T_old[i]),
+				"mass": m_old[i]
+			}
+	
+	# 유동 에너지 합산
+	for flow in flows:
+		var from_i: int = flow["from"]
+		var to_i: int = flow["to"]
+		var amount: int = flow["amount"]
+		var temp: int = flow["temp"]
+		
+		# 출발지에서 에너지 제거
+		if energy_map.has(from_i):
+			energy_map[from_i]["energy"] -= float(amount) * float(temp)
+			energy_map[from_i]["mass"] -= amount
+		
+		# 도착지에 에너지 추가
+		if not energy_map.has(to_i):
+			energy_map[to_i] = {"energy": 0.0, "mass": 0}
+		
+		energy_map[to_i]["energy"] += float(amount) * float(temp)
+		energy_map[to_i]["mass"] += amount
+	
+	# 최종 온도 계산
+	for i in energy_map:
+		var data = energy_map[i]
+		if data["mass"] > 0:
+			T_new[i] = int(round(data["energy"] / float(data["mass"])))
+		else:
+			T_new[i] = 0
+	
+	# 비워진 셀은 0
+	for i in n:
+		if m_new[i] <= 0:
+			T_new[i] = 0
+	
+	return T_new

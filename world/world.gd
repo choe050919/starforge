@@ -257,3 +257,9 @@ func _unhandled_input(event: InputEvent) -> void:
 			KEY_F:  # F 키 → 플레이어 따라가기
 				if has_node("Player"):
 					agent.follow_node($Player)
+
+
+func _on_tool_manager_request_add_temp(cell: Vector2i) -> void:
+	var old_temp := data_layer.temperature.get_by_cell(cell)
+	var new_temp := old_temp + 1000
+	data_layer.set_cell_with_spec(cell, {"temp" : new_temp})

@@ -241,6 +241,7 @@ offset_left = 300.0
 offset_right = 300.0
 script = ExtResource("29_mip0j")
 
+[connection signal="request_add_temp" from="Systems/ToolManager" to="." method="_on_tool_manager_request_add_temp"]
 [connection signal="request_mine" from="Systems/ToolManager" to="Systems/Mining" method="_on_tool_manager_request_mine"]
 [connection signal="request_spawn_fish" from="Systems/ToolManager" to="Actors/Spawner" method="_on_tool_manager_request_spawn_fish"]
 [connection signal="request_spawn_plant" from="Systems/ToolManager" to="." method="_on_tool_manager_request_spawn_plant"]
