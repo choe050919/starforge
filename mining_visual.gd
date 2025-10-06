@@ -5,7 +5,7 @@ class_name MiningVisual
 @export var player_path: NodePath
 @export var ground_path: NodePath
 
-var _player: Node2D = null
+var _player: Player = null
 var _ground: TileMapLayer = null
 var _cell_size: Vector2 = Vector2(32, 32)
 
@@ -39,26 +39,23 @@ func _draw() -> void:
 	if not _is_player_mining():
 		return
 	
-	var target_cell = _player.get_mining_target()
+	var target_cell := _player.get_mining_target()
 	if target_cell.x < -9998:
 		return
 	
-	# 플레이어 위치
+	# 플레이어 위치 (글로벌)
 	var player_pos := _player.global_position
 	
 	# 타겟 셀 중심 (월드 좌표)
 	var target_world := Vector2(target_cell) * _cell_size + _cell_size * 0.5
 	if _ground:
-		target_world = _ground.to_global(_ground.map_to_local(target_cell) + _cell_size * 0.5)
+		var local_pos := _ground.map_to_local(target_cell)
+		target_world = _ground.to_global(local_pos + _cell_size * 0.5)
 	
-	# 선 그리기 (로컬 좌표로 변환)
-	var local_player := to_local(player_pos)
-	var local_target := to_local(target_world)
-	
-	draw_line(local_player, local_target, line_color, line_width)
-	
-	# 타겟 셀에 작은 원 표시
-	draw_circle(local_target, 4.0, line_color)
+	# CanvasLayer는 스크린 좌표계 사용
+	# 월드 좌표를 그대로 그리면 됨 (CanvasLayer는 카메라 영향 안 받음)
+	draw_line(player_pos, target_world, line_color, line_width)
+	draw_circle(target_world, 4.0, line_color)
 
 func _is_player_mining() -> bool:
 	if _player == null:

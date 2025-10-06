@@ -15,29 +15,36 @@ signal generated(
 
 var size: Vector2i
 
+# ── Rule Cache ───────────────────────────────────────────────────
 var _rule_cache: SubstanceRuleCache
 
+# ── Substance IDs ────────────────────────────────────────────────
 var _sid_water : int
 var _sid_ice   : int
 var _sid_ground: int
 var _sid_uran  : int
 var _sid_copper: int
-var _sid_vac   : int = 0   # VACUUM은 0 고정
+const SID_VACUUM := 0
 
 # °cC(= °C*100) → cK: cK = cC + 27315
 const CK_0C := 27315
 static func _cc_to_ck(cC: int) -> int:
 	return cC + CK_0C
 
+# ══════════════════════════════════════════════════════════════════
+# Setup & Generation Entry Point
+# ══════════════════════════════════════════════════════════════════
+
 func bind_rule_cache(cache: SubstanceRuleCache) -> void:
 	_rule_cache = cache
 
 func generate() -> void:
 	if profile == null: push_error("[WorldGen.generate] profile not found")
-	size = profile.size
 	if _rule_cache == null:
 		push_error("[WorldGen] rule_cache not bound")
 		return
+
+	size = profile.size
 
 	# SID 캐시
 	_sid_water  = _rule_cache.sid_of("liquid/water")
@@ -60,11 +67,11 @@ func generate() -> void:
 	for i in n:
 		# 2-1) 동굴 마스크: 비우기(진공)
 		if mask_cave[i] == 1:
-			tiles_composed[i] = _sid_vac
+			tiles_composed[i] = SID_VACUUM
 			continue
 
 		# 2-2) 피처 덮어쓰기(우선순위: 우라늄 > 구리), 진공은 제외
-		if tiles_composed[i] != _sid_vac:
+		if tiles_composed[i] != SID_VACUUM:
 			if feat_u[i] == 1:
 				tiles_composed[i] = _sid_uran
 			elif feat_c[i] == 1:
@@ -113,7 +120,7 @@ func generate() -> void:
 			_:
 				phases[i] = PhaseStore.Phase.VACUUM
 				mass[i] = 0
-				substances[i] = _sid_vac
+				substances[i] = SID_VACUUM
 				temperatures[i] = 0
 
 	_assert_world_arrays(substances, phases, mass, temperatures, tiles_composed)
@@ -153,7 +160,7 @@ func build_base_solid_layer(hmap: PackedInt32Array) -> PackedInt32Array:
 		for x in size.x:
 			var idx:int = y * size.x + x
 			if y < hmap[x]:
-				tiles_base[idx] = _sid_vac
+				tiles_base[idx] = SID_VACUUM
 				continue
 
 			var depth:int = y - hmap[x]

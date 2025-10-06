@@ -41,63 +41,77 @@ class_name World
 @onready var hud: HUD = $HUD
 @onready var mining_visual: MiningVisual = %MiningVisual
 
+@onready var camera: Camera2D = $Camera2D
+
 # ── State ────────────────────────────────────────────────────────
 var _is_running := true
 var _speed_mult := 1.0
+var _sim_time := 0.0
 
 # ── Data & Caches ────────────────────────────────────────────────
 var data_layer: DataLayer = DataLayer.new()
-
 var substance_loader: SubstanceLoader = SubstanceLoader.new()
 var rule_cache := SubstanceRuleCache.new()
 
-@onready var camera: Camera2D = $Camera2D
+# ══════════════════════════════════════════════════════════════════
+# Lifecycle
+# ══════════════════════════════════════════════════════════════════
 
 func _ready() -> void:
-	# HUD 연결
+	_setup_hud()
+	_load_resources()
+	_setup_input_and_hover()
+	_setup_worldgen()
+	_setup_durability()
+	_setup_player()
+	_setup_mining_visual()
+
+# ── Setup Helpers ────────────────────────────────────────────────
+
+func _setup_hud() -> void:
 	hud.play_toggled.connect(_on_hud_play)
 	hud.speed_selected.connect(_set_speed_multiplier)
 	hud.overlay_toggled.connect(_on_hud_overlay)
 	hud.set_state(_is_running, _speed_mult, liquid_overlay.visible, heatmap.visible)
 
-	# 룰/소재 로드
+func _load_resources() -> void:
 	substance_loader.load_materials()
 	rule_cache.load_from_file("res://substance/substance.json")
 
-	# 입력/호버
+func _setup_input_and_hover() -> void:
 	hover.setup(data_layer)
 	input.setup(data_layer, hover)
+	
 	input.pan_requested.connect(_pan_camera)
 	input.zoom_requested.connect(_zoom_camera)
 	input.overlay_toggle_requested.connect(_on_overlay_toggle_requested)
-	hover.hover_changed.connect(_on_hover_changed)
-
-	# 월드 생성
-	worldgen.generated.connect(_on_world_generated)
-	worldgen.bind_rule_cache(rule_cache)
-	worldgen.generate()
-
-	# TODO 어떻게 하는 거지? 모르겠음.
-	#var args: Array = await worldgen.generated
-	#callv("_on_world_generated", args)
-
-	# 내구도↔타일 변경, 크랙 오버레이
-	durability.break_requested.connect(func(cell: Vector2i): tchange.destroy_cell(cell, &"durability"))
-	durability.hp_changed.connect(crack_overlay.on_hp_changed)
-	durability.break_requested.connect(crack_overlay.on_break_requested)
-
-	# 플레이어 설정
-	player.grid_nav_path = NodePath("%GridNav")
-	player.overlay_path = NodePath("%OverlayManager/OverlayLayer/NavigationOverlay")
-	player.mining_path = NodePath("%Mining")
-	
-	# 입력 연결
 	input.player_move_requested.connect(_on_player_move_requested)
 	input.mining_requested.connect(_on_mining_requested)
 	
-	# 채굴 시각화 설정
+	hover.hover_changed.connect(_on_hover_changed)
+
+func _setup_worldgen() -> void:
+	worldgen.bind_rule_cache(rule_cache)
+	worldgen.generated.connect(_on_world_generated)
+	worldgen.generate()
+
+func _setup_durability() -> void:
+	durability.break_requested.connect(_on_durability_break)
+	durability.hp_changed.connect(crack_overlay.on_hp_changed)
+	durability.break_requested.connect(crack_overlay.on_break_requested)
+
+func _setup_player() -> void:
+	player.grid_nav_path = NodePath("%GridNav")
+	player.overlay_path = NodePath("%OverlayManager/OverlayLayer/NavigationOverlay")
+	player.mining_path = NodePath("%Mining")
+
+func _setup_mining_visual() -> void:
 	mining_visual.player_path = NodePath("../Actors/Player")
 	mining_visual.ground_path = NodePath("%Ground")
+
+# ══════════════════════════════════════════════════════════════════
+# World Generation
+# ══════════════════════════════════════════════════════════════════
 
 func _on_world_generated(
 		size: Vector2i,
@@ -123,28 +137,44 @@ func _apply_worldgen_result(
 	tiles: PackedInt32Array,
 	springs: PackedVector2Array
 ) -> void:
-	# 시각화/데이터
-	ground.apply_tiles(tiles, size)
+	_setup_visual_layer(tiles, size)
+	_setup_data_layer(size, substances, phases, mass, temperatures)
+	_setup_simulation_systems(springs)
 
+func _setup_visual_layer(tiles: PackedInt32Array, size: Vector2i) -> void:
+	ground.apply_tiles(tiles, size)
 	visual_sync.setup(data_layer)
 
+func _setup_data_layer(
+	size: Vector2i,
+	substances: PackedInt32Array,
+	phases: PackedByteArray,
+	mass: PackedInt64Array,
+	temperatures: PackedInt32Array
+) -> void:
 	data_layer.setup(size, substances, phases, mass, temperatures)
 	data_layer.bind_rule_cache(rule_cache)
 	data_layer.tiles_changed.connect(visual_sync.on_tiles_changed)
 
-	# 시스템들 (데이터 준비 이후)
+func _setup_simulation_systems(springs: PackedVector2Array) -> void:
 	durability.setup(data_layer)
+	
 	temp.setup(data_layer, rule_cache)
+	
 	tchange.setup(data_layer)
 	tchange.seed_durability(durability)
-	liquid.setup(data_layer, springs); liquid.set_liquid_sids()
+	
+	liquid.setup(data_layer, springs)
+	liquid.set_liquid_sids()
+	
 	phase_change.setup(data_layer, rule_cache)
+	
 	light.setup(data_layer, rule_cache)
+	
 	plant.setup(data_layer.index)
-	plant.set_soil_checker(func(cell: Vector2i) -> bool: # TODO sid hardcoding
-		return data_layer.substance.get_by_cell(cell) == 10002
-	)
+	plant.set_soil_checker(_is_soil)
 	plant.set_light_sampler(Callable(data_layer.light, "get_by_cell"))
+	
 	grid_nav.setup(data_layer)
 
 ## 적용 이후 후처리:
@@ -186,6 +216,10 @@ func _post_apply_worldgen(size: Vector2i, initial_mass: PackedInt64Array) -> voi
 
 var sim_time := 0.0
 
+# ══════════════════════════════════════════════════════════════════
+# Simulation Tick
+# ══════════════════════════════════════════════════════════════════
+
 ## SimClock에서 올라오는 틱 이벤트를 처리한다.
 ## 인자:
 ##   tag: "sim" | "temp" (시뮬 틱 종류)
@@ -195,27 +229,36 @@ var sim_time := 0.0
 ##   - "temp": 온도 전용 연산 틱
 ## 부가작용: data_layer 내부 상태 변경, 오버레이 렌더 호출
 func _on_sim_clock_tick(tag: StringName, dt: float) -> void:
-	sim_time += dt
+	_sim_time += dt
+	
 	match tag:
 		"sim":
-			# 기본 10Hz 틱
-			phase_change._on_sim_tick(dt, sim_time)
-			liquid.tick_liquid(dt)
-			liquid_overlay.render(liquid.get_amounts())
-			spawner._on_sim_tick(dt, sim_time)
-			light._on_sim_tick(dt)
-			plant.tick(dt)
+			_tick_simulation(dt)
 		"temp":
-			temp._on_sim_tick(dt)
+			_tick_temperature(dt)
 		_:
-			push_error("[World._on_sim_clock_tick] wrong tag: %s" % [str(tag)])
+			push_error("[World] Invalid tick tag: %s" % tag)
 
-# ── Input / HUD ──────────────────────────────────────────────────
+func _tick_simulation(dt: float) -> void:
+	phase_change._on_sim_tick(dt, _sim_time)
+	liquid.tick_liquid(dt)
+	liquid_overlay.render(liquid.get_amounts())
+	spawner._on_sim_tick(dt, _sim_time)
+	light._on_sim_tick(dt)
+	plant.tick(dt)
+
+func _tick_temperature(dt: float) -> void:
+	temp._on_sim_tick(dt)
+
+# ══════════════════════════════════════════════════════════════════
+# Input & Camera Handlers
+# ══════════════════════════════════════════════════════════════════
+
 func _pan_camera(delta: Vector2) -> void:
 	camera.pan(delta)
 
 func _zoom_camera(dir: float) -> void:
-	if camera != null:
+	if camera:
 		camera.apply_zoom(dir)
 
 func _on_overlay_toggle_requested(mode: OverlayManager.OverlayMode) -> void:
@@ -224,6 +267,18 @@ func _on_overlay_toggle_requested(mode: OverlayManager.OverlayMode) -> void:
 func _on_hover_changed(cell: Vector2i) -> void:
 	corner_highlight.show_cell(cell)
 	tile_info_hud.on_hover_changed(cell)
+
+func _on_player_move_requested(world_pos: Vector2) -> void:
+	if is_instance_valid(player):
+		player.move_to_world(world_pos)
+
+func _on_mining_requested(cell: Vector2i) -> void:
+	if is_instance_valid(player):
+		player.add_mining_target(cell)
+
+# ══════════════════════════════════════════════════════════════════
+# HUD Handlers
+# ══════════════════════════════════════════════════════════════════
 
 func _on_hud_play(running: bool) -> void:
 	_is_running = running
@@ -248,7 +303,25 @@ func _on_hud_overlay(overlay_name: StringName, enabled: bool) -> void:
 			if is_instance_valid(heatmap):
 				heatmap.visible = enabled
 
+# ══════════════════════════════════════════════════════════════════
+# Event Handlers
+# ══════════════════════════════════════════════════════════════════
+
+func _on_durability_break(cell: Vector2i) -> void:
+	tchange.destroy_cell(cell, &"durability")
+
+# ══════════════════════════════════════════════════════════════════
+# Utility Functions
+# ══════════════════════════════════════════════════════════════════
+
+func _is_soil(cell: Vector2i) -> bool:
+	return data_layer.substance.get_by_cell(cell) == 10002
+
 var _spec_amphib := preload("res://plants/specs/amphibious_spec.tres")
+
+# ══════════════════════════════════════════════════════════════════
+# Debug/Development Functions
+# ══════════════════════════════════════════════════════════════════
 
 func _on_tool_manager_request_spawn_plant(cell: Vector2i) -> void:
 	if _spec_amphib == null:
@@ -266,11 +339,3 @@ func _on_tool_manager_request_add_temp(cell: Vector2i) -> void:
 	var old_temp := data_layer.temperature.get_by_cell(cell)
 	var new_temp := old_temp + 1000
 	data_layer.set_cell_with_spec(cell, {"temp" : new_temp})
-
-func _on_player_move_requested(world_pos: Vector2) -> void:
-	if is_instance_valid(player):
-		player.move_to_world(world_pos)
-
-func _on_mining_requested(cell: Vector2i) -> void:
-	if is_instance_valid(player):
-		player.add_mining_target(cell)

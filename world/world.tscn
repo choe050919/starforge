@@ -1,4 +1,4 @@
-[gd_scene load_steps=47 format=3 uid="uid://c5gv3n6byiin7"]
+[gd_scene load_steps=46 format=3 uid="uid://c5gv3n6byiin7"]
 
 [ext_resource type="Script" uid="uid://dgppaejvd18y0" path="res://world/world.gd" id="1_j7vgi"]
 [ext_resource type="TileSet" uid="uid://dnn0uacxq48mh" path="res://tilesets/world.tres" id="3_bwxdu"]
@@ -37,7 +37,6 @@
 [ext_resource type="PackedScene" uid="uid://cqinatbhx3krc" path="res://UI/hud.tscn" id="31_bwxdu"]
 [ext_resource type="Script" uid="uid://cqr4gkov8vd7t" path="res://grid_nav.gd" id="31_cqwbg"]
 [ext_resource type="Script" uid="uid://bvco3ekilg6rf" path="res://mining.gd" id="32_hnpqp"]
-[ext_resource type="PackedScene" uid="uid://cncr3a3qqdd14" path="res://controller_actor.tscn" id="33_33qpb"]
 [ext_resource type="Script" uid="uid://cf2egr1e2vgg2" path="res://ground_item_registry.gd" id="33_ifjjt"]
 [ext_resource type="PackedScene" uid="uid://b666emurxqxc8" path="res://actors/animal_agent.tscn" id="34_q3kex"]
 [ext_resource type="Script" uid="uid://dhp47bqyrhke1" path="res://corpses_container.gd" id="35_hm5b2"]
@@ -200,8 +199,6 @@ script = ExtResource("33_ifjjt")
 [node name="Actors" type="Node2D" parent="." groups=["actors_root"]]
 z_index = 1
 
-[node name="ControllerActor" parent="Actors" instance=ExtResource("33_33qpb")]
-
 [node name="Spawner" type="Node2D" parent="Actors" node_paths=PackedStringArray("_ground", "_Tchange", "_dur")]
 unique_name_in_owner = true
 script = ExtResource("24_vu62d")
@@ -227,10 +224,6 @@ grid_nav_path = NodePath("../../Systems/GridNav")
 overlay_path = NodePath("../../VisualSync/OverlayManager/OverlayLayer/NavigationOverlay")
 mining_path = NodePath("../../Systems/Mining")
 durability_path = NodePath("../../Systems/Durability")
-
-[node name="Managers" type="Node" parent="."]
-
-[node name="ChunkManager" type="Node" parent="Managers"]
 
 [node name="Camera2D" type="Camera2D" parent="."]
 script = ExtResource("27_o7xkw")
