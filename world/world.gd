@@ -182,6 +182,8 @@ func _post_apply_worldgen(size: Vector2i, initial_mass: PackedInt64Array) -> voi
 	if not clock.tick_sim.is_connected(_on_sim_clock_tick):
 		clock.tick_sim.connect(_on_sim_clock_tick)
 
+	durability.connect_tile_change(tchange)
+
 var sim_time := 0.0
 
 ## SimClock에서 올라오는 틱 이벤트를 처리한다.

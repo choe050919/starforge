@@ -12,6 +12,7 @@ signal break_requested(cell: Vector2i)
 var _data: DataLayer
 var _index: GridIndex
 var _grid_size: Vector2i = Vector2i.ZERO
+var _tile_change: TileChange
 
 # ─────────────────────────────────────────────────────────
 # Config
@@ -94,6 +95,23 @@ func setup(data: DataLayer) -> void:
 	if debug_log:
 		print("[Dur] setup done. grid=", _grid_size)
 
+## TileChange와 연결 (World.gd에서 호출)
+func connect_tile_change(tile_change: TileChange) -> void:
+	_tile_change = tile_change
+	
+	# 타일 파괴 → 초기화 해제
+	if _tile_change.tile_destroyed.is_connected(_on_tile_destroyed):
+		_tile_change.tile_destroyed.disconnect(_on_tile_destroyed)
+	_tile_change.tile_destroyed.connect(_on_tile_destroyed)
+	
+	# 타일 교체 → 재초기화
+	if _tile_change.tile_replaced.is_connected(_on_tile_replaced):
+		_tile_change.tile_replaced.disconnect(_on_tile_replaced)
+	_tile_change.tile_replaced.connect(_on_tile_replaced)
+	
+	if debug_log:
+		print("[Dur] connected to TileChange")
+
 ## 셀 초기화/재설정: 타일 배치/교체 시 호출
 ## sid: 재질 식별자(int), mass_kg: 초기 질량(kg)
 func reset_cell(cell: Vector2i, sid: int, mass_kg: float) -> void:
@@ -107,27 +125,34 @@ func reset_cell(cell: Vector2i, sid: int, mass_kg: float) -> void:
 	_hp[idx] = _max_hp[idx]
 	_next_threshold_index[idx] = 0
 	_is_initialized[idx] = 1
-	#if debug_log and sid != 0:
-		#print("[Dur] reset_cell cell=", cell, " sid=", sid, 
-			#" mass_kg=", mass_kg, " hardness=", hardness, 
-			#" → max_hp=", mass_kg * hardness)
-
-	#if debug_log:
-		#print("[Dur] reset_cell cell=", cell,
-			#" sid=", sid,
-			#" mass_kg=", _initial_mass_kg[idx],
-			#" hardness=", _hardness_hp_per_kg[idx],
-			#" max_hp=", _max_hp[idx])
 
 	_emit_hp_changed(cell, idx)
 
-## 타일 교체 시 편의용(외부 TileChange에서 호출 가능)
-func on_tile_replaced(cell: Vector2i, _from_sid: int, to_sid: int, new_mass_kg: float, _reason: StringName = &"") -> void:
+func _on_tile_destroyed(cell: Vector2i, _from_sid: int, _reason: StringName) -> void:
+	clear_cell(cell)
+
+func _on_tile_replaced(cell: Vector2i, from_sid: int, to_sid: int, _reason: StringName) -> void:
+	if to_sid == 0:
+		clear_cell(cell)
+	else:
+		# 질량은 DataLayer에서 직접 읽기
+		if _data != null:
+			var mass_mg := _data.mass.get_by_cell(cell)
+			var mass_kg := float(mass_mg) / 1_000_000.0
+			reset_cell(cell, to_sid, mass_kg)
+
+## 셀 초기화 해제
+func clear_cell(cell: Vector2i) -> void:
+	if not _in_bounds(cell): return
+	var idx := _idx(cell)
+	_hp[idx] = 0.0
+	_max_hp[idx] = 0.0
+	_initial_mass_kg[idx] = 0.0
+	_hardness_hp_per_kg[idx] = 0.0
+	_next_threshold_index[idx] = 0
+	_is_initialized[idx] = 0
 	if debug_log:
-		print("[Dur] on_tile_replaced cell=", cell,
-			" from=", _from_sid, " to=", to_sid,
-			" mass_kg=", new_mass_kg, " reason=", _reason)
-	reset_cell(cell, to_sid, new_mass_kg)
+		print("[Dur] clear_cell cell=", cell)
 
 ## 채굴/피해 적용(HP 단위)
 func apply_damage(cell: Vector2i, amount_hp: float) -> void:

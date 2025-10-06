@@ -7,10 +7,12 @@ signal arrived_at_destination
 @export var grid_nav_path: NodePath
 @export var overlay_path: NodePath
 @export var mining_path: NodePath
+@export var durability_path: NodePath
 
 var _grid_nav: GridNav = null
 var _overlay: Node = null
 var _mining: Node = null
+var _durability: Node = null
 
 # ── 이동 튜닝 ───────────────────────────────────────────────────────
 @export var move_speed: float = 180.0
@@ -65,6 +67,9 @@ func _ready() -> void:
 	
 	if mining_path != NodePath() and has_node(mining_path):
 		_mining = get_node(mining_path)
+	
+	if durability_path != NodePath() and has_node(durability_path):
+		_durability = get_node(durability_path)
 	
 	call_deferred("_snap_start_to_surface")
 
@@ -307,7 +312,17 @@ func _apply_mining_damage() -> void:
 		_mining._on_tool_manager_request_mine(_mining_target_cell)
 
 func _is_cell_valid_for_mining(cell: Vector2i) -> bool:
-	# TODO: DataLayer에서 타일 존재 및 채굴 가능 여부 확인
+	if _durability == null:
+		return false
+	
+	# Durability가 초기화되어 있고 HP가 남아있는지 확인
+	if not _durability.has_method("get_max_hp"):
+		return false
+	
+	var max_hp = _durability.get_max_hp(cell)
+	if max_hp <= 0.0:
+		return false  # 초기화 안 됨 또는 파괴됨
+	
 	return true
 
 func _is_in_mining_range(cell: Vector2i) -> bool:

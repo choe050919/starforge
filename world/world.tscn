@@ -226,6 +226,7 @@ unique_name_in_owner = true
 grid_nav_path = NodePath("../../Systems/GridNav")
 overlay_path = NodePath("../../VisualSync/OverlayManager/OverlayLayer/NavigationOverlay")
 mining_path = NodePath("../../Systems/Mining")
+durability_path = NodePath("../../Systems/Durability")
 
 [node name="Managers" type="Node" parent="."]
 
