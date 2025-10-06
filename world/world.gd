@@ -34,6 +34,7 @@ class_name World
 
 # ── Actors ───────────────────────────────────────────────────────
 @onready var spawner: CritterSpawner = %Spawner
+@onready var player: Player =          %Player
 
 # ── UI ───────────────────────────────────────────────────────────
 @onready var tile_info_hud: TileInfoHUD = $UIFXLayer/TileInfoHUD
@@ -83,6 +84,12 @@ func _ready() -> void:
 	durability.break_requested.connect(func(cell: Vector2i): tchange.destroy_cell(cell, &"durability"))
 	durability.hp_changed.connect(crack_overlay.on_hp_changed)
 	durability.break_requested.connect(crack_overlay.on_break_requested)
+
+	player.grid_nav_path = NodePath("%GridNav")
+	player.overlay_path = NodePath("%OverlayManager/OverlayLayer/NavigationOverlay")
+
+	# 입력 연결
+	input.player_move_requested.connect(_on_player_move_requested)
 
 func _on_world_generated(
 		size: Vector2i,
@@ -258,8 +265,11 @@ func _unhandled_input(event: InputEvent) -> void:
 				if has_node("Player"):
 					agent.follow_node($Player)
 
-
 func _on_tool_manager_request_add_temp(cell: Vector2i) -> void:
 	var old_temp := data_layer.temperature.get_by_cell(cell)
 	var new_temp := old_temp + 1000
 	data_layer.set_cell_with_spec(cell, {"temp" : new_temp})
+
+func _on_player_move_requested(world_pos: Vector2) -> void:
+	if is_instance_valid(player):
+		player.move_to_world(world_pos)

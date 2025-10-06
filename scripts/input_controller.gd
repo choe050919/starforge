@@ -4,6 +4,7 @@ class_name InputController
 signal pan_requested(delta: Vector2)
 signal zoom_requested(direction: float)
 signal overlay_toggle_requested(mode: OverlayManager.OverlayMode)
+signal player_move_requested(world_pos: Vector2)
 
 ## ToolManager에 직접 라우팅 (입력 해석만 하고, 의미 실행은 ToolManager가 담당)
 @export var _tool_manager: ToolManager
@@ -67,6 +68,12 @@ func _unhandled_input(event: InputEvent) -> void:
 	and event.button_index == MOUSE_BUTTON_LEFT \
 	and event.pressed and not event.is_echo():
 		_route_click_to_tool_manager()
+
+	if event is InputEventMouseButton:
+		if event.button_index == MOUSE_BUTTON_RIGHT and event.pressed:
+			var mouse_world = get_viewport().get_canvas_transform().affine_inverse() * event.position
+			player_move_requested.emit(mouse_world)
+			get_viewport().set_input_as_handled()
 
 func _update_hover() -> void:
 	if hover_service == null:

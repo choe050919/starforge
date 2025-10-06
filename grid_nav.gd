@@ -10,6 +10,13 @@ var _data: DataLayer
 
 @export var cell_size := Vector2(32, 32)
 
+# ── 플레이어 전용 그래프 ────────────────────────────────────────────
+var _player_astar := AStar2D.new()
+var _player_id_from_cell: Dictionary = {}
+var _player_cell_from_id: Dictionary = {}
+var _player_next_id := 1
+var _player_graph_built := false
+
 # 내부 그래프: 플랫폼 규칙을 위한 수동 그래프
 var _astar := AStar2D.new()
 
@@ -71,6 +78,98 @@ func setup(data: DataLayer) -> void:
 	_accumulate_bbox_full()
 	_force_full_scan = true
 	_schedule_rebuild()
+
+# ──────────────────────────────────────────────────────────────────────
+# 플레이어용 표면 그래프 빌드 (확장된 이동 규칙)
+# - 평지: ±1 수평
+# - 오르기: (1,1), (1,2) - side는 SOLID
+# - 내리기: (1,1), (1,2) - side는 AIR
+
+func _rebuild_player_graph() -> void:
+	_player_astar.clear()
+	_player_id_from_cell.clear()
+	_player_cell_from_id.clear()
+	_player_next_id = 1
+	
+	var w := _grid_index.size.x
+	var h := _grid_index.size.y
+	if w <= 0 or h <= 0:
+		return
+	
+	# 1) 표면 셀 탐지 (일반 표면과 동일)
+	var surface := PackedByteArray()
+	surface.resize(w * h)
+	surface.fill(0)
+	var getp = _phase.get_phase if _phase != null else null
+	
+	for y in range(h):
+		for x in range(w):
+			var c := Vector2i(x, y)
+			var below := Vector2i(x, y + 1)
+			var air := false
+			var solid_below := false
+			if getp != null:
+				air = getp.call(c) != PhaseStore.Phase.SOLID
+				solid_below = (below.y < h) and getp.call(below) == PhaseStore.Phase.SOLID
+			if air and solid_below:
+				surface[_index_of(c)] = 1
+	
+	# 2) 노드 생성
+	for y in range(h):
+		for x in range(w):
+			var c := Vector2i(x, y)
+			if surface[_index_of(c)] == 0:
+				continue
+			var id := _player_next_id
+			_player_next_id += 1
+			var world_pos := Vector2(c) * cell_size + cell_size * 0.5
+			_player_astar.add_point(id, world_pos)
+			_player_id_from_cell[c] = id
+			_player_cell_from_id[id] = c
+	
+	# 3) 간선 연결 (확장 규칙)
+	for y in range(h):
+		for x in range(w):
+			var c := Vector2i(x, y)
+			var id_c = _player_id_from_cell.get(c, 0)
+			if id_c == 0:
+				continue
+			
+			# 좌우 방향 모두 처리
+			for dir_x in [-1, 1]:
+				# 평지 이동: (dir_x, 0)
+				var side := c + Vector2i(dir_x, 0)
+				var id_side = _player_id_from_cell.get(side, 0)
+				if id_side != 0:
+					_player_astar.connect_points(id_c, id_side, true)
+				
+				# 1칸 오르기: (dir_x, -1)
+				var up1 := c + Vector2i(dir_x, -1)
+				var id_up1 = _player_id_from_cell.get(up1, 0)
+				if id_up1 != 0 and _is_solid_safe(side):
+					_player_astar.connect_points(id_c, id_up1, true)
+				
+				# 2칸 오르기: (dir_x, -2)
+				var side_up1 := c + Vector2i(dir_x, -1)  # 중간 칸
+				var up2 := c + Vector2i(dir_x, -2)
+				var id_up2 = _player_id_from_cell.get(up2, 0)
+				if id_up2 != 0 and _is_solid_safe(side) and _is_solid_safe(side_up1):
+					_player_astar.connect_points(id_c, id_up2, true)
+				
+				# 1칸 내리기: (dir_x, 1)
+				var down1 := c + Vector2i(dir_x, 1)
+				var id_down1 = _player_id_from_cell.get(down1, 0)
+				if id_down1 != 0 and _is_air_safe(side):
+					_player_astar.connect_points(id_c, id_down1, true)
+				
+				# 2칸 내리기: (dir_x, 2)
+				var side_down1 := c + Vector2i(dir_x, 1)  # 중간 칸
+				var down2 := c + Vector2i(dir_x, 2)
+				var id_down2 = _player_id_from_cell.get(down2, 0)
+				if id_down2 != 0 and _is_air_safe(side) and _is_air_safe(side_down1):
+					_player_astar.connect_points(id_c, id_down2, true)
+	
+	_player_graph_built = true
 
 # ──────────────────────────────────────────────────────────────────────
 # DataLayer 통합 이벤트 수신
@@ -145,6 +244,8 @@ func _do_rebuild() -> void:
 			navigation_bulk_changed.emit(_pending_bbox)
 			_has_pending_bbox = false
 			_pending_bbox = Rect2i()
+
+	_player_graph_built = false
 
 # ── 분할 풀빌드 메인 루프 ─────────────────────────────────────────────
 func _process(_delta: float) -> void:
@@ -681,3 +782,52 @@ func _queue_patch_candidates_from_cells(cells: Array[Vector2i]) -> void:
 func _mark_candidate(c: Vector2i) -> void:
 	if _grid_index.in_bounds_cell(c):
 		_pending_candidates[c] = true
+
+# ──────────────────────────────────────────────────────────────────────
+# 플레이어용 퍼블릭 API
+
+func find_path_player(start_cell: Vector2i, goal_cell: Vector2i) -> PackedVector2Array:
+	# 그래프가 없거나 오래되었으면 리빌드
+	if not _player_graph_built:
+		_rebuild_player_graph()
+	
+	if not _grid_index.in_bounds_cell(start_cell):
+		push_warning("[GridNav.find_path_player] start_cell not in bounds")
+		return []
+	if not _grid_index.in_bounds_cell(goal_cell):
+		push_warning("[GridNav.find_path_player] goal_cell not in bounds")
+		return []
+	
+	var sid := _ensure_player_node_near(start_cell)
+	var gid := _ensure_player_node_near(goal_cell)
+	if sid == 0 or gid == 0:
+		return []
+	
+	var pts := _player_astar.get_point_path(sid, gid)
+	var arr := PackedVector2Array()
+	for p in pts:
+		arr.push_back(p)
+	return arr
+
+func is_walkable_player(cell: Vector2i) -> bool:
+	if not _player_graph_built:
+		_rebuild_player_graph()
+	return _player_id_from_cell.has(cell)
+
+func _ensure_player_node_near(c: Vector2i) -> int:
+	if _player_id_from_cell.has(c):
+		return _player_id_from_cell[c]
+	
+	# 위로 스캔
+	for dy in range(0, 4):
+		var up := c - Vector2i(0, dy)
+		if _player_id_from_cell.has(up):
+			return _player_id_from_cell[up]
+	
+	# 아래로 스캔
+	for dy in range(1, 6):
+		var down := c + Vector2i(0, dy)
+		if _player_id_from_cell.has(down):
+			return _player_id_from_cell[down]
+	
+	return 0

@@ -1,4 +1,4 @@
-[gd_scene load_steps=45 format=3 uid="uid://c5gv3n6byiin7"]
+[gd_scene load_steps=46 format=3 uid="uid://c5gv3n6byiin7"]
 
 [ext_resource type="Script" uid="uid://dgppaejvd18y0" path="res://world/world.gd" id="1_j7vgi"]
 [ext_resource type="TileSet" uid="uid://dnn0uacxq48mh" path="res://tilesets/world.tres" id="3_bwxdu"]
@@ -43,6 +43,7 @@
 [ext_resource type="Script" uid="uid://dhp47bqyrhke1" path="res://corpses_container.gd" id="35_hm5b2"]
 [ext_resource type="PackedScene" uid="uid://bp27ax8mxaxmy" path="res://fish/fish.tscn" id="35_ll3gq"]
 [ext_resource type="Script" uid="uid://bwaacf1284t0l" path="res://items_root.gd" id="39_behgl"]
+[ext_resource type="PackedScene" uid="uid://bblxu6lirpxxj" path="res://player.tscn" id="40_k83x5"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_7iits"]
 shader = ExtResource("12_hnpqp")
@@ -218,6 +219,11 @@ script = ExtResource("35_hm5b2")
 [node name="ItemsRoot" type="Node2D" parent="Actors"]
 script = ExtResource("39_behgl")
 ground_item_registry_path = NodePath("../../Systems/GroundItemRegistry")
+
+[node name="Player" parent="Actors" instance=ExtResource("40_k83x5")]
+unique_name_in_owner = true
+grid_nav_path = NodePath("../../Systems/GridNav")
+overlay_path = NodePath("../../VisualSync/OverlayManager/OverlayLayer/NavigationOverlay")
 
 [node name="Managers" type="Node" parent="."]
 
