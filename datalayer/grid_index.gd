@@ -5,6 +5,10 @@ var size: Vector2i = Vector2i.ZERO
 func setup(new_size: Vector2i) -> void:
 	size = new_size
 
+# ══════════════════════════════════════════════════════════════════
+# Coordinate Conversion
+# ══════════════════════════════════════════════════════════════════
+
 ## Convert 2D cell coordinate to 1D array index
 func idx(c: Vector2i) -> int:
 	return c.y * size.x + c.x
@@ -21,6 +25,10 @@ func _index_array_to_cells(index_array: Array[int]) -> Array[Vector2i]:
 		cell_array.append(cell(index_array[i]))
 	return cell_array
 
+# ══════════════════════════════════════════════════════════════════
+# Bounds Checking
+# ══════════════════════════════════════════════════════════════════
+
 func in_bounds_cell(c: Vector2i) -> bool:
 	return c.x >= 0 and c.y >= 0 and c.x < size.x and c.y < size.y
 
@@ -36,3 +44,42 @@ func in_bounds(value) -> bool:
 	else:
 		push_warning("[GridIndex] Invalid type for in_bounds(): expected int or Vector2i, got %s" % type_string(typeof(value)))
 		return false
+
+# ══════════════════════════════════════════════════════════════════
+# Utility
+# ══════════════════════════════════════════════════════════════════
+
+## Get all valid neighbors (4-way)
+func get_neighbors_4(c: Vector2i) -> Array[Vector2i]:
+	const DIRECTIONS := [
+		Vector2i(0, -1),   # Up
+		Vector2i(1, 0),    # Right
+		Vector2i(0, 1),    # Down
+		Vector2i(-1, 0)    # Left
+	]
+	
+	var neighbors: Array[Vector2i] = []
+	
+	for dir in DIRECTIONS:
+		var neighbor: Vector2i = c + dir
+		if in_bounds_cell(neighbor):
+			neighbors.append(neighbor)
+	
+	return neighbors
+
+## Get all valid neighbors (8-way)
+func get_neighbors_8(c: Vector2i) -> Array[Vector2i]:
+	const DIRECTIONS := [
+		Vector2i(-1, -1), Vector2i(0, -1), Vector2i(1, -1),
+		Vector2i(-1,  0),                  Vector2i(1,  0),
+		Vector2i(-1,  1), Vector2i(0,  1), Vector2i(1,  1)
+	]
+	
+	var neighbors: Array[Vector2i] = []
+	
+	for dir in DIRECTIONS:
+		var neighbor: Vector2i = c + dir
+		if in_bounds_cell(neighbor):
+			neighbors.append(neighbor)
+	
+	return neighbors
