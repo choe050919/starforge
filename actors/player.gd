@@ -2,16 +2,19 @@ extends Node2D
 class_name Player
 
 signal arrived_at_destination
+signal inventory_changed(material_sid: int, mass_mg: int)  # 인벤토리 변경 신호
 
 # ── 외부 참조 ───────────────────────────────────────────────────────
 @export var grid_nav_path: NodePath
 @export var overlay_path: NodePath
 @export var mining_path: NodePath
+@export var ground_item_registry_path: NodePath  # 추가
 
 var _grid_nav: GridNav = null
 var _overlay: Node = null
 var _mining: Node = null
 var _durability: DurabilityStore
+var _ground_item_registry: GroundItemRegistry = null  # 추가
 
 # ── 이동 튜닝 ───────────────────────────────────────────────────────
 @export var move_speed: float = 180.0
@@ -36,6 +39,12 @@ var _repath_cooldown_left := 0.0
 var _mining_timer: float = 0.0
 var _mining_interval_sec: float = 0.2
 var _mining_queue: Array[Vector2i] = []
+
+# ── 인벤토리 ────────────────────────────────────────────────────────
+var _inventory_material_sid: int = -1        # -1 = 비어있음
+var _inventory_mass_mg: int = 0              # mg 단위 (정수)
+@export var inventory_max_capacity_mg: int = 100_000_000  # 100kg = 100,000,000mg
+@export var pickup_reach_cells: int = 2      # 줍기 범위
 
 # ── 내부 상태 ───────────────────────────────────────────────────────
 enum Mode { IDLE, MOVING, MINING }
@@ -69,6 +78,10 @@ func _ready() -> void:
 	
 	if mining_path != NodePath() and has_node(mining_path):
 		_mining = get_node(mining_path)
+	
+	# GroundItemRegistry 참조 획득
+	if ground_item_registry_path != NodePath() and has_node(ground_item_registry_path):
+		_ground_item_registry = get_node(ground_item_registry_path)
 	
 	call_deferred("_snap_start_to_surface")
 
@@ -107,6 +120,161 @@ func _physics_process(delta: float) -> void:
 		
 		Mode.IDLE:
 			pass
+
+# ════════════════════════════════════════════════════════════════════
+# 인벤토리 API
+# ════════════════════════════════════════════════════════════════════
+
+## 지정된 셀에서 아이템 줍기
+func pickup_item_at_cell(cell: Vector2i) -> bool:
+	if _ground_item_registry == null:
+		push_warning("[Player.pickup] GroundItemRegistry not assigned")
+		return false
+	
+	# 범위 체크
+	if not _is_in_pickup_range(cell):
+		print("[Player.pickup] Out of range: cell=", cell)
+		return false
+	
+	# 해당 셀의 스택 조회
+	var stacks: Array = _ground_item_registry.get_stacks_in_cell(cell)
+	if stacks.is_empty():
+		print("[Player.pickup] No items at cell=", cell)
+		return false
+	
+	# 첫 번째 스택만 줍기 (단순화)
+	var stack: Dictionary = stacks[0]
+	var sid: int = int(stack.get("material_sid", -1))
+	var mass_kg: float = float(stack.get("mass_kg", 0.0))
+	var temp_K: float = float(stack.get("temperature_K", 293.15))
+	
+	if sid < 0 or mass_kg <= 0.0:
+		return false
+	
+	var mass_mg: int = _kg_to_mg(mass_kg)
+	
+	# 인벤토리가 비어있는 경우
+	if _inventory_material_sid < 0:
+		var take_mg: int = min(mass_mg, inventory_max_capacity_mg)
+		_inventory_material_sid = sid
+		_inventory_mass_mg = take_mg
+		
+		# 레지스트리에서 제거
+		_ground_item_registry.remove_mass(cell, 0, _mg_to_kg(take_mg))
+		
+		print("[Player.pickup] Picked up: sid=", sid, " amount=", take_mg, "mg (", _mg_to_kg(take_mg), "kg)")
+		inventory_changed.emit(_inventory_material_sid, _inventory_mass_mg)
+		return true
+	
+	# 같은 재료인 경우 병합
+	if _inventory_material_sid == sid:
+		var capacity_left_mg: int = inventory_max_capacity_mg - _inventory_mass_mg
+		if capacity_left_mg <= 0:
+			print("[Player.pickup] Inventory full")
+			return false
+		
+		var take_mg: int = min(mass_mg, capacity_left_mg)
+		_inventory_mass_mg += take_mg
+		
+		# 레지스트리에서 제거
+		_ground_item_registry.remove_mass(cell, 0, _mg_to_kg(take_mg))
+		
+		print("[Player.pickup] Merged: amount=", take_mg, "mg, total=", _inventory_mass_mg, "mg")
+		inventory_changed.emit(_inventory_material_sid, _inventory_mass_mg)
+		return true
+	
+	# 다른 재료인 경우 교체
+	print("[Player.pickup] Different material - dropping current inventory first")
+	drop_all_inventory()
+	
+	# 재귀 호출로 다시 줍기
+	return pickup_item_at_cell(cell)
+
+## 재료 소비 (건설 등에 사용)
+func consume_material(amount_mg: int) -> bool:
+	if _inventory_material_sid < 0:
+		return false
+	
+	if _inventory_mass_mg < amount_mg:
+		return false
+	
+	_inventory_mass_mg -= amount_mg
+	
+	# 다 써서 0이 되면 초기화
+	if _inventory_mass_mg <= 0:
+		_inventory_material_sid = -1
+		_inventory_mass_mg = 0
+	
+	print("[Player.consume] Consumed: ", amount_mg, "mg, remaining=", _inventory_mass_mg, "mg")
+	inventory_changed.emit(_inventory_material_sid, _inventory_mass_mg)
+	return true
+
+## 전부 버리기 (현재 위치에 드롭)
+func drop_all_inventory() -> void:
+	if _inventory_material_sid < 0 or _inventory_mass_mg <= 0:
+		return
+	
+	if _ground_item_registry == null:
+		push_warning("[Player.drop] GroundItemRegistry not assigned")
+		return
+	
+	var current_cell := _world_to_cell(global_position)
+	var mass_kg := _mg_to_kg(_inventory_mass_mg)
+	
+	# 임시 온도 (나중에 인벤토리에 온도도 저장할 수 있음)
+	var temp_K: float = 293.15
+	
+	_ground_item_registry.add_or_merge(
+		current_cell, 
+		str(_inventory_material_sid), 
+		mass_kg, 
+		temp_K
+	)
+	
+	print("[Player.drop] Dropped: sid=", _inventory_material_sid, " amount=", mass_kg, "kg at cell=", current_cell)
+	
+	# 인벤토리 초기화
+	_inventory_material_sid = -1
+	_inventory_mass_mg = 0
+	inventory_changed.emit(_inventory_material_sid, _inventory_mass_mg)
+
+## 건설 가능 여부 확인 (재료 & 양 체크)
+func can_afford_material(sid: int, amount_mg: int) -> bool:
+	if _inventory_material_sid != sid:
+		return false
+	return _inventory_mass_mg >= amount_mg
+
+## UI용 Getter
+func get_inventory_material_sid() -> int:
+	return _inventory_material_sid
+
+func get_inventory_mass_mg() -> int:
+	return _inventory_mass_mg
+
+func get_inventory_display_kg() -> float:
+	return _mg_to_kg(_inventory_mass_mg)
+
+func get_inventory_capacity_ratio() -> float:
+	if inventory_max_capacity_mg <= 0:
+		return 0.0
+	return float(_inventory_mass_mg) / float(inventory_max_capacity_mg)
+
+# ════════════════════════════════════════════════════════════════════
+# 인벤토리 내부 유틸
+# ════════════════════════════════════════════════════════════════════
+
+func _is_in_pickup_range(cell: Vector2i) -> bool:
+	var player_cell := _world_to_cell(global_position)
+	var dx: int = abs(cell.x - player_cell.x)
+	var dy: int = abs(cell.y - player_cell.y)
+	var dist: int = max(dx, dy)
+	return dist <= pickup_reach_cells
+
+static func _kg_to_mg(kg: float) -> int:
+	return int(round(kg * 1_000_000.0))
+
+static func _mg_to_kg(mg: int) -> float:
+	return float(mg) / 1_000_000.0
 
 # ────────────────────────────────────────────────────────────────────
 # 퍼블릭 API: 이동
