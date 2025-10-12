@@ -3,7 +3,6 @@ class_name Mining
 
 # ─────────────────────────────────────────────────────────
 # 외부 연결(노드 경로)
-@export var durability_path: NodePath
 @export var tile_change_path: NodePath
 @export var ground_item_registry_path: NodePath
 
@@ -15,28 +14,31 @@ class_name Mining
 @export var require_solid_phase: bool = true
 
 # 내부 참조
-var _durability: Durability
+var _durability_store: DurabilityStore
 var _tile_change: TileChange
 var _item_registry
+@export var _durability : Durability
 
 # 선택: 현재 클릭 중인지(홀드 채굴 확장용, 지금은 미사용)
 var _is_mining_in_progress: bool = false
 
 # ─────────────────────────────────────────────────────────
 # 생명주기
-func _ready() -> void:
-	_durability = get_node(durability_path)
-	_tile_change = get_node(tile_change_path)
-	_item_registry = get_node(ground_item_registry_path)
+func setup(data: DataLayer) -> void:
+	_durability_store = data.durability
 
 	# Durability 이벤트 수신(문턱 드롭, 파괴)
 	# 예상 시그널:
 	#   threshold_chunk_requested(cell: Vector2i, chunk_mass_kg: float, threshold_value: float)
 	#   break_requested(cell: Vector2i)
-	if _durability.has_signal("threshold_chunk_requested"):
-		_durability.threshold_chunk_requested.connect(_on_threshold_chunk_requested)
-	if _durability.has_signal("break_requested"):
-		_durability.break_requested.connect(_on_break_requested)
+	if _durability_store.has_signal("threshold_chunk_requested"):
+		_durability_store.threshold_chunk_requested.connect(_on_threshold_chunk_requested)
+	if _durability_store.has_signal("break_requested"):
+		_durability_store.break_requested.connect(_on_break_requested)
+
+func _ready() -> void:
+	_tile_change = get_node(tile_change_path)
+	_item_registry = get_node(ground_item_registry_path)
 
 	# TileChange 이벤트 수신(실제 질량 제거 결과)
 	# 예상 시그널:

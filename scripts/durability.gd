@@ -3,7 +3,6 @@ class_name Durability
 
 # ─────────────────────────────────────────────────────────
 # 시그널
-signal hp_changed(cell: Vector2i, hp: float, max_hp: float)
 signal threshold_chunk_requested(cell: Vector2i, chunk_mass_kg: float, threshold_value: float)
 signal break_requested(cell: Vector2i)
 
@@ -11,45 +10,24 @@ signal break_requested(cell: Vector2i)
 # 외부 참조
 var _data: DataLayer
 var _index: GridIndex
-var _grid_size: Vector2i = Vector2i.ZERO
-var _tile_change: TileChange
 
 # ─────────────────────────────────────────────────────────
 # Config
 ## 문턱 비율(내림차순) — 기본: 80/60/40/20/0%
 @export var threshold_ratios: PackedFloat32Array = PackedFloat32Array([0.8, 0.6, 0.4, 0.2, 0.0])
 
-## 재질 경도 테이블(HP per kg). 예) {"10002":0.2, "10001":0.3, "10004":0.8, "10003":1.2}
-## 키는 SID를 문자열로 넣는 걸 권장(Inspector 편의). 코드에서는 int로 변환해 사용.
-@export var hardness_by_sid := {
-	"0": 0.0,
-	"10001": 30, # ICE
-	"10002": 20, # SOIL
-	"10003": 120, # URANIUM
-	"10004": 80, # COPPER
-}
-
 ## 디버그 로그
 @export var debug_log: bool = false
 
 # Epsilon / Snap
-const EPS := 1e-6                ## HP/비율 비교용 (기존)
-const MASS_SNAP_KG := 1e-6       ## 1 mg in kg (질량 스냅 격자)
+const EPS := 1e-6
+const MASS_SNAP_KG := 1e-6
 
 func _snap_mass_kg(x: float) -> float:
-	# 1 mg 격자로 반올림 스냅
 	return floor((x / MASS_SNAP_KG) + 0.5) * MASS_SNAP_KG
 
 # ─────────────────────────────────────────────────────────
-# Per-cell state
-var _hp: PackedFloat32Array = PackedFloat32Array()
-var _max_hp: PackedFloat32Array = PackedFloat32Array()
-var _initial_mass_kg: PackedFloat32Array = PackedFloat32Array()
-var _hardness_hp_per_kg: PackedFloat32Array = PackedFloat32Array()
-var _next_threshold_index: PackedInt32Array = PackedInt32Array()
-var _is_initialized: PackedByteArray = PackedByteArray()
-
-## Preprocessed thresholds (descending, clamped)
+# Preprocessed thresholds (descending, clamped)
 var _thresholds: PackedFloat32Array = PackedFloat32Array()
 
 func _ready() -> void:
@@ -57,32 +35,13 @@ func _ready() -> void:
 	var arr: Array = []
 	for i in threshold_ratios.size():
 		arr.append(float(threshold_ratios[i]))
-	arr.sort()                # 오름차순
-	arr.reverse()             # 내림차순
-	# 0.0이 없다면 끝에 추가
+	arr.sort()
+	arr.reverse()
 	if arr.is_empty() or abs(arr.back() - 0.0) > EPS:
 		arr.append(0.0)
 	_thresholds = PackedFloat32Array(arr)
 	if debug_log:
 		print("[Dur] thresholds(desc) = ", _thresholds)
-
-func _allocate_arrays(size: Vector2i) -> void:
-	var total := size.x * size.y
-	if debug_log:
-		print("[Dur] allocate arrays: total=", total, " size=", size)
-	_hp.resize(total)
-	_max_hp.resize(total)
-	_initial_mass_kg.resize(total)
-	_hardness_hp_per_kg.resize(total)
-	_next_threshold_index.resize(total)
-	_is_initialized.resize(total)
-	for i in total:
-		_hp[i] = 0.0
-		_max_hp[i] = 0.0
-		_initial_mass_kg[i] = 0.0
-		_hardness_hp_per_kg[i] = 0.0
-		_next_threshold_index[i] = 0
-		_is_initialized[i] = 0
 
 # ─────────────────────────────────────────────────────────
 # Public API
@@ -90,145 +49,79 @@ func _allocate_arrays(size: Vector2i) -> void:
 func setup(data: DataLayer) -> void:
 	_data = data
 	_index = data.index
-	_grid_size = _index.size
-	_allocate_arrays(_grid_size)
 	if debug_log:
-		print("[Dur] setup done. grid=", _grid_size)
-
-## TileChange와 연결 (World.gd에서 호출)
-func connect_tile_change(tile_change: TileChange) -> void:
-	_tile_change = tile_change
-	
-	# 타일 파괴 → 초기화 해제
-	if _tile_change.tile_destroyed.is_connected(_on_tile_destroyed):
-		_tile_change.tile_destroyed.disconnect(_on_tile_destroyed)
-	_tile_change.tile_destroyed.connect(_on_tile_destroyed)
-	
-	# 타일 교체 → 재초기화
-	if _tile_change.tile_replaced.is_connected(_on_tile_replaced):
-		_tile_change.tile_replaced.disconnect(_on_tile_replaced)
-	_tile_change.tile_replaced.connect(_on_tile_replaced)
-	
-	if debug_log:
-		print("[Dur] connected to TileChange")
-
-## 셀 초기화/재설정: 타일 배치/교체 시 호출
-## sid: 재질 식별자(int), mass_kg: 초기 질량(kg)
-func reset_cell(cell: Vector2i, sid: int, mass_kg: float) -> void:
-	if not _in_bounds(cell): return
-	var idx := _idx(cell)
-
-	var hardness := _get_hardness_for_sid(sid)
-	_initial_mass_kg[idx] = max(0.0, mass_kg)
-	_hardness_hp_per_kg[idx] = max(0.0, hardness)
-	_max_hp[idx] = _initial_mass_kg[idx] * _hardness_hp_per_kg[idx]
-	_hp[idx] = _max_hp[idx]
-	_next_threshold_index[idx] = 0
-	_is_initialized[idx] = 1
-
-	_emit_hp_changed(cell, idx)
-
-func _on_tile_destroyed(cell: Vector2i, _from_sid: int, _reason: StringName) -> void:
-	clear_cell(cell)
-
-func _on_tile_replaced(cell: Vector2i, from_sid: int, to_sid: int, _reason: StringName) -> void:
-	if to_sid == 0:
-		clear_cell(cell)
-	else:
-		# 질량은 DataLayer에서 직접 읽기
-		if _data != null:
-			var mass_mg := _data.mass.get_by_cell(cell)
-			var mass_kg := float(mass_mg) / 1_000_000.0
-			reset_cell(cell, to_sid, mass_kg)
-
-## 셀 초기화 해제
-func clear_cell(cell: Vector2i) -> void:
-	if not _in_bounds(cell): return
-	var idx := _idx(cell)
-	_hp[idx] = 0.0
-	_max_hp[idx] = 0.0
-	_initial_mass_kg[idx] = 0.0
-	_hardness_hp_per_kg[idx] = 0.0
-	_next_threshold_index[idx] = 0
-	_is_initialized[idx] = 0
-	if debug_log:
-		print("[Dur] clear_cell cell=", cell)
+		print("[Dur] setup done. grid=", _index.size)
 
 ## 채굴/피해 적용(HP 단위)
 func apply_damage(cell: Vector2i, amount_hp: float) -> void:
-	if amount_hp <= 0.0: return
-	if not _in_bounds(cell): return
-	var idx := _idx(cell)
-	if _is_initialized[idx] == 0:
+	if amount_hp <= 0.0:
+		return
+	if not _index.in_bounds_cell(cell):
+		return
+	
+	# DurabilityStore에서 현재 상태 읽기
+	if not _data.durability.is_initialized(cell):
 		if debug_log:
 			print("[Dur] apply_damage ignored: not initialized cell=", cell)
-		return # 초기화 안 된 셀 무시
-	if _max_hp[idx] <= EPS:
+		return
+	
+	var max_hp := _data.durability.get_max_hp(cell)
+	if max_hp <= EPS:
 		if debug_log:
 			print("[Dur] apply_damage ignored: max_hp≈0 cell=", cell)
-		return       # 채굴 불가(경도=0 또는 질량=0)
-
-	var hp_prev := _hp[idx]
+		return
+	
+	var hp_prev := _data.durability.get_hp(cell)
 	var hp_new: float = max(0.0, hp_prev - amount_hp)
-	_hp[idx] = hp_new
-
+	
 	if debug_log:
 		print("[Dur] dmg cell=", cell,
 			" amount=", amount_hp,
-			" hp ", hp_prev, "→", hp_new, " / max=", _max_hp[idx])
-
-	# HP 변경 방송
-	_emit_hp_changed(cell, idx)
-
+			" hp ", hp_prev, "→", hp_new, " / max=", max_hp)
+	
+	# DataLayer API를 통해 HP 변경
+	_data.set_cell_with_spec(cell, {"hp": hp_new}, &"durability")
+	
 	# 문턱 처리
-	_process_threshold_cross(cell, idx, hp_prev, hp_new)
-
+	_process_threshold_cross(cell, hp_prev, hp_new, max_hp)
+	
 	# 파괴 처리
-	if _hp[idx] <= EPS:
+	if hp_new <= EPS:
 		if debug_log:
 			print("[Dur] break emit cell=", cell)
 		break_requested.emit(cell)
 
-## UI/디버깅용 Getter
+## UI/디버깅용 Getter (DurabilityStore로 위임)
 func get_hp(cell: Vector2i) -> float:
-	if not _in_bounds(cell): return 0.0
-	return _hp[_idx(cell)]
+	return _data.durability.get_hp(cell)
 
 func get_max_hp(cell: Vector2i) -> float:
-	if not _in_bounds(cell): return 0.0
-	return _max_hp[_idx(cell)]
+	return _data.durability.get_max_hp(cell)
 
 func get_hp_ratio(cell: Vector2i) -> float:
-	if not _in_bounds(cell): return 0.0
-	var idx := _idx(cell)
-	if _max_hp[idx] <= EPS: return 0.0
-	return clamp(_hp[idx] / _max_hp[idx], 0.0, 1.0)
+	return _data.durability.get_hp_ratio(cell)
 
 # ─────────────────────────────────────────────────────────
 # Internal
 
-func _emit_hp_changed(cell: Vector2i, idx: int) -> void:
-	hp_changed.emit(cell, _hp[idx], _max_hp[idx])
-
-func _process_threshold_cross(cell: Vector2i, idx: int, hp_prev: float, hp_new: float) -> void:
-	if _max_hp[idx] <= EPS:
+func _process_threshold_cross(cell: Vector2i, hp_prev: float, hp_new: float, max_hp: float) -> void:
+	if max_hp <= EPS:
 		return
-
-	var ratio_prev: float = clamp(hp_prev / _max_hp[idx], 0.0, 1.0)
-	var ratio_new: float = clamp(hp_new / _max_hp[idx], 0.0, 1.0)
-	var next_i := _next_threshold_index[idx]
-
-	# 문턱은 내림차순으로 저장되어 있음.
-	# 현재 next_i가 가리키는 문턱 값 이하로 내려갔으면,
-	# 그 문턱 구간에 해당하는 '드롭 쿼터'를 순차적으로 요청한다.
+	
+	var ratio_prev: float = clamp(hp_prev / max_hp, 0.0, 1.0)
+	var ratio_new: float = clamp(hp_new / max_hp, 0.0, 1.0)
+	var next_i := _data.durability.get_next_threshold_index(cell)
+	var initial_mass_kg := _data.durability.get_initial_mass_kg(cell)
+	
+	# 문턱은 내림차순으로 저장
 	while next_i < _thresholds.size():
 		var t := _thresholds[next_i]
-		# ratio_new가 문턱(t) 이하로 내려갔는가?
+		
 		if ratio_new <= t + EPS:
-			# 이전 문턱은 (next_i == 0 ? 1.0 : _thresholds[next_i - 1])
 			var t_prev := 1.0 if next_i == 0 else _thresholds[next_i - 1]
-			var quota_ratio: float = max(0.0, t_prev - t) # 이 구간에 할당된 질량 비율
-			var chunk_mass := _snap_mass_kg(_initial_mass_kg[idx] * quota_ratio)
+			var quota_ratio: float = max(0.0, t_prev - t)
+			var chunk_mass := _snap_mass_kg(initial_mass_kg * quota_ratio)
+			
 			if chunk_mass > MASS_SNAP_KG:
 				if debug_log:
 					print("[Dur] threshold cell=", cell,
@@ -236,25 +129,8 @@ func _process_threshold_cross(cell: Vector2i, idx: int, hp_prev: float, hp_new: 
 						" quota_ratio=", quota_ratio,
 						" chunk_mass_kg=", chunk_mass)
 				threshold_chunk_requested.emit(cell, chunk_mass, t)
+			
 			next_i += 1
-			_next_threshold_index[idx] = next_i
-			# 다음 문턱도 동시에 뛰어넘었을 수 있으므로 루프 지속
+			_data.durability.set_next_threshold_index(cell, next_i)
 		else:
 			break
-
-func _get_hardness_for_sid(sid: int) -> float:
-	# Inspector에서 키를 문자열로 넣는 걸 권장했으므로 우선 문자열 키 조회
-	var k := str(sid)
-	if hardness_by_sid.has(k):
-		return float(hardness_by_sid[k])
-	# 정수 키로도 시도(개발자가 코드에서 직접 넣었을 수도 있음)
-	if hardness_by_sid.has(sid):
-		return float(hardness_by_sid[sid])
-	# 미정이면 0(채굴 불가)
-	return 0.0
-
-func _in_bounds(cell: Vector2i) -> bool:
-	return cell.x >= 0 and cell.y >= 0 and cell.x < _grid_size.x and cell.y < _grid_size.y
-
-func _idx(cell: Vector2i) -> int:
-	return cell.y * _grid_size.x + cell.x

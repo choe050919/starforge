@@ -7,12 +7,11 @@ signal arrived_at_destination
 @export var grid_nav_path: NodePath
 @export var overlay_path: NodePath
 @export var mining_path: NodePath
-@export var durability_path: NodePath
 
 var _grid_nav: GridNav = null
 var _overlay: Node = null
 var _mining: Node = null
-var _durability: Node = null
+var _durability: DurabilityStore
 
 # ── 이동 튜닝 ───────────────────────────────────────────────────────
 @export var move_speed: float = 180.0
@@ -50,6 +49,9 @@ var _last_start_cell: Vector2i = Vector2i(-9999, -9999)
 var _mining_target_cell: Vector2i = Vector2i(-9999, -9999)
 
 # ────────────────────────────────────────────────────────────────────
+func setup(data: DataLayer) -> void:
+	_durability = data.durability
+
 func _ready() -> void:
 	if grid_nav_path != NodePath() and has_node(grid_nav_path):
 		_grid_nav = get_node(grid_nav_path)
@@ -67,9 +69,6 @@ func _ready() -> void:
 	
 	if mining_path != NodePath() and has_node(mining_path):
 		_mining = get_node(mining_path)
-	
-	if durability_path != NodePath() and has_node(durability_path):
-		_durability = get_node(durability_path)
 	
 	call_deferred("_snap_start_to_surface")
 
@@ -322,7 +321,6 @@ func _is_cell_valid_for_mining(cell: Vector2i) -> bool:
 	var max_hp = _durability.get_max_hp(cell)
 	if max_hp <= 0.0:
 		return false  # 초기화 안 됨 또는 파괴됨
-	
 	return true
 
 func _is_in_mining_range(cell: Vector2i) -> bool:

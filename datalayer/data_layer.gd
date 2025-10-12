@@ -95,6 +95,7 @@ var phase: PhaseStore = PhaseStore.new()
 var mass: MassStore = MassStore.new()
 var temperature: TemperatureStore = TemperatureStore.new()
 var light: LightStore = LightStore.new()
+var durability: DurabilityStore = DurabilityStore.new()
 
 # ══════════════════════════════════════════════════════════════════
 # Dependencies & Constants
@@ -125,6 +126,10 @@ func setup(
 	var L0 := PackedFloat32Array(); L0.resize(n)
 	for i in n: L0[i] = 0.0
 	light.setup(index, L0)
+	
+	# DurabilityStore 초기화 추가
+	durability.setup(index, null)
+	_initialize_durability_from_world_data()
 
 	# 로깅 및 검증
 	_log_setup_statistics()
@@ -132,6 +137,22 @@ func setup(
 
 func bind_rule_cache(cache: SubstanceRuleCache) -> void:
 	_rule_cache = cache
+
+## 월드 생성 시 모든 셀의 Durability 초기값 설정
+func _initialize_durability_from_world_data() -> void:
+	var n := index.size.x * index.size.y
+	
+	for i in n:
+		var cell := index.cell(i)
+		var sid := substance.get_by_index(i)
+		var mass_mg := mass.get_by_index(i)
+		var mass_kg := float(mass_mg) / 1_000_000.0
+		
+		# 진공이 아니고 질량이 있는 셀만 초기화
+		if sid != VACUUM_SID and mass_kg > 0.0:
+			durability.reset_cell(cell, sid, mass_kg)
+	
+	print("[DataLayer] Durability initialized for %d cells" % n)
 
 # ══════════════════════════════════════════════════════════════════
 # Write API - Spec-based Cell Updates
@@ -166,16 +187,19 @@ func _calculate_cell_updates(cells: Array[Vector2i], spec: Dictionary) -> Dictio
 	var target_phases: Array[int] = []
 	var target_masses: Array[int] = []
 	var target_temps: Array[int] = []
+	var target_hps: Array[float] = []
 	
 	var changed_sid: Array[bool] = []
 	var changed_phase: Array[bool] = []
 	var changed_mass: Array[bool] = []
 	var changed_temp: Array[bool] = []
+	var changed_hp: Array[bool] = []
 	
 	var any_sid_changed := false
 	var any_phase_changed := false
 	var any_mass_changed := false
 	var any_temp_changed := false
+	var any_hp_changed := false
 	
 	for cell in cells:
 		if not index.in_bounds_cell(cell):
@@ -192,16 +216,19 @@ func _calculate_cell_updates(cells: Array[Vector2i], spec: Dictionary) -> Dictio
 		target_phases.append(update.target_phase)
 		target_masses.append(update.target_mass)
 		target_temps.append(update.target_temp)
+		target_hps.append(update.target_hp)
 		
 		changed_sid.append(update.changed_sid)
 		changed_phase.append(update.changed_phase)
 		changed_mass.append(update.changed_mass)
 		changed_temp.append(update.changed_temp)
+		changed_hp.append(update.changed_hp)
 		
 		any_sid_changed = any_sid_changed or update.changed_sid
 		any_phase_changed = any_phase_changed or update.changed_phase
 		any_mass_changed = any_mass_changed or update.changed_mass
 		any_temp_changed = any_temp_changed or update.changed_temp
+		any_hp_changed = any_hp_changed or update.changed_hp
 	
 	return {
 		"indices": indices,
@@ -209,14 +236,17 @@ func _calculate_cell_updates(cells: Array[Vector2i], spec: Dictionary) -> Dictio
 		"target_phases": target_phases,
 		"target_masses": target_masses,
 		"target_temps": target_temps,
+		"target_hps": target_hps,
 		"changed_sid": changed_sid,
 		"changed_phase": changed_phase,
 		"changed_mass": changed_mass,
 		"changed_temp": changed_temp,
+		"changed_hp": changed_hp,
 		"any_sid_changed": any_sid_changed,
 		"any_phase_changed": any_phase_changed,
 		"any_mass_changed": any_mass_changed,
-		"any_temp_changed": any_temp_changed
+		"any_temp_changed": any_temp_changed,
+		"any_hp_changed": any_hp_changed
 	}
 
 func _calculate_single_cell_update(cell: Vector2i, spec: Dictionary) -> Dictionary:
@@ -227,6 +257,7 @@ func _calculate_single_cell_update(cell: Vector2i, spec: Dictionary) -> Dictiona
 	var cur_phase := phase.get_by_index(i)
 	var cur_mass := mass.get_by_index(i)
 	var cur_temp := temperature.get_by_index(i)
+	var cur_hp := durability.get_hp_by_index(i)
 	
 	# Target SID
 	var target_sid := cur_sid
@@ -244,13 +275,21 @@ func _calculate_single_cell_update(cell: Vector2i, spec: Dictionary) -> Dictiona
 	var target_mass := int(_resolve_field("mass", cur_mass, default_spec, spec))
 	var target_temp := int(_resolve_field("temp", cur_temp, default_spec, spec))
 	
+	# hp는 schema에 없으므로 별도 처리
+	var target_hp := cur_hp
+	if spec.has("hp"):
+		if spec["hp"] != null:
+			target_hp = float(spec["hp"])
+		# null이면 현재 값 유지
+	
 	# Determine what changed
 	var changed_sid := spec.has("sid") and (target_sid != cur_sid)
 	var changed_phase := (target_phase != cur_phase)
 	var changed_mass := (target_mass != cur_mass)
 	var changed_temp := (target_temp != cur_temp)
+	var changed_hp: bool = spec.has("hp") and (abs(target_hp - cur_hp) > 0.001)
 	
-	var has_changes := changed_sid or changed_phase or changed_mass or changed_temp
+	var has_changes := changed_sid or changed_phase or changed_mass or changed_temp or changed_hp
 	
 	return {
 		"has_changes": has_changes,
@@ -259,10 +298,12 @@ func _calculate_single_cell_update(cell: Vector2i, spec: Dictionary) -> Dictiona
 		"target_phase": target_phase,
 		"target_mass": target_mass,
 		"target_temp": target_temp,
+		"target_hp": target_hp,
 		"changed_sid": changed_sid,
 		"changed_phase": changed_phase,
 		"changed_mass": changed_mass,
-		"changed_temp": changed_temp
+		"changed_temp": changed_temp,
+		"changed_hp": changed_hp
 	}
 
 # ── Update Application ───────────────────────────────────────────
@@ -279,6 +320,8 @@ func _apply_cell_updates(update_data: Dictionary) -> void:
 		mass.begin_write()
 	if update_data.any_temp_changed:
 		temperature.begin_write()
+	if update_data.any_hp_changed:
+		durability.begin_write()
 	
 	# Apply updates
 	for k in indices.size():
@@ -295,6 +338,9 @@ func _apply_cell_updates(update_data: Dictionary) -> void:
 		
 		if update_data.any_temp_changed and update_data.changed_temp[k]:
 			temperature.set_by_index(idx, update_data.target_temps[k])
+		
+		if update_data.any_hp_changed and update_data.changed_hp[k]:
+			durability.set_hp_by_index(idx, update_data.target_hps[k])
 	
 	# Commit transactions
 	if update_data.any_sid_changed:
@@ -305,6 +351,8 @@ func _apply_cell_updates(update_data: Dictionary) -> void:
 		mass.commit()
 	if update_data.any_temp_changed:
 		temperature.commit()
+	if update_data.any_hp_changed:
+		durability.commit()
 
 func _emit_tile_changes(update_data: Dictionary, reason: StringName) -> void:
 	var final_reason := reason if reason != &"" else &"apply_spec_cells"
@@ -316,7 +364,8 @@ func _emit_tile_changes(update_data: Dictionary, reason: StringName) -> void:
 			"sid_changed": update_data.any_sid_changed,
 			"phase_changed": update_data.any_phase_changed,
 			"mass_changed": update_data.any_mass_changed,
-			"temp_changed": update_data.any_temp_changed
+			"temp_changed": update_data.any_temp_changed,
+			"hp_changed": update_data.any_hp_changed
 		}
 	)
 
@@ -406,6 +455,36 @@ func _emit_bulk_change(reason: StringName, changes: Dictionary) -> void:
 	var payload := changes.duplicate()
 	payload["full_refresh"] = true
 	tiles_changed.emit(PackedInt32Array(), reason, payload)
+
+# ══════════════════════════════════════════════════════════════════
+# Write API - Full Cell Initialization
+# ══════════════════════════════════════════════════════════════════
+
+#func reset_cell(cell, sid, reason):
+	#substance.reset_cell(cell, sid)
+	#phase.reset_cell(cell, ...)
+	#mass.reset_cell(cell, ...)
+	#temperature.reset_cell(cell, ...)
+	#durability.reset_cell(cell, sid, mass_kg)
+	# 각 Store가 자기 책임으로 초기화
+
+func clear_cell(cell, reason):
+	#substance.clear_cell(cell)
+	#phase.clear_cell(cell)
+	#mass.clear_cell(cell)
+	#temperature.clear_cell(cell)
+	durability.clear_cell(cell)
+	# 각 Store가 자기 책임으로 정리
+	
+	var update_data := {
+		"indices": [index.idx(cell)],
+		"any_sid_changed": false,
+		"any_phase_changed": false,
+		"any_mass_changed": false,
+		"any_temp_changed": false,
+		"any_hp_changed": true
+	}
+	_emit_tile_changes(update_data, &"clear_cell")
 
 # ══════════════════════════════════════════════════════════════════
 # Spec Resolution

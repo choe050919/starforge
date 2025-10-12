@@ -186,12 +186,12 @@ plant_base_scene = ExtResource("29_ll3gq")
 unique_name_in_owner = true
 script = ExtResource("31_cqwbg")
 
-[node name="Mining" type="Node" parent="Systems"]
+[node name="Mining" type="Node" parent="Systems" node_paths=PackedStringArray("_durability")]
 unique_name_in_owner = true
 script = ExtResource("32_hnpqp")
-durability_path = NodePath("../Durability")
 tile_change_path = NodePath("../TileChange")
 ground_item_registry_path = NodePath("../GroundItemRegistry")
+_durability = NodePath("../Durability")
 
 [node name="GroundItemRegistry" type="Node" parent="Systems"]
 script = ExtResource("33_ifjjt")
@@ -223,7 +223,6 @@ unique_name_in_owner = true
 grid_nav_path = NodePath("../../Systems/GridNav")
 overlay_path = NodePath("../../VisualSync/OverlayManager/OverlayLayer/NavigationOverlay")
 mining_path = NodePath("../../Systems/Mining")
-durability_path = NodePath("../../Systems/Durability")
 
 [node name="Camera2D" type="Camera2D" parent="."]
 script = ExtResource("27_o7xkw")

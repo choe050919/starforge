@@ -97,13 +97,13 @@ func _setup_worldgen() -> void:
 
 func _setup_durability() -> void:
 	durability.break_requested.connect(_on_durability_break)
-	durability.hp_changed.connect(crack_overlay.on_hp_changed)
 	durability.break_requested.connect(crack_overlay.on_break_requested)
 
 func _setup_player() -> void:
 	player.grid_nav_path = NodePath("%GridNav")
 	player.overlay_path = NodePath("%OverlayManager/OverlayLayer/NavigationOverlay")
 	player.mining_path = NodePath("%Mining")
+	player.setup(data_layer)
 
 func _setup_mining_visual() -> void:
 	mining_visual.player_path = NodePath("../Actors/Player")
@@ -162,7 +162,7 @@ func _setup_simulation_systems(springs: PackedVector2Array) -> void:
 	temp.setup(data_layer, rule_cache)
 	
 	tchange.setup(data_layer)
-	tchange.seed_durability(durability)
+	#tchange.seed_durability(durability)
 	
 	liquid.setup(data_layer, springs)
 	liquid.set_liquid_sids()
@@ -176,6 +176,8 @@ func _setup_simulation_systems(springs: PackedVector2Array) -> void:
 	plant.set_light_sampler(Callable(data_layer.light, "get_by_cell"))
 	
 	grid_nav.setup(data_layer)
+	
+	mining.setup(data_layer)
 
 ## 적용 이후 후처리:
 ## - 카메라/오버레이 레이아웃(타일셋/맵 크기 필요)
@@ -211,8 +213,6 @@ func _post_apply_worldgen(size: Vector2i, initial_mass: PackedInt64Array) -> voi
 	# 시뮬 배선
 	if not clock.tick_sim.is_connected(_on_sim_clock_tick):
 		clock.tick_sim.connect(_on_sim_clock_tick)
-
-	durability.connect_tile_change(tchange)
 
 var sim_time := 0.0
 

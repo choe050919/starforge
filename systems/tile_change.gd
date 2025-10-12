@@ -1,14 +1,34 @@
 ## TileChange
-## - DataLayer에 직접 접근하여 타일을 동기 배치로 변경
-## - Terrain 적용 & 시그널 발행만 담당
-## - 최소 책임: 경계검사, 타일 타입 쓰기, 가시화 반영, 시그널
+##
+## Durability에 영향을 주는 모든 타일 변경의 필수 통과점.
+## DataLayer를 직접 수정하되, 변경 사항을 시그널로 방송하여
+## Durability가 HP 상태를 자동으로 동기화하도록 보장한다.
+##
+## [b]핵심 역할:[/b]
+## 1. 타일 변경의 단일 진입점 (replace_cell, destroy_cell, harvest_mass_from_cell)
+## 2. 변경 시그널 발행 (tile_replaced, tile_destroyed, mass_harvested)
+## 3. Durability와의 양방향 연결 유지
+##
+## [b]TileChange를 반드시 거쳐야 하는 작업:[/b]
+## - 채굴: 질량 감소 → HP 감소 필요
+## - 건설: 새 타일 배치 → HP 초기화 필요
+## - 파괴: 타일 제거 → HP 해제 필요
+## - 교체: 물질 변경 → HP 재계산 필요
+##
+## [b]TileChange를 거치지 않아도 되는 작업:[/b]
+## - 상전이(PhaseChange): 이미 HP가 설정된 물질의 phase만 변경
+## - 온도/조명 변경: HP와 무관한 속성 변경
+##
+## [b]단위 변환:[/b]
+## - DataLayer는 mg(int), centi-K(int) 사용
+## - 외부 시스템은 kg(float), K(float) 사용
+## - TileChange가 중간에서 단위 변환 담당
 extends Node
 class_name TileChange
 
 signal tile_replaced(cell: Vector2i, from_tile: int, to_tile: int, reason: StringName)
 signal tile_destroyed(cell: Vector2i, from_tile: int, reason: StringName)
 signal mass_harvested(cell: Vector2i, material_sid: int, mass_kg: float, temperature_K: float, reason: StringName)
-signal cells_changed() # 필요 시 AABB/리스트로 확장, 아직 연결 X. TODO
 
 var _data: DataLayer
 var _index: GridIndex
@@ -80,7 +100,6 @@ func replace_cell(cell: Vector2i, to_tile: int, reason: StringName = &"replace")
 	}, reason)
 
 	tile_replaced.emit(cell, from_sid, to_tile, reason)
-	cells_changed.emit()
 
 ## 파괴: 단일 셀 VACUUM으로 교체
 func destroy_cell(cell: Vector2i, reason: StringName = &"destroy") -> void:
@@ -92,16 +111,18 @@ func destroy_cell(cell: Vector2i, reason: StringName = &"destroy") -> void:
 	var i := _index.idx(cell)
 	var from_sid := _data.substance.get_by_index(i)
 
+	_data.clear_cell(cell, reason)
+
 	# 명시적으로 진공으로 설정(스키마 의존 X)
-	_data.set_cell_with_spec(cell, {
-		"sid": TILE_VACUUM,
-		"phase": PhaseStore.Phase.VACUUM,
-		"mass": 0,
-		"temp": 0,
-	}, reason)
+	#_data.set_cell_with_spec(cell, {
+		#"sid": TILE_VACUUM,
+		#"phase": PhaseStore.Phase.VACUUM,
+		#"mass": 0,
+		#"temp": 0,
+		#"hp": 0
+	#}, reason)
 
 	tile_destroyed.emit(cell, from_sid, reason)
-	cells_changed.emit()
 
 ## 질량 수확(부분/전량): Mining/Durability에서 호출
 func harvest_mass_from_cell(cell: Vector2i, requested_mass_kg: float, reason: StringName = &"") -> void:
