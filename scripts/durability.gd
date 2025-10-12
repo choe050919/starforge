@@ -113,7 +113,10 @@ func _process_threshold_cross(cell: Vector2i, hp_prev: float, hp_new: float, max
 	var next_i := _data.durability.get_next_threshold_index(cell)
 	var initial_mass_kg := _data.durability.get_initial_mass_kg(cell)
 	
-	# 문턱은 내림차순으로 저장
+	print("[Dur] threshold_cross: cell=", cell, " hp ", hp_prev, "→", hp_new, 
+		  " ratio ", ratio_prev, "→", ratio_new, " next_i=", next_i, 
+		  " initial_mass=", initial_mass_kg)
+	
 	while next_i < _thresholds.size():
 		var t := _thresholds[next_i]
 		
@@ -122,12 +125,10 @@ func _process_threshold_cross(cell: Vector2i, hp_prev: float, hp_new: float, max
 			var quota_ratio: float = max(0.0, t_prev - t)
 			var chunk_mass := _snap_mass_kg(initial_mass_kg * quota_ratio)
 			
+			print("[Dur] EMIT threshold: t=", t, " t_prev=", t_prev, 
+				  " quota=", quota_ratio, " chunk=", chunk_mass, "kg")
+			
 			if chunk_mass > MASS_SNAP_KG:
-				if debug_log:
-					print("[Dur] threshold cell=", cell,
-						" t=", t, " t_prev=", t_prev,
-						" quota_ratio=", quota_ratio,
-						" chunk_mass_kg=", chunk_mass)
 				threshold_chunk_requested.emit(cell, chunk_mass, t)
 			
 			next_i += 1

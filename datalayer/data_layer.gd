@@ -468,23 +468,44 @@ func _emit_bulk_change(reason: StringName, changes: Dictionary) -> void:
 	#durability.reset_cell(cell, sid, mass_kg)
 	# 각 Store가 자기 책임으로 초기화
 
-func clear_cell(cell, reason):
-	#substance.clear_cell(cell)
-	#phase.clear_cell(cell)
-	#mass.clear_cell(cell)
-	#temperature.clear_cell(cell)
-	durability.clear_cell(cell)
-	# 각 Store가 자기 책임으로 정리
+func clear_cell(cell: Vector2i, reason: StringName = &"clear") -> void:
+	if not index.in_bounds_cell(cell):
+		return
 	
+	var i := index.idx(cell)
+	
+	# 진공으로 설정
+	var vacuum_spec := get_spec(VACUUM_SID)
+	
+	# Store들 업데이트
+	substance.begin_write()
+	phase.begin_write()
+	mass.begin_write()
+	temperature.begin_write()
+	durability.begin_write()
+	
+	substance.set_by_index(i, VACUUM_SID)
+	phase.set_by_index(i, vacuum_spec.get("phase", PhaseStore.Phase.VACUUM))
+	mass.set_by_index(i, 0)
+	temperature.set_by_index(i, vacuum_spec.get("temp", 0))
+	durability.clear_cell(cell)
+	
+	substance.commit()
+	phase.commit()
+	mass.commit()
+	temperature.commit()
+	durability.commit()
+	
+	# 시그널 발행
 	var update_data := {
-		"indices": [index.idx(cell)],
-		"any_sid_changed": false,
-		"any_phase_changed": false,
-		"any_mass_changed": false,
-		"any_temp_changed": false,
+		"indices": [i],
+		"any_sid_changed": true,
+		"any_phase_changed": true,
+		"any_mass_changed": true,
+		"any_temp_changed": true,
 		"any_hp_changed": true
 	}
-	_emit_tile_changes(update_data, &"clear_cell")
+	_emit_tile_changes(update_data, reason if reason != &"" else &"clear_cell")
 
 # ══════════════════════════════════════════════════════════════════
 # Spec Resolution

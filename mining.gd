@@ -70,13 +70,15 @@ func _on_threshold_chunk_requested(cell: Vector2i, chunk_mass_kg: float, thresho
 
 # Durability → Mining: 파괴(HP 0) 요청
 func _on_break_requested(cell: Vector2i) -> void:
-	# 남은 질량을 전부 떼어내고, 타일이 0이 되면 TileChange가 진공으로 치환한다.
-	# 남은 질량 전부를 알기 위해서는 TileChange가 내부에서 자동 처리하도록,
-	# 충분히 큰 값을 넘겨 '싹쓸이'하도록 한다.
-	if _tile_change and _tile_change.has_method("harvest_mass_from_cell"):
-		_tile_change.harvest_mass_from_cell(cell, 1_000_000.0, &"mine") # effectively "take all"
-	else:
-		push_warning("[Mining] TileChange.harvest_mass_from_cell not found for break")
+	print("[Mining] Break requested: cell=", cell)
+	
+	if _tile_change == null:
+		push_error("[Mining] TileChange is null")
+		return
+	
+	# 타일만 파괴 (질량은 이미 threshold 0.0에서 드롭됨)
+	# harvest_mass_from_cell을 호출하지 않고 destroy_cell만 호출
+	_tile_change.destroy_cell(cell, &"mine")
 
 # ─────────────────────────────────────────────────────────
 # TileChange → Mining: 실제 질량 제거 결과(드롭 생성)
