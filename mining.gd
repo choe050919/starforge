@@ -31,10 +31,10 @@ func setup(data: DataLayer) -> void:
 	# 예상 시그널:
 	#   threshold_chunk_requested(cell: Vector2i, chunk_mass_kg: float, threshold_value: float)
 	#   break_requested(cell: Vector2i)
-	if _durability_store.has_signal("threshold_chunk_requested"):
-		_durability_store.threshold_chunk_requested.connect(_on_threshold_chunk_requested)
-	if _durability_store.has_signal("break_requested"):
-		_durability_store.break_requested.connect(_on_break_requested)
+	if _durability.has_signal("threshold_chunk_requested"):
+		_durability.threshold_chunk_requested.connect(_on_threshold_chunk_requested)
+	if _durability.has_signal("break_requested"):
+		_durability.break_requested.connect(_on_break_requested)
 
 func _ready() -> void:
 	_tile_change = get_node(tile_change_path)
