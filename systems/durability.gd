@@ -113,9 +113,10 @@ func _process_threshold_cross(cell: Vector2i, hp_prev: float, hp_new: float, max
 	var next_i := _data.durability.get_next_threshold_index(cell)
 	var initial_mass_kg := _data.durability.get_initial_mass_kg(cell)
 	
-	print("[Dur] threshold_cross: cell=", cell, " hp ", hp_prev, "→", hp_new, 
-		  " ratio ", ratio_prev, "→", ratio_new, " next_i=", next_i, 
-		  " initial_mass=", initial_mass_kg)
+	if debug_log:
+		print("[Dur] threshold_cross: cell=", cell, " hp ", hp_prev, "→", hp_new, 
+			  " ratio ", ratio_prev, "→", ratio_new, " next_i=", next_i, 
+			  " initial_mass=", initial_mass_kg)
 	
 	while next_i < _thresholds.size():
 		var t := _thresholds[next_i]

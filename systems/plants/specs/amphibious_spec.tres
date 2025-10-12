@@ -1,6 +1,6 @@
 [gd_resource type="Resource" script_class="PlantSpec" load_steps=2 format=3 uid="uid://j6magno18x0n"]
 
-[ext_resource type="Script" uid="uid://dr8df4u2npquo" path="res://plants/plant_spec.gd" id="1_qj4p6"]
+[ext_resource type="Script" uid="uid://dr8df4u2npquo" path="res://systems/plants/plant_spec.gd" id="1_qj4p6"]
 
 [resource]
 script = ExtResource("1_qj4p6")

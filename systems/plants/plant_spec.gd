@@ -2,7 +2,7 @@
 extends Resource
 class_name PlantSpec
 
-const Part = preload("res://plants/plant_part.gd")
+const Part = preload("res://systems/plants/plant_part.gd")
 
 @export var id: StringName
 @export var base_growth_rate: float = 0.04  ## progress/sec. 1.0에 도달하면 다음 단계.

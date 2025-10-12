@@ -4,7 +4,7 @@
 extends Node
 class_name Plant
 
-const Part = preload("res://plants/plant_part.gd")
+const Part = preload("res://systems/plants/plant_part.gd")
 
 ## ── Debug logging ────────────────────────────────────────────────────
 @export var debug_enabled: bool = false              ## 로그 on/off

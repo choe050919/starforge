@@ -317,7 +317,7 @@ func _on_durability_break(cell: Vector2i) -> void:
 func _is_soil(cell: Vector2i) -> bool:
 	return data_layer.substance.get_by_cell(cell) == 10002
 
-var _spec_amphib := preload("res://plants/specs/amphibious_spec.tres")
+var _spec_amphib := preload("res://systems/plants/specs/amphibious_spec.tres")
 
 # ══════════════════════════════════════════════════════════════════
 # Debug/Development Functions
