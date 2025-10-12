@@ -4,8 +4,8 @@ var substances : Dictionary = {}
 
 ## JSON 파일에서 물질을 로드
 func load_materials():
-	var file = FileAccess.open("res://substance/substance.json", FileAccess.READ)
-	if file == null: push_error("[SubstanceLoader]"); return
+	var file = FileAccess.open("res://datalayer/substance/substance.json", FileAccess.READ)
+	if file == null: push_error("[SubstanceLoader] Failed to find json file!"); return
 	var root := _parse_json_dict(file.get_as_text())
 	if root.is_empty(): return
 	var phases := _get_dict(root, "phase", "root")

@@ -28,18 +28,28 @@ func setup_thermal_from_cache(cache: SubstanceRuleCache) -> void:
 	k_per_sid.clear()
 	c_per_sid.clear()
 
+	var loaded_count := 0
 	for sid in cache.phase_of_sid.keys():
 		var k_si := float(cache.k_by_sid.get(sid, 0.0)) # [W/m·K]
 		var c_si := float(cache.c_by_sid.get(sid, 0.0)) # [J/kg·K]
 
-		# TODO: ΔT[cK]와 곱해도 J 나오도록 보정 필요 여부 확인
+		# 모든 sid를 등록 (0.0도 유효한 값 - 열전도 없음을 의미)
 		k_per_sid[sid] = k_si
-		c_per_sid[sid] = c_si * 1e-6 # 1mg을 1cK 변화시키는 데 필요한 열량(cJ) 1e-6
+		c_per_sid[sid] = c_si * 1e-6 # 1mg을 1cK 변화시키는 데 필요한 열량(cJ)
+		
+		if k_si > 0.0 or c_si > 0.0:
+			loaded_count += 1
 
-	# 디버그 출력
-	if true:
-		print("[Thermal] sample: ICE c=", c_per_sid.get(10001, 0.0), 
-			  " k_eff=", k_per_sid.get(10001, 0.0))
+	print("[TemperatureCore] Loaded thermal data for %d/%d substances (with properties)" 
+		% [loaded_count, k_per_sid.size()])
+	
+	if k_per_sid.is_empty():
+		push_warning("[TemperatureCore] No thermal data loaded! Check substance cache")
+	
+	# 샘플 출력
+	if false:
+		print("[TemperatureCore] Sample ICE: c=%.6f k=%.2f" 
+			% [c_per_sid.get(10001, -999.0), k_per_sid.get(10001, -999.0)])
 
 # ─────────────────────────────────────────────────────────
 # 규칙 테이블 (sid 인덱스 접근)
@@ -115,7 +125,9 @@ static func compute_deltaQ(
 			if si == 0: # VACCUM인 경우 스킵
 				continue
 			var Ti := float(T[i])
-			var ki := float(K[si])
+			var ki := float(K.get(si, 0.0))
+			if ki <= 0.0:
+				continue
 
 			var sum_Q := 0.0
 			for d in DIRS:

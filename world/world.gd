@@ -32,6 +32,9 @@ class_name World
 @onready var grid_nav:     GridNav         = %GridNav
 @onready var mining:       Mining          = %Mining
 
+# ── Items ────────────────────────────────────────────────────────
+@onready var ground_item_registry: GroundItemRegistry = %GroundItemRegistry
+
 # ── Actors ───────────────────────────────────────────────────────
 @onready var spawner: CritterSpawner = %Spawner
 @onready var player: Player =          %Player
@@ -47,6 +50,7 @@ class_name World
 var _is_running := true
 var _speed_mult := 1.0
 var _sim_time := 0.0
+var _world_ready := false  # 월드 초기화 완료 플래그
 
 # ── Data & Caches ────────────────────────────────────────────────
 var data_layer: DataLayer = DataLayer.new()
@@ -58,8 +62,17 @@ var rule_cache := SubstanceRuleCache.new()
 # ══════════════════════════════════════════════════════════════════
 
 func _ready() -> void:
+	# SimClock 자동 시작 방지
+	clock.set_process(false)
+	
 	_setup_hud()
-	_load_resources()
+
+	# 리소스 로딩 실패 시 게임 중단
+	if not _load_resources():
+		push_error("[World] ❌ CRITICAL: Resource loading failed. Cannot continue.")
+		_show_error_and_quit("Critical resources failed to load.\nPlease check the console for details.")
+		return
+
 	_setup_input_and_hover()
 	_setup_worldgen()
 	_setup_durability()
@@ -74,9 +87,56 @@ func _setup_hud() -> void:
 	hud.overlay_toggled.connect(_on_hud_overlay)
 	hud.set_state(_is_running, _speed_mult, liquid_overlay.visible, heatmap.visible)
 
-func _load_resources() -> void:
+## 개선된 리소스 로딩 (검증 포함)
+func _load_resources() -> bool:
+	print("[World] ═══════════════════════════════════════")
+	print("[World] Loading critical resources...")
+	
+	# Substance loader
 	substance_loader.load_materials()
-	rule_cache.load_from_file("res://substance/substance.json")
+	
+	# Substance rules 로드 (명시적 경로)
+	var json_path := "res://datalayer/substance/substance.json"
+	
+	# 파일 존재 확인 (선행 검증)
+	if not FileAccess.file_exists(json_path):
+		push_error("[World] Substance JSON not found at: ", json_path)
+		push_error("[World] Please ensure the file exists at the correct location.")
+		return false
+	
+	print("[World] Loading substance rules from: ", json_path)
+	var load_success := rule_cache.load_from_file(json_path)
+	
+	if not load_success:
+		push_error("[World] Failed to load substance rules!")
+		push_error("[World] Game cannot continue without substance data.")
+		return false
+	
+	# 최종 검증: 필수 데이터 확인
+	if rule_cache.phase_of_sid.is_empty():
+		push_error("[World] Substance cache is empty after loading!")
+		return false
+	
+	if rule_cache.k_by_sid.is_empty() and rule_cache.c_by_sid.is_empty():
+		push_warning("[World] ⚠️ No thermal properties loaded (k, c are empty)")
+	
+	print("[World] Successfully loaded %d substances" % rule_cache.phase_of_sid.size())
+	print("[World] ═══════════════════════════════════════")
+	return true
+
+## 에러 표시 및 게임 종료
+func _show_error_and_quit(message: String) -> void:
+	# 에디터에서는 즉시 종료하지 않고 경고만 출력
+	if OS.has_feature("editor"):
+		push_error("[World] ", message)
+		push_error("[World] Running in editor - game not terminated")
+		# 에디터에서는 계속 실행 (디버깅 편의)
+		return
+	
+	# 배포 빌드에서는 에러 다이얼로그 표시 후 종료
+	printerr(message)
+	OS.alert(message, "Critical Error")
+	get_tree().quit()
 
 func _setup_input_and_hover() -> void:
 	hover.setup(data_layer)
@@ -87,6 +147,7 @@ func _setup_input_and_hover() -> void:
 	input.overlay_toggle_requested.connect(_on_overlay_toggle_requested)
 	input.player_move_requested.connect(_on_player_move_requested)
 	input.mining_requested.connect(_on_mining_requested)
+	input.pickup_requested.connect(_on_pickup_requested)
 	
 	hover.hover_changed.connect(_on_hover_changed)
 
@@ -100,10 +161,19 @@ func _setup_durability() -> void:
 	durability.break_requested.connect(crack_overlay.on_break_requested)
 
 func _setup_player() -> void:
+	# 기존 경로들
 	player.grid_nav_path = NodePath("%GridNav")
 	player.overlay_path = NodePath("%OverlayManager/OverlayLayer/NavigationOverlay")
 	player.mining_path = NodePath("%Mining")
+	
+	# 인벤토리용 경로 추가
+	player.ground_item_registry_path = NodePath("%GroundItemRegistry")
+	
+	# DataLayer 설정
 	player.setup(data_layer)
+	
+	# 인벤토리 변경 신호 연결 (UI 업데이트용)
+	player.inventory_changed.connect(_on_player_inventory_changed)
 
 func _setup_mining_visual() -> void:
 	mining_visual.player_path = NodePath("../Actors/Player")
@@ -126,8 +196,6 @@ func _on_world_generated(
 	_post_apply_worldgen(size, mass)
 
 ## 월드 생성 결과를 '상태'로 적용한다.
-## - 타일, DataLayer, 시뮬 시스템들의 setup
-## - 여기까지 끝나면 '그려지기 직전의 세계'가 준비된 상태여야 한다.
 func _apply_worldgen_result(
 	size: Vector2i,
 	substances: PackedInt32Array,
@@ -162,7 +230,6 @@ func _setup_simulation_systems(springs: PackedVector2Array) -> void:
 	temp.setup(data_layer, rule_cache)
 	
 	tchange.setup(data_layer)
-	#tchange.seed_durability(durability)
 	
 	liquid.setup(data_layer, springs)
 	liquid.set_liquid_sids()
@@ -179,11 +246,7 @@ func _setup_simulation_systems(springs: PackedVector2Array) -> void:
 	
 	mining.setup(data_layer)
 
-## 적용 이후 후처리:
-## - 카메라/오버레이 레이아웃(타일셋/맵 크기 필요)
-## - 초기 렌더
-## - HUD/툴 UI 동기화
-## - SimClock 배선
+## 적용 이후 후처리 + SimClock 시작
 func _post_apply_worldgen(size: Vector2i, initial_mass: PackedInt64Array) -> void:
 	# 레이아웃 (타일셋 크기 참조)
 	if ground.tile_set != null:
@@ -203,7 +266,6 @@ func _post_apply_worldgen(size: Vector2i, initial_mass: PackedInt64Array) -> voi
 
 	# 초기 렌더
 	liquid_overlay.render(initial_mass)
-	# light_overlay는 초기 렌더 X.
 
 	# HUD의 타일 정보(온도 포함) 데이터 배선
 	tile_info_hud.setup(data_layer, hover)
@@ -213,6 +275,14 @@ func _post_apply_worldgen(size: Vector2i, initial_mass: PackedInt64Array) -> voi
 	# 시뮬 배선
 	if not clock.tick_sim.is_connected(_on_sim_clock_tick):
 		clock.tick_sim.connect(_on_sim_clock_tick)
+	
+	# 월드 준비 완료 플래그 설정
+	_world_ready = true
+	
+	# SimClock 시작
+	clock.set_process(true)
+	
+	print("[World] World setup complete, SimClock started")
 
 var sim_time := 0.0
 
@@ -221,14 +291,12 @@ var sim_time := 0.0
 # ══════════════════════════════════════════════════════════════════
 
 ## SimClock에서 올라오는 틱 이벤트를 처리한다.
-## 인자:
-##   tag: "sim" | "temp" (시뮬 틱 종류)
-##   dt:  해당 틱의 경과 시간(초)
-## 동작:
-##   - "sim": PhaseChange → Liquid → Event 적용 → Liquid Overlay 렌더 → (옵션)Heatmap 갱신
-##   - "temp": 온도 전용 연산 틱
-## 부가작용: data_layer 내부 상태 변경, 오버레이 렌더 호출
 func _on_sim_clock_tick(tag: StringName, dt: float) -> void:
+	# 월드가 준비되지 않았으면 무시 (이중 안전장치)
+	if not _world_ready:
+		push_warning("[World] SimClock tick ignored: world not ready yet")
+		return
+	
 	_sim_time += dt
 	
 	match tag:
@@ -276,23 +344,37 @@ func _on_mining_requested(cell: Vector2i) -> void:
 	if is_instance_valid(player):
 		player.add_mining_target(cell)
 
+func _on_pickup_requested(cell: Vector2i) -> void:
+	if is_instance_valid(player):
+		var success := player.pickup_item_at_cell(cell)
+		if success:
+			print("[World] Pickup successful at cell=", cell)
+		else:
+			print("[World] Pickup failed at cell=", cell)
+
+func _on_player_inventory_changed(material_sid: int, mass_mg: int) -> void:
+	# UI 업데이트 로직 (나중에 인벤토리 UI 추가 시 사용)
+	if material_sid < 0:
+		print("[World] Inventory: Empty")
+	else:
+		var mass_kg := float(mass_mg) / 1_000_000.0
+		print("[World] Inventory: SID=", material_sid, " Mass=", mass_kg, "kg (", mass_mg, "mg)")
+	
+	# TODO: 인벤토리 UI 업데이트
+	# if inventory_ui:
+	#     inventory_ui.update_display(material_sid, mass_mg)
+
 # ══════════════════════════════════════════════════════════════════
 # HUD Handlers
 # ══════════════════════════════════════════════════════════════════
 
 func _on_hud_play(running: bool) -> void:
 	_is_running = running
-	# 제일 빠른 MVP: 전역 타임스케일만 조절
 	Engine.time_scale = _speed_mult if _is_running else 0.0
 
 func _set_speed_multiplier(mult: float) -> void:
 	_speed_mult = mult
-	# 전역 타임스케일 방식 (쉽다)
 	Engine.time_scale = _speed_mult if _is_running else 0.0
-
-	# 만약 전역이 아니라 SimClock만 빠르게 하고 싶다면:
-	# sim_clock.sim_rate_hz = int(round(sim_clock.sim_rate_hz * mult))  # 권장X: 점프됨
-	# -> 별도 설계가 필요. P0는 Engine.time_scale로 충분.
 
 func _on_hud_overlay(overlay_name: StringName, enabled: bool) -> void:
 	match overlay_name:
@@ -327,7 +409,6 @@ func _on_tool_manager_request_spawn_plant(cell: Vector2i) -> void:
 	if _spec_amphib == null:
 		push_error("[PlantTest] spec is null")
 		return
-	# 자리 가능 검사 → 배치
 	if plant.can_place(_spec_amphib, cell):
 		var id := plant.place(_spec_amphib, cell, 1.0)
 		if id < 0:
