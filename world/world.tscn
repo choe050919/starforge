@@ -140,6 +140,8 @@ script = ExtResource("14_ifjjt")
 [node name="Temperature" type="Node" parent="Systems"]
 unique_name_in_owner = true
 script = ExtResource("16_inp7a")
+enabled = null
+debug_log = null
 
 [node name="SimClock" type="Node" parent="Systems"]
 unique_name_in_owner = true

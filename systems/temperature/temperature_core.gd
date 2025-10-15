@@ -12,13 +12,14 @@ const MIN_MASS_FOR_CONDUCTION := 10_000
 # 4방 탐색
 const DIRS := [Vector2i(1,0), Vector2i(-1,0), Vector2i(0,1), Vector2i(0,-1)]
 
-var energy_cJ: PackedFloat64Array = PackedFloat64Array() # ΔQ 누적 버퍼(cJ)
+## ΔQ 누적 버퍼. 단위: cJ(센티줄)
+var heat_buffer: PackedFloat64Array = PackedFloat64Array()
 
 func _ensure_capacity(n: int) -> void:
-	if energy_cJ.size() != n:
-		energy_cJ.resize(n)
+	if heat_buffer.size() != n:
+		heat_buffer.resize(n)
 		for i in n:
-			energy_cJ[i] = 0.0
+			heat_buffer[i] = 0.0
 
 var k_per_sid: Dictionary[int, float] # 내부용: k_eff (이미 보정된 값)
 var c_per_sid: Dictionary[int, float] # 내부용: SI 그 자체
@@ -65,26 +66,21 @@ var last_max_abs_delta_c := 0.0
 
 # ─────────────────────────────────────────────────────────
 # 한 틱 풀스캔(확산 + 발열):
-# - temp_store: TemperatureStore (cK).
 # - phase_store: 전도 가능 여부 판정(기본: SOLID만 전달).
 # - substance_store: sid → α/발열 룰 조회.
 # - index: GridIndex
 # - dt: float(초)
 ## 반환: 새로운 온도 배열
 func tick_fullscan(
-	temp_store: TemperatureStore,
-	substance_store: SubstanceStore,
-	mass_store: MassStore,
+	T: PackedInt32Array, # 온도, 최초 온도 조회용.
+	S: PackedInt32Array, # 물질 id, K와 C 조회용.
+	M: PackedInt64Array, # 질량, 온도 변화량 계산용.
 	index: GridIndex,
 	dt: float
 ) -> PackedInt32Array:
 	var w := index.size.x
 	var h := index.size.y
 	var n := w * h
-
-	var T := temp_store.get_raw_read()      # 온도, 최초 온도 조회용.
-	var S := substance_store.get_raw_read() # 물질 id, K와 C 조회용.
-	var M := mass_store.get_raw_read()      # 질량, 온도 변화량 계산용.
 
 	if T.size() != n or S.size() != n or M.size() != n:
 		push_error("[TemperatureCore.tick_fullscan] Size mismatch")
@@ -97,10 +93,13 @@ func tick_fullscan(
 		print("[TemperatureCore] mean|dQ|=", _mean_abs(dQ))
 
 	for i in n:
-		energy_cJ[i] += dQ[i]
+		heat_buffer[i] += dQ[i]
 
 	var T_new := T.duplicate()
-	_apply_energy_to_temperature_no_latent(n, energy_cJ, T_new, S, M, c_per_sid)
+
+	var result := _apply_energy_to_temperature_no_latent(n, heat_buffer, T_new, S, M, c_per_sid)
+	T_new = result["temperature"]
+	heat_buffer = result["energy"]
 
 	#var T_new := apply_deltaQ_to_T(n, T, S, M, c_per_sid, dQ)
 	return T_new
@@ -198,8 +197,8 @@ static func apply_deltaQ_to_T(
 
 	return T_new
 
-# 에너지 버퍼(energy_cJ)에서 정수 cK만큼만 온도로 털고,
-# 사용된 에너지만큼 energy_cJ에서 차감. 남은 소수 에너지는 다음 틱으로 이월.
+# 에너지 버퍼(heat_buffer)에서 정수 cK만큼만 온도로 털고,
+# 사용된 에너지만큼 heat_buffer에서 차감. 남은 소수 에너지는 다음 틱으로 이월.
 static func _apply_energy_to_temperature_no_latent(
 	n: int,
 	E_cJ: PackedFloat64Array,
@@ -207,7 +206,10 @@ static func _apply_energy_to_temperature_no_latent(
 	S: PackedInt32Array,
 	M_mg: PackedInt64Array,
 	C_cJ_per_mg_cK: Dictionary[int, float]
-) -> void:
+) -> Dictionary:
+	var E_new := E_cJ.duplicate()
+	var T_new := T_ck.duplicate()
+
 	for i in n:
 		var sid: int = S[i]
 		if sid == 0: # VACUUM
@@ -222,7 +224,7 @@ static func _apply_energy_to_temperature_no_latent(
 			continue
 
 		# 1 cK 올리는 데 필요한 에너지 [cJ]
-		# (너 코드에서 c_per_sid를 이미 cJ/(mg·cK)로 세팅했으므로 단순 곱)
+		# (c_per_sid를 cJ/(mg·cK)로 세팅했으므로 단순 곱)
 		var dE_per_cK: float = float(mi) * ci
 		if dE_per_cK <= 0.0:
 			continue
@@ -232,8 +234,13 @@ static func _apply_energy_to_temperature_no_latent(
 		var step_ck: int = int(floor(dT_ck_f)) if (dT_ck_f >= 0.0) else int(ceil(dT_ck_f))
 
 		if step_ck != 0:
-			T_ck[i] += step_ck
-			E_cJ[i] -= float(step_ck) * dE_per_cK
+			T_new[i] += step_ck
+			E_new[i] -= float(step_ck) * dE_per_cK
+
+	return {
+		"temperature": T_new,
+		"energy": E_new
+	}
 
 # ─────────────────────────────────────────
 # 유틸(단위 변환)
