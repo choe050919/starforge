@@ -12,7 +12,6 @@ class_name Temperature
 # ── 의존성 ─────────────────────────────────────────────────────────
 var _data: DataLayer
 var _substance_store: SubstanceStore
-var _phase_store: PhaseStore
 var _temp_store: TemperatureStore
 var _mass_store: MassStore
 var _index: GridIndex
@@ -27,13 +26,12 @@ func setup(
 ) -> void:
 	_data = data
 	_substance_store = _data.substance
-	_phase_store = _data.phase
 	_temp_store = _data.temperature
 	_mass_store = _data.mass
 	_index = _data.index
 	_rules = rule_cache
 
-	for _name in ["_substance_store", "_phase_store", "_temp_store", "_mass_store", "_index"]:
+	for _name in ["_substance_store", "_temp_store", "_mass_store", "_index"]:
 		var value = get(_name)
 		if value == null:
 			push_error("[Temperature.setup]%s is null" % _name)
@@ -45,7 +43,7 @@ func setup(
 func _on_sim_tick(dt: float) -> void:
 	if not enabled: return
 
-	var stats := _core.tick_fullscan(
+	var new_temperature := _core.tick_fullscan(
 		_temp_store.get_raw_read(),
 		_substance_store.get_raw_read(),
 		_mass_store.get_raw_read(),
@@ -53,4 +51,4 @@ func _on_sim_tick(dt: float) -> void:
 		dt
 	)
 
-	_data.set_bulk_temp(stats)
+	_data.set_bulk_temp(new_temperature)
