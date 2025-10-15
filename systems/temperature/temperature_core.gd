@@ -1,33 +1,69 @@
-## 순수 온도 로직만 담당.
-## - 저장은 TemperatureStore(cK, int32)를 사용
+## 순수 온도 로직 담당
+##
+## 열전도 시뮬레이션의 핵심 계산을 수행합니다.
+## - 타일 간 열 확산 계산 (compute_deltaQ)
+## - 열량을 온도로 변환 (heat_buffer 사용)
+## - 소수점 에너지 이월로 정밀도 유지
+##
+## 저장소: TemperatureStore (단위: cK, int32)
 extends RefCounted
 class_name TemperatureCore
 
-const TILE_LEN_M := 0.1  # 0.1이라면 한 변의 길이가 0.1m
-const GEOM_ORTHO := TILE_LEN_M  # A/d = L
+# ═══════════════════════════════════════════════════════════
+# 상수
+# ═══════════════════════════════════════════════════════════
 
-## 저질량 처리의 기준값 (mg)
+## 타일 한 변의 길이 (m)
+const TILE_LENGTH_M := 0.1
+
+## 열전도 기하학 계수 (A/d = L)
+const GEOMETRY_FACTOR := TILE_LENGTH_M
+
+## 저질량 타일의 열전도 스로틀링 기준값 (mg)
 const MIN_MASS_FOR_CONDUCTION := 10_000
 
-# 4방 탐색
+## 4방향 탐색 벡터
 const DIRS := [Vector2i(1,0), Vector2i(-1,0), Vector2i(0,1), Vector2i(0,-1)]
 
-## ΔQ 누적 버퍼. 단위: cJ(센티줄)
+# ═══════════════════════════════════════════════════════════
+# 내부 타입
+# ═══════════════════════════════════════════════════════════
+
+## 열 적용 결과를 담는 컨테이너
+class HeatApplicationResult:
+	var temperature: PackedInt32Array ## 갱신된 온도 배열 (cK)
+	var heat_buffer: PackedFloat64Array ## 남은 열량 버퍼 (cJ)
+	
+	func _init(t: PackedInt32Array, h: PackedFloat64Array):
+		temperature = t
+		heat_buffer = h
+
+# ═══════════════════════════════════════════════════════════
+# 상태
+# ═══════════════════════════════════════════════════════════
+
+## 타일별 미반영 열량 누적 버퍼 (cJ)
+## 정수 온도 변화로 소비되지 못한 에너지를 다음 틱으로 이월
 var heat_buffer: PackedFloat64Array = PackedFloat64Array()
 
-func _ensure_capacity(n: int) -> void:
-	if heat_buffer.size() != n:
-		heat_buffer.resize(n)
-		for i in n:
-			heat_buffer[i] = 0.0
+## 물질별 열전도율 (W/m·K)
+var k_by_sid: Dictionary[int, float]
 
-var k_per_sid: Dictionary[int, float] # 내부용: k_eff (이미 보정된 값)
-var c_per_sid: Dictionary[int, float] # 내부용: SI 그 자체
+## 물질별 비열 (cJ/mg·cK)
+var c_by_sid: Dictionary[int, float]
 
-# cache의 SI 테이블을, 내부에서 쓰기 좋은 딕셔너리로 1회 변환
+# 미사용 (TODO: 제거 검토)
+var last_avg_delta_c := 0.0
+var last_max_abs_delta_c := 0.0
+
+# ═══════════════════════════════════════════════════════════
+# 초기화
+# ═══════════════════════════════════════════════════════════
+
+## 물질 캐시로부터 열적 속성 로드
 func setup_thermal_from_cache(cache: SubstanceRuleCache) -> void:
-	k_per_sid.clear()
-	c_per_sid.clear()
+	k_by_sid.clear()
+	c_by_sid.clear()
 
 	var loaded_count := 0
 	for sid in cache.phase_of_sid.keys():
@@ -35,46 +71,50 @@ func setup_thermal_from_cache(cache: SubstanceRuleCache) -> void:
 		var c_si := float(cache.c_by_sid.get(sid, 0.0)) # [J/kg·K]
 
 		# 모든 sid를 등록 (0.0도 유효한 값 - 열전도 없음을 의미)
-		k_per_sid[sid] = k_si
-		c_per_sid[sid] = c_si * 1e-6 # 1mg을 1cK 변화시키는 데 필요한 열량(cJ)
+		k_by_sid[sid] = k_si
+		c_by_sid[sid] = c_si * 1e-6 # 1mg을 1cK 변화시키는 데 필요한 열량(cJ)
 		
 		if k_si > 0.0 or c_si > 0.0:
 			loaded_count += 1
 
 	print("[TemperatureCore] Loaded thermal data for %d/%d substances (with properties)" 
-		% [loaded_count, k_per_sid.size()])
+		% [loaded_count, k_by_sid.size()])
 	
-	if k_per_sid.is_empty():
+	if k_by_sid.is_empty():
 		push_warning("[TemperatureCore] No thermal data loaded! Check substance cache")
 	
 	# 샘플 출력
 	if false:
 		print("[TemperatureCore] Sample ICE: c=%.6f k=%.2f" 
-			% [c_per_sid.get(10001, -999.0), k_per_sid.get(10001, -999.0)])
+			% [c_by_sid.get(10001, -999.0), k_by_sid.get(10001, -999.0)])
 
-# ─────────────────────────────────────────────────────────
-# 규칙 테이블 (sid 인덱스 접근)
-# alpha_per_sid: α = k/c (무차원, 상대값). 확산 블렌딩에 사용.
-# init_c_per_sid: 초기 온도(°C)
-# heat_ckps_per_sid: 발열( cK/s )
-var alpha_per_sid: PackedFloat32Array
-var heat_ckps_per_sid: PackedFloat32Array
+## heat_buffer 크기를 n으로 조정
+func _ensure_capacity(n: int) -> void:
+	if heat_buffer.size() != n:
+		heat_buffer.resize(n)
+		for i in n:
+			heat_buffer[i] = 0.0
 
-# 통계
-var last_avg_delta_c := 0.0
-var last_max_abs_delta_c := 0.0
+# ═══════════════════════════════════════════════════════════
+# 메인 시뮬레이션 루프
+# ═══════════════════════════════════════════════════════════
 
-# ─────────────────────────────────────────────────────────
-# 한 틱 풀스캔(확산 + 발열):
-# - phase_store: 전도 가능 여부 판정(기본: SOLID만 전달).
-# - substance_store: sid → α/발열 룰 조회.
-# - index: GridIndex
-# - dt: float(초)
-## 반환: 새로운 온도 배열
+## 한 틱의 열전도 시뮬레이션 수행
+##
+## 타일 간 열 확산을 계산하고, heat_buffer에 누적된 열량을
+## 정수 온도로 변환합니다. 소수점 에너지는 다음 틱으로 이월됩니다.
+##
+## T: 현재 온도 (cK)
+## S: 물질 ID
+## M: 질량 (mg)
+## index: 그리드 인덱스
+## dt: 시간 간격 (초)
+##
+## 반환: 갱신된 온도 배열 (cK)
 func tick_fullscan(
-	T: PackedInt32Array, # 온도, 최초 온도 조회용.
-	S: PackedInt32Array, # 물질 id, K와 C 조회용.
-	M: PackedInt64Array, # 질량, 온도 변화량 계산용.
+	T: PackedInt32Array,
+	S: PackedInt32Array,
+	M: PackedInt64Array,
 	index: GridIndex,
 	dt: float
 ) -> PackedInt32Array:
@@ -88,30 +128,34 @@ func tick_fullscan(
 
 	_ensure_capacity(n)
 
-	var dQ := compute_deltaQ(w, h, n, T, S, M, k_per_sid, dt)
+	var dQ := compute_deltaQ(w, h, n, T, S, M, k_by_sid, dt)
 	if false: # 디버그
 		print("[TemperatureCore] mean|dQ|=", _mean_abs(dQ))
 
 	for i in n:
 		heat_buffer[i] += dQ[i]
 
-	var T_new := T.duplicate()
+	var result := _consume_heat_buffer(n, heat_buffer, T, S, M, c_by_sid)
 
-	var result := _apply_energy_to_temperature_no_latent(n, heat_buffer, T_new, S, M, c_per_sid)
-	T_new = result["temperature"]
-	heat_buffer = result["energy"]
+	heat_buffer = result.heat_buffer
+	return result.temperature
 
-	#var T_new := apply_deltaQ_to_T(n, T, S, M, c_per_sid, dQ)
-	return T_new
+# ═══════════════════════════════════════════════════════════
+# 핵심 계산 (순수 함수)
+# ═══════════════════════════════════════════════════════════
 
-## 타일별로 열량 변화량을 계산하고 결과를 PackedFloat64Array로 반환한다.
-## 반환하는 열량값의 단위는 cJ(센티줄)이다.
+## 타일별 열량 변화 계산
+##
+## 4방향 이웃과의 열전도를 계산하여 각 타일이 얻거나 잃는 열량을 반환합니다.
+## 저질량 타일은 열전도가 스로틀링됩니다.
 static func compute_deltaQ(
 	w: int, h: int, n: int,
-	T: PackedInt32Array, S: PackedInt32Array, M:PackedInt64Array,
-	K: Dictionary[int, float],
+	T: PackedInt32Array, # 온도 (cK)
+	S: PackedInt32Array, # 물질 ID
+	M: PackedInt64Array, # 질량 (mg)
+	K: Dictionary[int, float], # 물질별 열전도율
 	dt: float
-) -> PackedFloat64Array:
+) -> PackedFloat64Array: # 타일별 열량 변화 (cJ)
 	var deltaQ := PackedFloat64Array()
 	deltaQ.resize(n)
 	for i in n: deltaQ[i] = 0.0
@@ -149,7 +193,7 @@ static func compute_deltaQ(
 
 				var Tj := float(T[j])
 
-				var dq = kij * GEOM_ORTHO * (Tj - Ti) * dt
+				var dq = kij * GEOMETRY_FACTOR * (Tj - Ti) * dt
 
 				# 저질량 선형 스로틀
 				var mi := float(M[i])
@@ -164,50 +208,19 @@ static func compute_deltaQ(
 			deltaQ[i] += sum_Q
 	return deltaQ
 
-## deltaQ를 비열(cp)과 질량(m)으로 나눠 ΔT를 구하고,
-## 기존 온도 배열(T_read)에 적용해 새로운 온도 배열을 반환한다.
-static func apply_deltaQ_to_T(
+## heat_buffer를 소비해 온도로 변환
+##
+## 정수 cK 변화에 필요한 에너지만큼 버퍼에서 차감합니다.
+## 남은 소수점 에너지는 다음 틱으로 이월됩니다.
+static func _consume_heat_buffer(
 	n: int,
-	T: PackedInt32Array, S: PackedInt32Array, M: PackedInt64Array,
-	C: Dictionary[int, float],
-	deltaQ: PackedFloat64Array
-) -> PackedInt32Array:
-	var T_new := T.duplicate()
-
-	for i in n:
-		var si: int = S[i]
-		if si == 0: # VACCUM인 경우 스킵
-			continue
-
-		var ci: float = float(C[si])
-		if ci <= 0.0: # 비열이 없는 경우 스킵
-			continue
-
-		var mi := M[i]
-		if mi <= 0: # 질량이 없는 경우 스킵
-			continue
-
-		# ΔT[cK] = ΔQ[cJ] / (mi[mg] * ci[cJ/mg·cK])
-		var deltaT_cK := int(round(deltaQ[i] / (mi * ci)))
-
-		T_new[i] += deltaT_cK
-
-		if T_new[i] <= 0:
-			push_error("[TemperatureCore] 비정상 온도. 셀 index: ", i, " 변화량: ", deltaT_cK, " 결과값: ", T_new[i])
-
-	return T_new
-
-# 에너지 버퍼(heat_buffer)에서 정수 cK만큼만 온도로 털고,
-# 사용된 에너지만큼 heat_buffer에서 차감. 남은 소수 에너지는 다음 틱으로 이월.
-static func _apply_energy_to_temperature_no_latent(
-	n: int,
-	E_cJ: PackedFloat64Array,
-	T_ck: PackedInt32Array,
-	S: PackedInt32Array,
-	M_mg: PackedInt64Array,
-	C_cJ_per_mg_cK: Dictionary[int, float]
-) -> Dictionary:
-	var E_new := E_cJ.duplicate()
+	E_cJ: PackedFloat64Array, # 열량 버퍼 (cJ)
+	T_ck: PackedInt32Array, # 현재 온도 (cK)
+	S: PackedInt32Array, # 물질 ID
+	M_mg: PackedInt64Array, # 질량 (mg)
+	C_cJ_per_mg_cK: Dictionary[int, float] # 물질별 비열
+) -> HeatApplicationResult: # 갱신된 온도와 남은 열량
+	var heat_new := E_cJ.duplicate()
 	var T_new := T_ck.duplicate()
 
 	for i in n:
@@ -224,41 +237,42 @@ static func _apply_energy_to_temperature_no_latent(
 			continue
 
 		# 1 cK 올리는 데 필요한 에너지 [cJ]
-		# (c_per_sid를 cJ/(mg·cK)로 세팅했으므로 단순 곱)
+		# (c_by_sid를 cJ/(mg·cK)로 세팅했으므로 단순 곱)
 		var dE_per_cK: float = float(mi) * ci
 		if dE_per_cK <= 0.0:
 			continue
 
 		# 이번 틱에 반영 가능한 cK의 '정수' 크기
-		var dT_ck_f: float = E_cJ[i] / dE_per_cK
+		var dT_ck_f: float = heat_new[i] / dE_per_cK
 		var step_ck: int = int(floor(dT_ck_f)) if (dT_ck_f >= 0.0) else int(ceil(dT_ck_f))
 
 		if step_ck != 0:
 			T_new[i] += step_ck
-			E_new[i] -= float(step_ck) * dE_per_cK
+			heat_new[i] -= float(step_ck) * dE_per_cK
 
-	return {
-		"temperature": T_new,
-		"energy": E_new
-	}
+	return HeatApplicationResult.new(T_new, heat_new)
 
-# ─────────────────────────────────────────
-# 유틸(단위 변환)
+# ═══════════════════════════════════════════════════════════
+# 유틸리티
+# ═══════════════════════════════════════════════════════════
+
+## 섭씨 → 센티켈빈 변환
 static func _c_to_ck(c: float) -> int:
 	return int(round(c * 100.0 + TemperatureStore.CK_0C))
 
+## 센티켈빈 → 섭씨 변환 (델타값)
 static func _ck_to_c(ck_delta: int) -> float:
-	# 입력은 '차이' 사용이 많아서 0점(0K) 기준 델타로 처리
 	return float(ck_delta) / 100.0
 
-## a와 b의 조화평균을 출력한다.
+## 조화평균 계산
 static func _harmonic_mean(a: float, b: float) -> float:
-	# a==0 or b==0이면 유효 전도율 0
 	if a <= 0.0 or b <= 0.0:
 		return 0.0
 	return 2.0 / ((1.0 / a) + (1.0 / b))
 
+## 배열 절댓값의 평균
 static func _mean_abs(a: PackedFloat64Array) -> float:
 	var s := 0.0
-	for i in a.size(): s += absf(a[i])
-	return s / a.size() if (a.size() > 0) else 0.0
+	for i in a.size(): 
+		s += absf(a[i])
+	return s / a.size() if a.size() > 0 else 0.0
