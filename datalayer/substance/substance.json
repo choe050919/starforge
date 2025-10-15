@@ -36,8 +36,16 @@
 				"thermal": { "c_J_per_kgK": 385, "k_W_per_mK": 400 },
 				"optical": { "transparent": false },
 				"defaults": { "phase": "solid", "mass": 1000000, "temp": 30015, "light": 0.0 }
+			},
+			"ladder": {
+				"id": 50001,
+				"thermal": { "c_J_per_kgK": 1000, "k_W_per_mK": 0.5 },
+				"optical": {
+					"transparent": true,
+					"attenuation_m_inv": 0.1
+				},
+				"defaults": { "phase": "solid", "mass": 100000, "temp": 29315, "light": 0.0 }
 			}
-
 		},
 		"liquid": {
 			"water": {

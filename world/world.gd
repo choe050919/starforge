@@ -31,6 +31,7 @@ class_name World
 @onready var plant:        Plant           = %Plant
 @onready var grid_nav:     GridNav         = %GridNav
 @onready var mining:       Mining          = %Mining
+@onready var construction: Construction    = %Construction
 
 # ── Items ────────────────────────────────────────────────────────
 @onready var ground_item_registry: GroundItemRegistry = %GroundItemRegistry
@@ -77,6 +78,7 @@ func _ready() -> void:
 	_setup_worldgen()
 	_setup_durability()
 	_setup_player()
+	_setup_construction()
 	_setup_mining_visual()
 
 # ── Setup Helpers ────────────────────────────────────────────────
@@ -174,6 +176,19 @@ func _setup_player() -> void:
 	
 	# 인벤토리 변경 신호 연결 (UI 업데이트용)
 	player.inventory_changed.connect(_on_player_inventory_changed)
+
+func _setup_construction() -> void:
+	# Construction 경로 설정
+	construction.player_path = NodePath("%Player")
+	construction.tile_change_path = NodePath("%TileChange")
+	
+	# DataLayer 설정
+	construction.setup(data_layer)
+	
+	# ToolManager 신호 연결
+	if input._tool_manager:
+		input._tool_manager.request_construct.connect(_on_construct_requested)
+		input._tool_manager.request_construct_ladder.connect(_on_construct_ladder_requested)
 
 func _setup_mining_visual() -> void:
 	mining_visual.player_path = NodePath("../Actors/Player")
@@ -363,6 +378,35 @@ func _on_player_inventory_changed(material_sid: int, mass_mg: int) -> void:
 	# TODO: 인벤토리 UI 업데이트
 	# if inventory_ui:
 	#     inventory_ui.update_display(material_sid, mass_mg)
+
+func _on_construct_requested(cell: Vector2i) -> void:
+	if not is_instance_valid(construction):
+		return
+	
+	if not is_instance_valid(player):
+		return
+	
+	# 플레이어가 들고 있는 재료로 건설 시도
+	var material_sid := player.get_inventory_material_sid()
+	if material_sid < 0:
+		print("[World] Construction failed: no material in inventory")
+		return
+	
+	var success := construction.place_tile(cell, material_sid)
+	if success:
+		print("[World] Construction successful at cell=", cell)
+	else:
+		print("[World] Construction failed at cell=", cell)
+
+func _on_construct_ladder_requested(cell: Vector2i) -> void:
+	if not is_instance_valid(construction):
+		return
+	
+	var success := construction.place_ladder(cell)
+	if success:
+		print("[World] Ladder construction successful at cell=", cell)
+	else:
+		print("[World] Ladder construction failed at cell=", cell)
 
 # ══════════════════════════════════════════════════════════════════
 # HUD Handlers

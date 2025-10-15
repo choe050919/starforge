@@ -24,15 +24,14 @@ var _is_initialized: PackedByteArray = PackedByteArray()
 
 # ── 설정 ───────────────────────────────────────────────────
 ## 재질별 경도 테이블 (HP per kg)
-#var hardness_by_sid: Dictionary = {}
-
 # TODO 임시 처리!!
 var hardness_by_sid := {
-	"0": 0.0,
-	"10001": 30, # ICE
-	"10002": 20, # SOIL
-	"10003": 120, # URANIUM
-	"10004": 80, # COPPER
+	"0": 0.0,       # VACUUM (채굴 불가)
+	"10001": 30.0,  # ICE
+	"10002": 20.0,  # SOIL
+	"10003": 120.0, # URANIUM
+	"10004": 80.0,  # COPPER
+	"50001": 10.0,  # LADDER (쉽게 제거 가능)
 }
 
 # ── 상수 ───────────────────────────────────────────────────

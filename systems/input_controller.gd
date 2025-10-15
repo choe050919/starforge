@@ -83,6 +83,10 @@ func _unhandled_input(event: InputEvent) -> void:
 		_select_tool_by_index(4)
 	elif event.is_action_pressed("tool_select_5"):
 		_select_tool_by_index(5)
+	elif event.is_action_pressed("tool_select_6"):
+		_select_tool_by_index(6)
+	elif event.is_action_pressed("tool_select_7"):
+		_select_tool_by_index(7)
 
 	# 좌클릭: ToolManager에 라우팅
 	if event is InputEventMouseButton \

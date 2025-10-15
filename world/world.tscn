@@ -1,4 +1,4 @@
-[gd_scene load_steps=46 format=3 uid="uid://c5gv3n6byiin7"]
+[gd_scene load_steps=47 format=3 uid="uid://c5gv3n6byiin7"]
 
 [ext_resource type="Script" uid="uid://dgppaejvd18y0" path="res://world/world.gd" id="1_j7vgi"]
 [ext_resource type="TileSet" uid="uid://dnn0uacxq48mh" path="res://tilesets/world.tres" id="3_bwxdu"]
@@ -38,6 +38,7 @@
 [ext_resource type="Script" uid="uid://cqr4gkov8vd7t" path="res://systems/grid_nav.gd" id="31_cqwbg"]
 [ext_resource type="Script" uid="uid://bvco3ekilg6rf" path="res://systems/mining/mining.gd" id="32_hnpqp"]
 [ext_resource type="Script" uid="uid://cf2egr1e2vgg2" path="res://item/ground_item_registry.gd" id="33_ifjjt"]
+[ext_resource type="Script" uid="uid://d0wb33o6ieq2t" path="res://systems/construction.gd" id="34_b8tmp"]
 [ext_resource type="PackedScene" uid="uid://b666emurxqxc8" path="res://actors/animal_agent.tscn" id="34_q3kex"]
 [ext_resource type="Script" uid="uid://dhp47bqyrhke1" path="res://actors/corpses_container.gd" id="35_hm5b2"]
 [ext_resource type="PackedScene" uid="uid://bp27ax8mxaxmy" path="res://actors/fish/fish.tscn" id="35_ll3gq"]
@@ -195,6 +196,12 @@ _durability = NodePath("../Durability")
 [node name="GroundItemRegistry" type="Node" parent="Systems"]
 unique_name_in_owner = true
 script = ExtResource("33_ifjjt")
+
+[node name="Construction" type="Node" parent="Systems"]
+unique_name_in_owner = true
+script = ExtResource("34_b8tmp")
+player_path = NodePath("../../Actors/Player")
+tile_change_path = NodePath("../TileChange")
 
 [node name="Actors" type="Node2D" parent="." groups=["actors_root"]]
 z_index = 1
