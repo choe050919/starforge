@@ -31,7 +31,12 @@ func _on_sim_tick(_dt: float, sim_time: float) -> void:
 	if not enabled:
 		return
 
-	var diff: Dictionary = _core.tick_fullscan(_data)
+	var diff: Dictionary = _core.tick_fullscan(
+		_data.phase.get_raw_read(),
+		_data.substance.get_raw_read(),
+		_data.temperature.get_raw_read(),
+		_data.index
+	)
 
 	var changes: Array = diff.get("changes", [])
 	if changes.is_empty(): return

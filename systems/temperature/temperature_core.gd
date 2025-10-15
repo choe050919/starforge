@@ -124,7 +124,7 @@ func tick_fullscan(
 
 	if T.size() != n or S.size() != n or M.size() != n:
 		push_error("[TemperatureCore.tick_fullscan] Size mismatch")
-		return PackedInt32Array() # TODO 에러 시 반환값 임시조치
+		return PackedInt32Array()
 
 	_ensure_capacity(n)
 
