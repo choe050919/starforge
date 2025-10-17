@@ -10,9 +10,15 @@ signal overlay_toggled(name: StringName, enabled: bool)
 @onready var cb_water: CheckBox      = %CbWater
 @onready var cb_temp: CheckBox       = %CbTemp
 
-# 툴 버튼 참조
+# 툴 버튼들
+@onready var btn_tool_mine: Button = %BtnToolMine
 @onready var btn_tool_vacuum: Button = %BtnToolVacuum
-@onready var btn_tool_fish: Button   = %BtnToolFish
+@onready var btn_tool_fish: Button = %BtnToolFish
+@onready var btn_tool_plant: Button = %BtnToolPlant
+@onready var btn_tool_add_temp: Button = %BtnToolAddTemp
+@onready var btn_tool_construct: Button = %BtnToolConstruct
+@onready var btn_tool_ladder: Button = %BtnToolLadder
+
 var _tool_btn_group := ButtonGroup.new()
 
 # ToolManager 연결
@@ -21,6 +27,13 @@ var _tool_btn_group := ButtonGroup.new()
 var _running := true
 
 func _ready() -> void:
+	# ToolManager 참조 및 신호 연결
+	if _tool_manager == null:
+		push_warning("[HUD] ToolManager not set; tool buttons will be inert")
+	else:
+		_tool_manager.tool_changed.connect(_sync_tool_ui)
+		_sync_tool_ui(_tool_manager.current_tool)
+
 	# 배속 옵션 채우기
 	# item_text => 표시, metadata => 실제 배속값
 	_add_speed_item("0.5×", 0.5)
@@ -29,9 +42,7 @@ func _ready() -> void:
 	_add_speed_item("5×",   5.0)
 	opt_speed.select(1) # 기본 1×
 
-	# 콜백 연결
-	#btn_play.pressed.connect(_on_play_pressed) 이미 연결함.
-	#opt_speed.item_selected.connect(_on_speed_selected) 이미 연결함.
+	# 오버레이 토글
 	cb_water.toggled.connect(func(on): overlay_toggled.emit(&"water", on))
 	cb_temp.toggled.connect(func(on):  overlay_toggled.emit(&"temp", on))
 
@@ -40,31 +51,46 @@ func _ready() -> void:
 	cb_water.tooltip_text = "Toggle Water Overlay"
 	cb_temp.tooltip_text  = "Toggle Temperature Overlay"
 
-	# ToolManager 참조 및 신호 연결
-	if _tool_manager == null:
-		push_warning("[HUD] ToolManager not set; tool buttons will be inert")
-	else:
-		_tool_manager.tool_changed.connect(_sync_tool_ui)
-		# 초기 상태 동기화
-		_sync_tool_ui(_tool_manager.current_tool)
+	# 툴 버튼 설정
+	_setup_tool_buttons()
 
-	# 툴 버튼 설정/연결
-	# 배타 선택 보장(토글 + 같은 그룹)
-	btn_tool_vacuum.toggle_mode = true
-	btn_tool_fish.toggle_mode = true
-	btn_tool_vacuum.button_group = _tool_btn_group
-	btn_tool_fish.button_group = _tool_btn_group
+func _setup_tool_buttons() -> void:
+	var buttons := [
+		btn_tool_mine, btn_tool_vacuum, btn_tool_fish,
+		btn_tool_plant, btn_tool_add_temp, btn_tool_construct,
+		btn_tool_ladder
+	]
+	
+	# 배타 선택 설정
+	for btn in buttons:
+		btn.toggle_mode = true
+		btn.button_group = _tool_btn_group
 
-	btn_tool_vacuum.text = "Vacuum [1]"
-	btn_tool_fish.text   = "Fish [2]"
-	btn_tool_vacuum.tooltip_text = "Set tool to Vacuum (Hotkey: 1)"
-	btn_tool_fish.tooltip_text   = "Set tool to Fish (Hotkey: 2)"
+	# 버튼 텍스트
+	btn_tool_mine.text = "Mine [1]"
+	btn_tool_vacuum.text = "Vacuum [2]"
+	btn_tool_fish.text = "Fish [3]"
+	btn_tool_plant.text = "Plant [4]"
+	btn_tool_add_temp.text = "AddTemp [5]"
+	btn_tool_construct.text = "Build [6]"
+	btn_tool_ladder.text = "Ladder [7]"
 
-	# 버튼은 오직 ToolManager에 요청만 함(의미 실행/분기는 ToolManager가 담당)
-	btn_tool_vacuum.pressed.connect(func():
-		if _tool_manager: _tool_manager.set_tool(ToolManager.Tool.VACUUM))
-	btn_tool_fish.pressed.connect(func():
-		if _tool_manager: _tool_manager.set_tool(ToolManager.Tool.SPAWN_FISH))
+	# 버튼 → ToolManager 연결
+	if _tool_manager:
+		btn_tool_mine.pressed.connect(func():
+			_tool_manager.set_tool(ToolManager.Tool.MINE))
+		btn_tool_vacuum.pressed.connect(func():
+			_tool_manager.set_tool(ToolManager.Tool.VACUUM))
+		btn_tool_fish.pressed.connect(func():
+			_tool_manager.set_tool(ToolManager.Tool.SPAWN_FISH))
+		btn_tool_plant.pressed.connect(func():
+			_tool_manager.set_tool(ToolManager.Tool.SPAWN_PLANT))
+		btn_tool_add_temp.pressed.connect(func():
+			_tool_manager.set_tool(ToolManager.Tool.ADD_TEMP))
+		btn_tool_construct.pressed.connect(func():
+			_tool_manager.set_tool(ToolManager.Tool.CONSTRUCT))
+		btn_tool_ladder.pressed.connect(func():
+			_tool_manager.set_tool(ToolManager.Tool.CONSTRUCT_LADDER))
 
 func _add_speed_item(label: String, mult: float) -> void:
 	var idx := opt_speed.item_count
@@ -101,12 +127,18 @@ func set_state(running: bool, speed_mult: float, water_on: bool, temp_on: bool) 
 
 # ToolManager → HUD 동기화 훅
 func _sync_tool_ui(new_tool: int) -> void:
-	if new_tool == ToolManager.Tool.VACUUM:
-		btn_tool_vacuum.button_pressed = true
-		btn_tool_fish.button_pressed = false
-	elif new_tool == ToolManager.Tool.SPAWN_FISH:
-		btn_tool_vacuum.button_pressed = false
-		btn_tool_fish.button_pressed = true
-	else:
-		btn_tool_vacuum.button_pressed = false
-		btn_tool_fish.button_pressed = false
+	match new_tool:
+		ToolManager.Tool.MINE:
+			btn_tool_mine.button_pressed = true
+		ToolManager.Tool.VACUUM:
+			btn_tool_vacuum.button_pressed = true
+		ToolManager.Tool.SPAWN_FISH:
+			btn_tool_fish.button_pressed = true
+		ToolManager.Tool.SPAWN_PLANT:
+			btn_tool_plant.button_pressed = true
+		ToolManager.Tool.ADD_TEMP:
+			btn_tool_add_temp.button_pressed = true
+		ToolManager.Tool.CONSTRUCT:
+			btn_tool_construct.button_pressed = true
+		ToolManager.Tool.CONSTRUCT_LADDER:
+			btn_tool_ladder.button_pressed = true

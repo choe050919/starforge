@@ -12,39 +12,59 @@ layout_mode = 0
 offset_right = 221.0
 offset_bottom = 40.0
 
-[node name="HBoxContainer" type="HBoxContainer" parent="PanelContainer"]
+[node name="GameControls" type="HBoxContainer" parent="PanelContainer"]
 layout_mode = 2
 
-[node name="BtnPlayPause" type="Button" parent="PanelContainer/HBoxContainer"]
+[node name="BtnPlayPause" type="Button" parent="PanelContainer/GameControls"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "⏯"
 
-[node name="OptSpeed" type="OptionButton" parent="PanelContainer/HBoxContainer"]
+[node name="OptSpeed" type="OptionButton" parent="PanelContainer/GameControls"]
 unique_name_in_owner = true
 layout_mode = 2
 
-[node name="CbWater" type="CheckBox" parent="PanelContainer/HBoxContainer"]
+[node name="CbWater" type="CheckBox" parent="PanelContainer/GameControls"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "Water"
 
-[node name="CbTemp" type="CheckBox" parent="PanelContainer/HBoxContainer"]
+[node name="CbTemp" type="CheckBox" parent="PanelContainer/GameControls"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "Temp"
 
-[node name="HBoxContainer2" type="HBoxContainer" parent="PanelContainer"]
+[node name="ToolButtons" type="HBoxContainer" parent="PanelContainer"]
 layout_mode = 2
 
-[node name="BtnToolVacuum" type="Button" parent="PanelContainer/HBoxContainer2"]
+[node name="BtnToolMine" type="Button" parent="PanelContainer/ToolButtons"]
 unique_name_in_owner = true
 layout_mode = 2
 
-[node name="BtnToolFish" type="Button" parent="PanelContainer/HBoxContainer2"]
+[node name="BtnToolVacuum" type="Button" parent="PanelContainer/ToolButtons"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="BtnToolFish" type="Button" parent="PanelContainer/ToolButtons"]
 unique_name_in_owner = true
 layout_mode = 2
 toggle_mode = true
 
-[connection signal="pressed" from="PanelContainer/HBoxContainer/BtnPlayPause" to="." method="_on_play_pressed"]
-[connection signal="item_selected" from="PanelContainer/HBoxContainer/OptSpeed" to="." method="_on_speed_selected"]
+[node name="BtnToolPlant" type="Button" parent="PanelContainer/ToolButtons"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="BtnToolAddTemp" type="Button" parent="PanelContainer/ToolButtons"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="BtnToolConstruct" type="Button" parent="PanelContainer/ToolButtons"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="BtnToolLadder" type="Button" parent="PanelContainer/ToolButtons"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[connection signal="pressed" from="PanelContainer/GameControls/BtnPlayPause" to="." method="_on_play_pressed"]
+[connection signal="item_selected" from="PanelContainer/GameControls/OptSpeed" to="." method="_on_speed_selected"]
