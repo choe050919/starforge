@@ -23,9 +23,22 @@ var mass: MassStore
 var temp: TemperatureStore
 var light: LightStore
 
+# ── 시각화 ─────────────────────────────────────────────────────────
 @onready var ground: Ground = %Ground
+@onready var liquid_overlay: LiquidOverlay = %LiquidOverlay
+@onready var crack_overlay: CrackOverlay = %CrackOverlay
+@onready var corner_highlight: CornerHighlight = %CornerHighlight
+
+# ── 오버레이 ───────────────────────────────────────────────────────
+@onready var overlay_manager: OverlayManager = %OverlayManager
 @onready var heatmap_overlay: HeatmapOverlay = %HeatmapOverlay
+@onready var heat_src_overlay: HeatSourceOverlay = %HeatSourceOverlay
 @onready var light_overlay: LightOverlay = %LightOverlay
+
+# ── 레이아웃 정보 캐싱 ─────────────────────────────────────────────
+var _world_size: Vector2i
+var _tile_size: Vector2i
+var _is_initialized := false
 
 func setup(data_layer: DataLayer) -> void:
 	_data_layer = data_layer
@@ -34,6 +47,75 @@ func setup(data_layer: DataLayer) -> void:
 	mass = _data_layer.mass
 	temp = _data_layer.temperature
 	light = _data_layer.light
+
+	if debug_log:
+		print("[VisualSync] DataLayer connected")
+
+## 레이아웃 초기화 (world generation 완료 후)
+func initialize_layout(world_size: Vector2i) -> void:
+	if ground.tile_set == null:
+		push_error("[VisualSync] Cannot initialize: Ground tileset is null")
+		return
+	
+	_world_size = world_size
+	_tile_size = ground.tile_set.tile_size
+	
+	# 게임 시각화 요소들 초기화
+	_setup_game_visuals()
+	
+	# 오버레이 초기화
+	_setup_overlays()
+	
+	_is_initialized = true
+	
+	if debug_log:
+		print("[VisualSync] Layout initialized: size=", _world_size, " tile_size=", _tile_size)
+
+## 게임 시각화 요소 설정
+func _setup_game_visuals() -> void:
+	# LiquidOverlay
+	if liquid_overlay:
+		liquid_overlay.set_layout(_world_size, _tile_size)
+		if debug_log:
+			print("[VisualSync] LiquidOverlay layout set")
+	
+	# CrackOverlay
+	if crack_overlay:
+		crack_overlay.set_layout(_world_size)
+		if debug_log:
+			print("[VisualSync] CrackOverlay layout set")
+	
+	# CornerHighlight
+	if corner_highlight:
+		corner_highlight.setup(ground)
+		if debug_log:
+			print("[VisualSync] CornerHighlight setup complete")
+
+## 오버레이 설정
+func _setup_overlays() -> void:
+	if heatmap_overlay:
+		heatmap_overlay.set_layout(_world_size, _tile_size)
+	
+	if heat_src_overlay:
+		heat_src_overlay.set_layout(_world_size, _tile_size)
+	
+	if light_overlay:
+		light_overlay.set_layout(_world_size, _tile_size)
+	
+	if debug_log:
+		print("[VisualSync] overlays layout set")
+
+## 초기 상태 렌더링
+func render_initial_state(initial_mass: PackedInt64Array) -> void:
+	if not _is_initialized:
+		push_warning("[VisualSync] render_initial_state called before initialization")
+		return
+	
+	# 액체 초기 렌더링
+	if liquid_overlay:
+		liquid_overlay.render(initial_mass)
+		if debug_log:
+			print("[VisualSync] Initial liquid state rendered")
 
 ## 외부 계약(퍼블릭): 신호는 여기에 연결
 func on_tiles_changed(idxs: PackedInt32Array, reason: StringName, payload: Dictionary) -> void:

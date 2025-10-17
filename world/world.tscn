@@ -61,6 +61,24 @@ unique_name_in_owner = true
 tile_set = ExtResource("3_bwxdu")
 script = ExtResource("4_ll3gq")
 
+[node name="LiquidOverlay" type="Node2D" parent="VisualSync"]
+unique_name_in_owner = true
+script = ExtResource("4_lwhbe")
+
+[node name="Map" type="Sprite2D" parent="VisualSync/LiquidOverlay"]
+
+[node name="CrackOverlay" type="TileMapLayer" parent="VisualSync"]
+unique_name_in_owner = true
+z_index = 1
+tile_set = ExtResource("5_ftqqi")
+script = ExtResource("6_avd5l")
+
+[node name="CornerHighlight" type="Sprite2D" parent="VisualSync"]
+unique_name_in_owner = true
+texture = ExtResource("7_ll3gq")
+centered = false
+script = ExtResource("8_jgi7c")
+
 [node name="OverlayManager" type="Node" parent="VisualSync"]
 unique_name_in_owner = true
 script = ExtResource("9_cqwbg")
@@ -78,6 +96,7 @@ script = ExtResource("10_q3kex")
 [node name="Map" type="Sprite2D" parent="VisualSync/OverlayManager/OverlayLayer/HeatmapOverlay"]
 
 [node name="HeatSourceOverlay" type="Node2D" parent="VisualSync/OverlayManager/OverlayLayer"]
+unique_name_in_owner = true
 visible = false
 z_index = 2
 script = ExtResource("11_hm5b2")
@@ -108,23 +127,6 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
-
-[node name="Terrain" type="Node2D" parent="."]
-
-[node name="LiquidOverlay" type="Node2D" parent="Terrain"]
-script = ExtResource("4_lwhbe")
-
-[node name="Map" type="Sprite2D" parent="Terrain/LiquidOverlay"]
-
-[node name="CrackOverlay" type="TileMapLayer" parent="Terrain"]
-z_index = 1
-tile_set = ExtResource("5_ftqqi")
-script = ExtResource("6_avd5l")
-
-[node name="CornerHighlight" type="Sprite2D" parent="Terrain"]
-texture = ExtResource("7_ll3gq")
-centered = false
-script = ExtResource("8_jgi7c")
 
 [node name="Systems" type="Node" parent="."]
 

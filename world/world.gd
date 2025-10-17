@@ -4,18 +4,15 @@ class_name World
 # ── VisualSync ───────────────────────────────────────────────────
 @onready var visual_sync: VisualSync = %VisualSync
 @onready var ground: Ground = %Ground
+@onready var liquid_overlay: LiquidOverlay = %LiquidOverlay
+@onready var crack_overlay: CrackOverlay = %CrackOverlay
+@onready var corner_highlight: CornerHighlight = %CornerHighlight
 
 # ── Overlay Manager ──────────────────────────────────────────────
 @onready var overlay_manager: OverlayManager = %OverlayManager
 @onready var heatmap = overlay_manager.get_overlay(OverlayManager.OverlayMode.HEATMAP) as HeatmapOverlay
 @onready var heat_src = overlay_manager.get_overlay(OverlayManager.OverlayMode.HEAT_SOURCE) as HeatSourceOverlay
 @onready var light_overlay = overlay_manager.get_overlay(OverlayManager.OverlayMode.LIGHT) as LightOverlay
-
-# ── Terrain & Overlays ───────────────────────────────────────────
-@onready var terrain = $Terrain
-@onready var liquid_overlay: LiquidOverlay =     $Terrain/LiquidOverlay
-@onready var crack_overlay: CrackOverlay =       $Terrain/CrackOverlay
-@onready var corner_highlight: CornerHighlight = $Terrain/CornerHighlight
 
 # ── Systems ──────────────────────────────────────────────────────
 @onready var worldgen:     WorldGen        = %WorldGen
@@ -263,38 +260,31 @@ func _setup_simulation_systems(springs: PackedVector2Array) -> void:
 
 ## 적용 이후 후처리 + SimClock 시작
 func _post_apply_worldgen(size: Vector2i, initial_mass: PackedInt64Array) -> void:
-	# 레이아웃 (타일셋 크기 참조)
-	if ground.tile_set != null:
+	# 1. VisualSync 레이아웃 초기화 (내부에서 모든 시각화 요소 설정)
+	visual_sync.initialize_layout(size)
+
+	# 2. 카메라 설정 (world.gd의 책임)
+	if ground.tile_set:
 		var ts: TileSet = ground.tile_set
 		var map_px := Vector2(size.x * ts.tile_size.x, size.y * ts.tile_size.y)
 		camera.position = map_px * 0.5
 		input.set_cell_size(ts.tile_size)
-		if liquid_overlay != null: liquid_overlay.set_layout(size, ts.tile_size)
-		if crack_overlay != null: crack_overlay.set_layout(size)
-		if heatmap != null: heatmap.set_layout(size, ts.tile_size)
-		if heat_src != null: heat_src.set_layout(size, ts.tile_size)
-		if light_overlay != null: light_overlay.set_layout(size, ts.tile_size)
 	else:
-		push_error("[World._on_world_generated] tileset is null"); return
+		push_error("[World] tileset is null")
+		return
 
-	corner_highlight.setup(ground)
+	# 3. 초기 상태 렌더링
+	visual_sync.render_initial_state(initial_mass)
 
-	# 초기 렌더
-	liquid_overlay.render(initial_mass)
-
-	# HUD의 타일 정보(온도 포함) 데이터 배선
+	# 4. 기타 UI 설정
 	tile_info_hud.setup(data_layer, hover)
-
 	spawner.setup(data_layer, plant)
 
-	# 시뮬 배선
+	# 5. 시뮬레이션 시작
 	if not clock.tick_sim.is_connected(_on_sim_clock_tick):
 		clock.tick_sim.connect(_on_sim_clock_tick)
 	
-	# 월드 준비 완료 플래그 설정
 	_world_ready = true
-	
-	# SimClock 시작
 	clock.set_process(true)
 	
 	print("[World] World setup complete, SimClock started")
