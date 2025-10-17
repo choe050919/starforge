@@ -38,10 +38,12 @@ class_name World
 @onready var player: Player =          %Player
 
 # ── UI ───────────────────────────────────────────────────────────
-@onready var tile_info_hud: TileInfoHUD = $UIFXLayer/TileInfoHUD
-@onready var hud: HUD = $HUD
+@onready var tile_info_hud: TileInfoHUD = %TileInfoHUD
 @onready var mining_visual: MiningVisual = %MiningVisual
 
+@onready var hud: HUD = %HUD
+
+# ── Camera ───────────────────────────────────────────────────────
 @onready var camera: Camera2D = $Camera2D
 
 # ── State ────────────────────────────────────────────────────────

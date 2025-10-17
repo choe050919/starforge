@@ -1,4 +1,4 @@
-extends CanvasLayer
+extends Control
 class_name HUD
 
 signal play_toggled(running: bool)

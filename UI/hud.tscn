@@ -2,10 +2,13 @@
 
 [ext_resource type="Script" uid="uid://bwe4lcgh702ux" path="res://UI/hud.gd" id="1_37p78"]
 
-[node name="HUD" type="CanvasLayer"]
+[node name="HUD" type="Control"]
+layout_mode = 3
+anchors_preset = 0
 script = ExtResource("1_37p78")
 
 [node name="PanelContainer" type="VBoxContainer" parent="."]
+layout_mode = 0
 offset_right = 221.0
 offset_bottom = 40.0
 

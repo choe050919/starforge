@@ -238,25 +238,44 @@ ground_item_registry_path = NodePath("../../Systems/GroundItemRegistry")
 script = ExtResource("27_o7xkw")
 pan_speed = 1.5
 
-[node name="UIFXLayer" type="CanvasLayer" parent="."]
-layer = 3
+[node name="UI" type="CanvasLayer" parent="."]
+layer = 10
 
-[node name="TileInfoHUD" parent="UIFXLayer" instance=ExtResource("28_bfrib")]
+[node name="GameInfo" type="Control" parent="UI"]
+layout_mode = 3
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0
 
-[node name="MiningVisual" type="Node2D" parent="UIFXLayer"]
+[node name="TileInfoHUD" parent="UI/GameInfo" instance=ExtResource("28_bfrib")]
+unique_name_in_owner = true
+layout_mode = 0
+
+[node name="MiningVisual" type="Node2D" parent="UI/GameInfo"]
 unique_name_in_owner = true
 script = ExtResource("43_b8tmp")
-player_path = NodePath("../../Actors/Player")
-ground_path = NodePath("../../VisualSync/Ground")
+player_path = NodePath("../../../Actors/Player")
+ground_path = NodePath("../../../VisualSync/Ground")
 
-[node name="HUD" parent="." instance=ExtResource("31_bwxdu")]
-
-[node name="FpsMemMonitor" type="Control" parent="HUD"]
+[node name="GameControls" type="Control" parent="UI"]
 layout_mode = 3
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="HUD" parent="UI/GameControls" node_paths=PackedStringArray("_tool_manager") instance=ExtResource("31_bwxdu")]
+unique_name_in_owner = true
+layout_mode = 0
+_tool_manager = NodePath("../../../Systems/ToolManager")
+
+[node name="FpsMemMonitor" type="Control" parent="UI/GameControls"]
 anchors_preset = 0
 offset_left = 300.0
 offset_right = 300.0
 script = ExtResource("29_mip0j")
+
+[node name="UIFXLayer" type="CanvasLayer" parent="."]
+layer = 3
 
 [connection signal="request_add_temp" from="Systems/ToolManager" to="." method="_on_tool_manager_request_add_temp"]
 [connection signal="request_mine" from="Systems/ToolManager" to="Systems/Mining" method="_on_tool_manager_request_mine"]
