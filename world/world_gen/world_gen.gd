@@ -532,14 +532,14 @@ func _fill_lake(
 ) -> void:
 	var width := end_x - start_x + 1
 	
-	if width < profile.min_lake_size:
+	if width < profile.water_min_lake_size:
 		return
 	
 	for x in range(start_x, end_x + 1):
 		var ground_y := hmap[x]
 		for y in range(water_level, ground_y):
 			var depth_from_surface := y - water_level + 1
-			var fill_ratio: float = clamp(float(depth_from_surface) / profile.depth_scale, 0.0, 1.0)
+			var fill_ratio: float = clamp(float(depth_from_surface) / profile.water_depth_scale, 0.0, 1.0)
 			var idx := y * size.x + x
 			amount[idx] = int(round(fill_ratio * profile.water_capacity_mg_per_cell))
 
@@ -547,7 +547,7 @@ func _generate_springs(hmap: PackedInt32Array, water_level: int) -> PackedVector
 	var springs := PackedVector2Array()
 	var rng := RandomNumberGenerator.new()
 	rng.seed = profile.seed_height
-	var spawn_prob := profile.springs_per_k / 1000.0
+	var spawn_prob := profile.water_springs_per_k / 1000.0
 	
 	for x in range(1, size.x - 1):
 		var h := hmap[x]
