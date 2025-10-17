@@ -148,6 +148,11 @@ func tick_fullscan(
 ##
 ## 4방향 이웃과의 열전도를 계산하여 각 타일이 얻거나 잃는 열량을 반환합니다.
 ## 저질량 타일은 열전도가 스로틀링됩니다.
+##
+## 최적화: 오른쪽(→)과 아래(↓) 방향만 탐색하여 중복 계산을 방지합니다.
+## 각 셀 쌍 (i, j)에 대해 열류를 한 번만 계산하고 양쪽에 동시 반영합니다.
+## 예: i→j 열류가 +10이면, deltaQ[i]+=10, deltaQ[j]-=10 (에너지 보존)
+## 이를 통해 연산량을 약 50% 감소시킵니다.
 static func compute_deltaQ(
 	w: int, h: int, n: int,
 	T: PackedInt32Array, # 온도 (cK)
@@ -160,29 +165,37 @@ static func compute_deltaQ(
 	deltaQ.resize(n)
 	for i in n: deltaQ[i] = 0.0
 
+	# 오른쪽(→), 아래(↓) 방향만 탐색 (중복 계산 방지)
+	# 왼쪽(←), 위(↑)는 이미 반대편 셀에서 처리됨
+	const HALF_DIRS := [Vector2i(1, 0), Vector2i(0, 1)]
+
 	for y in h:
 		for x in w:
 			var i := y * w + x
 
 			var si := S[i]
-			if si == 0: # VACCUM인 경우 스킵
+			if si == 0: # VACUUM인 경우 스킵
 				continue
 			var Ti := float(T[i])
 			var ki := float(K.get(si, 0.0))
 			if ki <= 0.0:
 				continue
 
-			var sum_Q := 0.0
-			for d in DIRS:
+			var mi := float(M[i])
+
+			# 오른쪽과 아래 이웃만 검사
+			for d in HALF_DIRS:
 				var nx: int = x + d.x
 				var ny: int = y + d.y
-				# 경계 밖은 스킵 (clamp 금지)
-				if nx < 0 or nx >= w or ny < 0 or ny >= h:
+				
+				# 경계 밖은 스킵 (오른쪽/아래만 체크하므로 상한만 검사)
+				if nx >= w or ny >= h:
 					continue
+				
 				var j := ny * w + nx
 
 				var sj := S[j]
-				if sj == 0: # VACCUM인 경우 스킵
+				if sj == 0: # VACUUM인 경우 스킵
 					continue
 
 				var kj := float(K[sj])
@@ -193,19 +206,20 @@ static func compute_deltaQ(
 
 				var Tj := float(T[j])
 
+				# i→j 열류 계산 (푸리에 법칙: Q = k·A/d·ΔT·dt)
 				var dq = kij * GEOMETRY_FACTOR * (Tj - Ti) * dt
 
-				# 저질량 선형 스로틀
-				var mi := float(M[i])
+				# 저질량 선형 스로틀 (10g 미만 셀은 열전도 감소)
 				var mj := float(M[j])
 				var min_m = min(mi, mj)
 				var t = min(1.0, min_m / MIN_MASS_FOR_CONDUCTION) # [0,1]
 				dq *= t
 
-				sum_Q += dq
+				# 양쪽 셀에 동시 반영 (에너지 보존 법칙)
+				# i는 dq만큼 열을 얻고, j는 dq만큼 열을 잃음
+				deltaQ[i] += dq
+				deltaQ[j] -= dq
 
-			# 이 셀에 들어온 열량(순합)
-			deltaQ[i] += sum_Q
 	return deltaQ
 
 ## heat_buffer를 소비해 온도로 변환
