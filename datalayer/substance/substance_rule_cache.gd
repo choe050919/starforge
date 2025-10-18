@@ -17,6 +17,10 @@ var opt_k_by_sid: Dictionary = {}            # sid -> k [m^-1] (없으면 0.0)
 var opt_alpha_by_sid: Dictionary = {}        # sid -> alpha = exp(-k) (k 기반 사전계산, 기본 1.0)
 var opt_albedo_by_sid: Dictionary = {}       # sid -> albedo [0..1], 선택(없으면 0.0)
 
+# 영양소 캐시
+var calories_per_kg_by_sid: Dictionary = {}   # sid -> kcal/kg
+var digestion_time_by_sid: Dictionary = {}    # sid -> seconds
+
 # phase 문자열 → enum
 const PH_SOLID  := 1
 const PH_LIQUID := 2
@@ -66,6 +70,11 @@ func load_from_file(path: String = "res://datalayer/substance/substance.json") -
 	
 	print("[SubstanceRuleCache] Successfully loaded %d substances from: %s" 
 		% [phase_of_sid.size(), path])
+	
+	# 영양소 로깅
+	if not calories_per_kg_by_sid.is_empty():
+		print("[SubstanceRuleCache] Loaded %d digestible substances" % calories_per_kg_by_sid.size())
+	
 	return true
 
 ## 문자열(JSON)에서 로드 (테스트용)
@@ -130,6 +139,8 @@ func _clear_all_caches() -> void:
 	def_mass_by_sid.clear()
 	def_temp_by_sid.clear()
 	def_light_by_sid.clear()
+	calories_per_kg_by_sid.clear()
+	digestion_time_by_sid.clear()
 
 func _load_substances(phases: Dictionary) -> int:
 	var loaded_count := 0
@@ -159,6 +170,9 @@ func _load_substances(phases: Dictionary) -> int:
 			# Optical 속성
 			_load_optical_properties(sid, sdata)
 			
+			# Nutrition 속성
+			_load_nutrition_properties(sid, sdata)
+			
 			# Defaults
 			_load_defaults(sid, sdata)
 			
@@ -182,6 +196,21 @@ func _load_optical_properties(sid: int, sdata: Dictionary) -> void:
 	opt_albedo_by_sid[sid] = albedo
 	# 성능 위해 칸당 감쇠계수 사전계산 (Δz=1m 가정)
 	opt_alpha_by_sid[sid] = 1.0 if (k_m_inv == 0.0) else exp(-k_m_inv)
+
+func _load_nutrition_properties(sid: int, sdata: Dictionary) -> void:
+	if not sdata.has("nutrition"):
+		return
+	
+	var nutrition: Dictionary = sdata["nutrition"]
+	
+	# calories_per_kg가 있고 0보다 크면 소화 가능
+	var cal := float(nutrition.get("calories_per_kg", 0.0))
+	if cal > 0.0:
+		calories_per_kg_by_sid[sid] = cal
+		
+		# 소화 시간 (기본값 60초)
+		var digest_time := float(nutrition.get("digestion_time_sec", 60.0))
+		digestion_time_by_sid[sid] = digest_time
 
 func _load_defaults(sid: int, sdata: Dictionary) -> void:
 	var defs: Dictionary = sdata.get("defaults", {})
@@ -265,3 +294,28 @@ func get_defaults_for_sid(sid: int) -> Dictionary:
 	if def_temp_by_sid.has(sid):      res["temp"] = def_temp_by_sid[sid]
 	if def_light_by_sid.has(sid):     res["light"] = def_light_by_sid[sid]
 	return res
+
+# ══════════════════════════════════════════════════════════════════
+# Nutrition API
+# ══════════════════════════════════════════════════════════════════
+
+## 특정 물질이 소화 가능한지 확인 (칼로리가 0보다 큰지)
+func is_digestible(sid: int) -> bool:
+	return calories_per_kg_by_sid.has(sid) and calories_per_kg_by_sid[sid] > 0.0
+
+## 특정 물질의 칼로리/kg 반환 (없으면 0.0)
+func get_calories_per_kg(sid: int) -> float:
+	return calories_per_kg_by_sid.get(sid, 0.0)
+
+## 특정 물질의 소화 시간 반환 (없으면 기본값 60초)
+func get_digestion_time(sid: int) -> float:
+	return digestion_time_by_sid.get(sid, 60.0)
+
+## mg 단위 질량에서 칼로리 계산
+func calculate_calories(sid: int, mass_mg: int) -> float:
+	var cal_per_kg := get_calories_per_kg(sid)
+	if cal_per_kg <= 0.0:
+		return 0.0
+	
+	var mass_kg := float(mass_mg) / 1_000_000.0
+	return cal_per_kg * mass_kg

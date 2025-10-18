@@ -29,6 +29,7 @@ class_name World
 @onready var grid_nav:     GridNav         = %GridNav
 @onready var mining:       Mining          = %Mining
 @onready var construction: Construction    = %Construction
+@onready var hunger:       HungerSystem    = %HungerSystem
 
 # ── Items ────────────────────────────────────────────────────────
 @onready var ground_item_registry: GroundItemRegistry = %GroundItemRegistry
@@ -40,6 +41,7 @@ class_name World
 # ── UI ───────────────────────────────────────────────────────────
 @onready var tile_info_hud: TileInfoHUD = %TileInfoHUD
 @onready var mining_visual: MiningVisual = %MiningVisual
+@onready var hunger_ui: HungerUI = %HungerUI
 
 @onready var hud: HUD = %HUD
 
@@ -150,6 +152,8 @@ func _setup_input_and_hover() -> void:
 	input.mining_requested.connect(_on_mining_requested)
 	input.pickup_requested.connect(_on_pickup_requested)
 	
+	input.eat_food_requested.connect(_on_eat_food_requested)
+	
 	hover.hover_changed.connect(_on_hover_changed)
 
 func _setup_worldgen() -> void:
@@ -166,12 +170,16 @@ func _setup_player() -> void:
 	player.grid_nav_path = NodePath("%GridNav")
 	player.overlay_path = NodePath("%OverlayManager/OverlayLayer/NavigationOverlay")
 	player.mining_path = NodePath("%Mining")
+	player.ground_item_registry_path = NodePath("%GroundItemRegistry")
 	
 	# 인벤토리용 경로 추가
 	player.ground_item_registry_path = NodePath("%GroundItemRegistry")
 	
 	# DataLayer 설정
 	player.setup(data_layer)
+	
+	# HungerSystem 참조 주입
+	player._hunger_system = hunger
 	
 	# 인벤토리 변경 신호 연결 (UI 업데이트용)
 	player.inventory_changed.connect(_on_player_inventory_changed)
@@ -282,6 +290,8 @@ func _post_apply_worldgen(size: Vector2i, initial_mass: PackedInt64Array) -> voi
 	tile_info_hud.setup(data_layer, hover)
 	spawner.setup(data_layer, plant)
 
+	_setup_hunger_system()
+
 	# 5. 시뮬레이션 시작
 	if not clock.tick_sim.is_connected(_on_sim_clock_tick):
 		clock.tick_sim.connect(_on_sim_clock_tick)
@@ -292,6 +302,24 @@ func _post_apply_worldgen(size: Vector2i, initial_mass: PackedInt64Array) -> voi
 	print("[World] World setup complete, SimClock started")
 
 var sim_time := 0.0
+
+func _setup_hunger_system() -> void:
+	if hunger == null:
+		push_warning("[World] HungerSystem node not found")
+		return
+	
+	# ★ SubstanceRuleCache를 전달 (nutrition_cache 제거) ★
+	hunger.setup(player, rule_cache)
+	hunger.set_process(true)
+	
+	# UI 연결
+	if hunger_ui:
+		hunger_ui.setup(hunger)
+	
+	# 기아 대미지 처리 (나중에 체력 시스템과 연동)
+	hunger.starving_damage.connect(_on_starving_damage)
+	
+	print("[World] HungerSystem initialized")
 
 # ══════════════════════════════════════════════════════════════════
 # Simulation Tick
@@ -399,6 +427,22 @@ func _on_construct_ladder_requested(cell: Vector2i) -> void:
 		print("[World] Ladder construction successful at cell=", cell)
 	else:
 		print("[World] Ladder construction failed at cell=", cell)
+
+func _on_starving_damage(damage: float) -> void:
+	# TODO: 플레이어 체력 시스템과 연동
+	print("[World] Player taking starvation damage: %.2f" % damage)
+
+func _on_eat_food_requested() -> void:
+	if not is_instance_valid(player):
+		return
+	
+	# 인벤토리의 음식을 전부 먹기
+	var success := player.eat_from_inventory(-1)  # -1 = 전부
+	
+	if success:
+		print("[World] Player ate food from inventory")
+	else:
+		print("[World] Failed to eat (no food, not digestible, or full)")
 
 # ══════════════════════════════════════════════════════════════════
 # HUD Handlers

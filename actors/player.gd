@@ -8,13 +8,14 @@ signal inventory_changed(material_sid: int, mass_mg: int)  # 인벤토리 변경
 @export var grid_nav_path: NodePath
 @export var overlay_path: NodePath
 @export var mining_path: NodePath
-@export var ground_item_registry_path: NodePath  # 추가
+@export var ground_item_registry_path: NodePath
 
 var _grid_nav: GridNav = null
 var _overlay: Node = null
 var _mining: Node = null
 var _durability: DurabilityStore
-var _ground_item_registry: GroundItemRegistry = null  # 추가
+var _ground_item_registry: GroundItemRegistry = null
+var _hunger_system: HungerSystem = null  # 허기 시스템
 
 # ── 이동 튜닝 ───────────────────────────────────────────────────────
 @export var move_speed: float = 180.0
@@ -260,6 +261,75 @@ func get_inventory_capacity_ratio() -> float:
 	return float(_inventory_mass_mg) / float(inventory_max_capacity_mg)
 
 # ════════════════════════════════════════════════════════════════════
+# 음식 섭취 API (HungerSystem 연동)
+# ════════════════════════════════════════════════════════════════════
+
+## 인벤토리의 음식을 섭취
+## amount_mg: 섭취할 양 (mg). -1이면 전부 먹기
+## 반환: 실제 섭취 성공 여부
+func eat_from_inventory(amount_mg: int = -1) -> bool:
+	if _inventory_material_sid < 0 or _inventory_mass_mg <= 0:
+		print("[Player.eat] No food in inventory")
+		return false
+	
+	if _hunger_system == null:
+		push_warning("[Player.eat] HungerSystem not assigned")
+		return false
+	
+	# 섭취할 양 결정
+	var eat_mg := amount_mg if amount_mg > 0 else _inventory_mass_mg
+	eat_mg = min(eat_mg, _inventory_mass_mg)
+	
+	# HungerSystem에 소화 요청
+	var consumed_mg := _hunger_system.consume_food(_inventory_material_sid, eat_mg)
+	
+	if consumed_mg <= 0:
+		print("[Player.eat] Could not consume food (indigestible or full)")
+		return false
+	
+	# 인벤토리에서 소모
+	return consume_material(consumed_mg)
+
+## 특정 양의 칼로리를 섭취 (간편 API)
+## 내부적으로 필요한 만큼만 먹음
+func eat_calories(target_calories: float) -> bool:
+	if _inventory_material_sid < 0 or _inventory_mass_mg <= 0:
+		return false
+	
+	if _hunger_system == null or _hunger_system._rule_cache == null:
+		return false
+	
+	var cal_per_kg := _hunger_system._rule_cache.get_calories_per_kg(_inventory_material_sid)
+	if cal_per_kg <= 0.0:
+		return false
+	
+	# 필요한 질량 계산 (kg)
+	var needed_kg := target_calories / cal_per_kg
+	var needed_mg := int(needed_kg * 1_000_000.0)
+	
+	# 보유량 제한
+	needed_mg = min(needed_mg, _inventory_mass_mg)
+	
+	return eat_from_inventory(needed_mg)
+
+## 허기 상태에 따른 이동속도 조정
+func get_effective_move_speed() -> float:
+	var base := move_speed
+	
+	if _hunger_system:
+		var mult := _hunger_system.get_speed_multiplier()
+		return base * mult
+	
+	return base
+
+## 채굴 가능 여부 (허기 상태 고려)
+func can_mine_with_hunger() -> bool:
+	if _hunger_system == null:
+		return true
+	
+	return _hunger_system.get_can_mine()
+
+# ════════════════════════════════════════════════════════════════════
 # 인벤토리 내부 유틸
 # ════════════════════════════════════════════════════════════════════
 
@@ -387,12 +457,13 @@ func _move_along_path(delta: float) -> void:
 			_path_index += 1
 			continue
 		
-		var step := move_speed * delta
+		# ★ 허기 시스템 적용: 이동속도 조정 ★
+		var step := get_effective_move_speed() * delta
 		
 		if step >= dist:
 			global_position = t
 			_path_index += 1
-			delta -= dist / max(move_speed, 0.0001)
+			delta -= dist / max(get_effective_move_speed(), 0.0001)
 			continue
 		
 		var dir := to_target / dist
@@ -471,6 +542,11 @@ func _advance_mining_queue() -> void:
 	_start_next_mining_task()
 
 func _apply_mining_damage() -> void:
+	# ★ 허기 시스템 적용: 채굴 가능 여부 확인 ★
+	if not can_mine_with_hunger():
+		print("[Player] Too weak to mine (starving)")
+		return
+	
 	if _mining == null or _mining_target_cell.x < -9998:
 		_advance_mining_queue()
 		return

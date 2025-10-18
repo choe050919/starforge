@@ -7,6 +7,7 @@ signal overlay_toggle_requested(mode: OverlayManager.OverlayMode)
 signal player_move_requested(world_pos: Vector2)
 signal mining_requested(cell: Vector2i)
 signal pickup_requested(cell: Vector2i)  # 추가
+signal eat_food_requested()
 
 ## ToolManager에 직접 라우팅 (입력 해석만 하고, 의미 실행은 ToolManager가 담당)
 @export var _tool_manager: ToolManager
@@ -119,6 +120,12 @@ func _unhandled_input(event: InputEvent) -> void:
 			pickup_requested.emit(cell)
 			get_viewport().set_input_as_handled()
 			print("[InputController] Pickup requested at cell=", cell)
+	
+	# E키: 음식 섭취
+	if event.is_action_pressed("eat_food"):
+		eat_food_requested.emit()
+		get_viewport().set_input_as_handled()
+		print("[InputController] Eat food requested")
 
 func _update_hover() -> void:
 	if hover_service == null:

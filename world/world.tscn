@@ -1,4 +1,4 @@
-[gd_scene load_steps=47 format=3 uid="uid://c5gv3n6byiin7"]
+[gd_scene load_steps=49 format=3 uid="uid://c5gv3n6byiin7"]
 
 [ext_resource type="Script" uid="uid://dgppaejvd18y0" path="res://world/world.gd" id="1_j7vgi"]
 [ext_resource type="TileSet" uid="uid://dnn0uacxq48mh" path="res://tilesets/world.tres" id="3_bwxdu"]
@@ -42,9 +42,11 @@
 [ext_resource type="PackedScene" uid="uid://b666emurxqxc8" path="res://actors/animal_agent.tscn" id="34_q3kex"]
 [ext_resource type="Script" uid="uid://dhp47bqyrhke1" path="res://actors/corpses_container.gd" id="35_hm5b2"]
 [ext_resource type="PackedScene" uid="uid://bp27ax8mxaxmy" path="res://actors/fish/fish.tscn" id="35_ll3gq"]
+[ext_resource type="Script" uid="uid://b1qeemmi05c2q" path="res://systems/hunger_system.gd" id="35_pfbnl"]
 [ext_resource type="Script" uid="uid://bwaacf1284t0l" path="res://item/items_root.gd" id="39_behgl"]
 [ext_resource type="PackedScene" uid="uid://bblxu6lirpxxj" path="res://actors/player.tscn" id="40_k83x5"]
 [ext_resource type="Script" uid="uid://bni2ouqgyis0j" path="res://systems/mining/mining_visual.gd" id="43_b8tmp"]
+[ext_resource type="PackedScene" uid="uid://cv2gvghfjsn21" path="res://UI/hunger_ui.tscn" id="45_gwdna"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_7iits"]
 shader = ExtResource("12_hnpqp")
@@ -205,6 +207,10 @@ script = ExtResource("34_b8tmp")
 player_path = NodePath("../../Actors/Player")
 tile_change_path = NodePath("../TileChange")
 
+[node name="HungerSystem" type="Node" parent="Systems"]
+unique_name_in_owner = true
+script = ExtResource("35_pfbnl")
+
 [node name="Actors" type="Node2D" parent="." groups=["actors_root"]]
 z_index = 1
 
@@ -243,9 +249,12 @@ layer = 10
 
 [node name="GameInfo" type="Control" parent="UI"]
 layout_mode = 3
-anchors_preset = 0
-offset_right = 40.0
-offset_bottom = 40.0
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
 
 [node name="TileInfoHUD" parent="UI/GameInfo" instance=ExtResource("28_bfrib")]
 unique_name_in_owner = true
@@ -256,6 +265,17 @@ unique_name_in_owner = true
 script = ExtResource("43_b8tmp")
 player_path = NodePath("../../../Actors/Player")
 ground_path = NodePath("../../../VisualSync/Ground")
+
+[node name="HungerUI" parent="UI/GameInfo" instance=ExtResource("45_gwdna")]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -200.0
+offset_right = 0.0
+offset_bottom = 108.0
+grow_horizontal = 0
 
 [node name="GameControls" type="Control" parent="UI"]
 layout_mode = 3

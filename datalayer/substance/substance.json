@@ -37,6 +37,58 @@
 				"optical": { "transparent": false },
 				"defaults": { "phase": "solid", "mass": 1000000, "temp": 30015, "light": 0.0 }
 			},
+			"meat": {
+				"id": 10005,
+				"thermal": { "c_J_per_kgK": 3000, "k_W_per_mK": 0.5 },
+				"optical": { "transparent": false },
+				"nutrition": {
+					"calories_per_kg": 2500000,
+					"digestible": true,
+					"digestion_time_sec": 120.0
+				},
+				"defaults": { "phase": "solid", "mass": 50000, "temp": 29315, "light": 0.0 }
+			},
+			"grain": {
+				"id": 10006,
+				"thermal": { "c_J_per_kgK": 1500, "k_W_per_mK": 0.3 },
+				"optical": { "transparent": false },
+				"nutrition": {
+					"calories_per_kg": 3500000,
+					"digestible": true,
+					"digestion_time_sec": 90.0
+				},
+				"defaults": { "phase": "solid", "mass": 50000, "temp": 29315, "light": 0.0 }
+			},
+			"meat": {
+				"id": 10005,
+				"thermal": { "c_J_per_kgK": 3000, "k_W_per_mK": 0.5 },
+				"optical": { "transparent": false },
+				"nutrition": {
+					"calories_per_kg": 2500000,
+					"digestion_time_sec": 120.0
+				},
+				"defaults": { "phase": "solid", "mass": 50000, "temp": 29315, "light": 0.0 }
+			},
+			"grain": {
+				"id": 10006,
+				"thermal": { "c_J_per_kgK": 1500, "k_W_per_mK": 0.3 },
+				"optical": { "transparent": false },
+				"nutrition": {
+					"calories_per_kg": 3500000,
+					"digestion_time_sec": 90.0
+				},
+				"defaults": { "phase": "solid", "mass": 50000, "temp": 29315, "light": 0.0 }
+			},
+			"berry": {
+				"id": 10007,
+				"thermal": { "c_J_per_kgK": 3800, "k_W_per_mK": 0.6 },
+				"optical": { "transparent": false },
+				"nutrition": {
+					"calories_per_kg": 500000,
+					"digestion_time_sec": 30.0
+				},
+				"defaults": { "phase": "solid", "mass": 20000, "temp": 29315, "light": 0.0 }
+			},
 			"ladder": {
 				"id": 50001,
 				"thermal": { "c_J_per_kgK": 1000, "k_W_per_mK": 0.5 },
