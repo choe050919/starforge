@@ -246,6 +246,20 @@ func _setup_data_layer(
 	data_layer.bind_rule_cache(rule_cache)
 	data_layer.tiles_changed.connect(visual_sync.on_tiles_changed)
 
+	# TEST
+	data_layer.set_cell_with_spec(Vector2i(10, 25), {
+		"sid": 10005,  # meat
+		"mass": 1000000  # 1kg
+	})
+	data_layer.set_cell_with_spec(Vector2i(12, 25), {
+		"sid": 10006,  # grain
+		"mass": 1000000  # 1kg
+	})
+	data_layer.set_cell_with_spec(Vector2i(14, 25), {
+		"sid": 10007,  # berry
+		"mass": 1000000  # 1kg
+	})
+
 func _setup_simulation_systems(springs: PackedVector2Array) -> void:
 	durability.setup(data_layer)
 	
