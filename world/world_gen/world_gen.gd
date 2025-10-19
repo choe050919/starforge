@@ -1,6 +1,8 @@
 extends Node
 class_name WorldGen
 
+@export var debug_log := false
+
 signal generated(
 	size: Vector2i,
 	substances: PackedInt32Array,
@@ -581,8 +583,9 @@ func _log_liquid_stats(amount: PackedInt64Array, springs: PackedVector2Array, wa
 			if v > max_amount:
 				max_amount = v
 	
-	print("[WorldGen] Liquids: cells=%d min=%d max=%d springs=%d water_level=%d"
-		% [cell_count, min_amount, max_amount, springs.size(), water_level])
+	if debug_log:
+		print("[WorldGen] Liquids: cells=%d min=%d max=%d springs=%d water_level=%d"
+			% [cell_count, min_amount, max_amount, springs.size(), water_level])
 
 # ══════════════════════════════════════════════════════════════════
 # Utilities

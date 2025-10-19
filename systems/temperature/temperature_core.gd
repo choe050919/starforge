@@ -95,7 +95,8 @@ func _ensure_capacity(n: int) -> void:
 		heat_buffer.resize(n)
 		for i in n:
 			heat_buffer[i] = 0.0
-		print("[TemperatureCore] heat buffer resized")
+		if debug_log:
+			print("[TemperatureCore] heat buffer resized")
 
 # ═══════════════════════════════════════════════════════════
 # 메인 시뮬레이션 루프

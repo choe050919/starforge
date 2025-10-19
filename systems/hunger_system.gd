@@ -9,6 +9,8 @@
 extends Node
 class_name HungerSystem
 
+@export var debug_log := false
+
 signal hunger_changed(current: float, max: float, ratio: float)
 signal hunger_state_changed(state: State)
 signal starving_damage(damage: float)
@@ -65,7 +67,8 @@ func setup(player: Player, rule_cache: SubstanceRuleCache) -> void:
 	_rule_cache = rule_cache
 	current_calories = start_calories
 	_update_state()
-	print("[HungerSystem] Setup complete with rule_cache")
+	if debug_log:
+		print("[HungerSystem] Setup complete with rule_cache")
 
 func _ready() -> void:
 	set_process(false)  # setup 호출 전까지 대기
@@ -119,7 +122,8 @@ func consume_food(sid: int, mass_mg: int) -> int:
 	
 	# 소화 불가능한 물질
 	if not _rule_cache.is_digestible(sid):
-		print("[HungerSystem] Material %d is not digestible" % sid)
+		if debug_log:
+			print("[HungerSystem] Material %d is not digestible" % sid)
 		return 0
 	
 	# 칼로리 계산
@@ -139,7 +143,8 @@ func consume_food(sid: int, mass_mg: int) -> int:
 	capacity_left -= digesting_total
 	
 	if capacity_left <= 0.0:
-		print("[HungerSystem] Too full to eat")
+		if debug_log:
+			print("[HungerSystem] Too full to eat")
 		return 0
 	
 	# 실제 섭취 가능한 양 계산
@@ -155,8 +160,9 @@ func consume_food(sid: int, mass_mg: int) -> int:
 		"time_left": digestion_time
 	})
 	
-	print("[HungerSystem] Consuming %d mg of SID %d (%.1f kcal, digestion: %.1f sec)" 
-		% [consumed_mg, sid, consumable_calories, digestion_time])
+	if debug_log:
+		print("[HungerSystem] Consuming %d mg of SID %d (%.1f kcal, digestion: %.1f sec)" 
+			% [consumed_mg, sid, consumable_calories, digestion_time])
 	
 	return consumed_mg
 
@@ -170,7 +176,8 @@ func _process_digestion(delta: float) -> void:
 		# 소화 완료
 		if food.time_left <= 0.0:
 			current_calories += food.calories
-			print("[HungerSystem] Digestion complete: +%.1f kcal" % food.calories)
+			if debug_log:
+				print("[HungerSystem] Digestion complete: +%.1f kcal" % food.calories)
 			_digesting_food.remove_at(i)
 			continue
 		
@@ -197,7 +204,8 @@ func _update_state() -> void:
 	
 	if old_state != current_state:
 		hunger_state_changed.emit(current_state)
-		print("[HungerSystem] State changed: %s -> %s" % [State.keys()[old_state], State.keys()[current_state]])
+		if debug_log:
+			print("[HungerSystem] State changed: %s -> %s" % [State.keys()[old_state], State.keys()[current_state]])
 
 func get_hunger_ratio() -> float:
 	return clamp(current_calories / max_calories, 0.0, 1.0)
