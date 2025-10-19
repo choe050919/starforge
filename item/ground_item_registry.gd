@@ -12,7 +12,7 @@ signal stack_removed(cell: Vector2i, stack_index: int, material_sid: int)
 # ── 설정 ─────────────────────────────────────────────────────────────────────
 @export var default_merge_temperature_tolerance_K: float = 5.0
 @export var max_mass_per_stack_kg: float = 1e12
-@export var debug_log: bool = false
+@export var debug_enabled: bool = false
 
 const MASS_SNAP_KG := 1e-6 # 1 mg
 
@@ -59,14 +59,13 @@ func add_or_merge(cell: Vector2i, material_sid_v: Variant, mass_kg: float, tempe
 				"temperature_K": new_temp,
 			}
 			stacks.append(new_stack)
-			if debug_log:
-				print("[GroundItemRegistry] stack split: cell=", cell, " sid=", sid, " base=", s["mass_kg"], " overflow=", overflow)
+			Debug.log(self, "stack split: cell=%s sid=%s base=%s overflow=%s", [cell, sid, s["mass_kg"], overflow])
 
 		# 배열에 다시 반영(참조형이지만 명시적으로 대입)
 		stacks[match_i] = s
 		_stacks_by_cell[k] = stacks
 
-		if debug_log:
+		if debug_enabled:
 			print("[GroundItemRegistry] merged cell=", cell, " sid=", sid, " mass=", s["mass_kg"], " temp=", s["temperature_K"])
 		stack_updated.emit(cell, match_i, sid, float(s["mass_kg"]), float(s["temperature_K"]))
 	else:
@@ -84,7 +83,7 @@ func add_or_merge(cell: Vector2i, material_sid_v: Variant, mass_kg: float, tempe
 			_stacks_by_cell[k] = stacks
 			match_i = stacks.size() - 1
 
-		if debug_log:
+		if debug_enabled:
 			print("[GroundItemRegistry] created cell=", cell, " sid=", sid, " mass=", s["mass_kg"], " temp=", s["temperature_K"])
 		stack_created.emit(cell, match_i, sid, float(s["mass_kg"]), float(s["temperature_K"]))
 
@@ -105,7 +104,7 @@ func remove_mass(cell: Vector2i, stack_index: int, take_mass_kg: float) -> void:
 	stacks[stack_index] = s
 
 	if new_mass > 0.0:
-		if debug_log:
+		if debug_enabled:
 			print("[GroundItemRegistry] take mass cell=", cell, " idx=", stack_index, " rest=", new_mass)
 		stack_updated.emit(cell, stack_index, int(s.get("material_sid", -1)), float(s["mass_kg"]), float(s.get("temperature_K", 0.0)))
 	else:
@@ -115,7 +114,7 @@ func remove_mass(cell: Vector2i, stack_index: int, take_mass_kg: float) -> void:
 			_stacks_by_cell.erase(k)
 		else:
 			_stacks_by_cell[k] = stacks
-		if debug_log:
+		if debug_enabled:
 			print("[GroundItemRegistry] stack removed cell=", cell, " idx=", stack_index)
 		stack_removed.emit(cell, stack_index, sid)
 
@@ -139,12 +138,12 @@ func clear_cell(cell: Vector2i) -> void:
 		var sid := int((stacks[i] as Dictionary).get("material_sid", -1))
 		stack_removed.emit(cell, i, sid)
 	_stacks_by_cell.erase(k)
-	if debug_log:
+	if debug_enabled:
 		print("[GroundItemRegistry] cleared cell=", cell)
 
 func clear_all() -> void:
 	_stacks_by_cell.clear()
-	if debug_log:
+	if debug_enabled:
 		print("[GroundItemRegistry] cleared all")
 
 # ── 내부 유틸 ────────────────────────────────────────────────────────────────

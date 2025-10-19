@@ -3,7 +3,7 @@ class_name Liquid
 
 # ── 설정 ───────────────────────────────────────────────────────────
 @export var enabled: bool = true
-@export var debug_log: bool = false
+@export var debug_enabled: bool = false
 @export var water_capacity_mg_per_cell: int = 1_000_000
 
 # JSON sid 주입

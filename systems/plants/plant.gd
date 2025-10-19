@@ -11,13 +11,6 @@ const Part = preload("res://systems/plants/plant_part.gd")
 @export var debug_progress_log_sec: float = 0.0     ## >0이면 진행도 주기 로그 (예: 1.0)
 var _debug_accum: float = 0.0
 
-func _log(msg: String, args: Array = []):
-	if not debug_enabled: return
-	if args.is_empty():
-		print("[Plant] ", msg)
-	else:
-		print("[Plant] " + msg % args)
-
 signal plant_added(id: int, stage_idx: int)
 signal plant_stage_changed(id: int, stage_idx: int)
 signal plant_removed(id: int)
@@ -124,7 +117,7 @@ func place(spec: PlantSpec, root: Vector2i, rate_mult: float = 1.0) -> int:
 	_emit_added(id, inst.stage_idx)
 	#
 	_spawn_view_for(id, inst)
-	_log("placed id=%d spec=%s root=(%d,%d) rate=%.3f", [id, String(inst.spec.id), root.x, root.y, inst.growth_rate])
+	Debug.log(self, "placed id=%d spec=%s root=(%d,%d) rate=%.3f", [id, String(inst.spec.id), root.x, root.y, inst.growth_rate])
 	return id
 
 func remove(id: int) -> void:
@@ -135,7 +128,7 @@ func remove(id: int) -> void:
 	_instances[id] = null
 	_emit_removed(id)
 	_free_view(id)
-	_log("removed id=%d", [id])
+	Debug.log(self, "removed id=%d", [id])
 
 # ── Tick ──────────────────────────────────────────────────────────────
 
@@ -158,7 +151,7 @@ func tick(dt: float) -> void:
 			_update_view_for(id, p)
 
 		if debug_progress_log_sec > 0.0 and _debug_accum >= debug_progress_log_sec and not advanced:
-			_log("progress id=%d stage=%d prog=%.3f (+%.3f)", [
+			Debug.log(self, "progress id=%d stage=%d prog=%.3f (+%.3f)", [
 				id, p.stage_idx, p.progress, p.progress - prev_progress
 			])
 
@@ -201,12 +194,12 @@ func _advance_growth_for_instance(id: int, p: PlantInstance, dt: float) -> bool:
 			_emit_stage_changed(id, p.stage_idx)
 			_update_view_for(id, p)
 			advanced = true
-			_log("stage_advanced id=%d -> stage=%d progress=%.3f",
+			Debug.log(self, "stage_advanced id=%d -> stage=%d progress=%.3f",
 				[id, p.stage_idx, p.progress])
 		else:
 			# 자리 막힘 → 정지(다시 시도 가능)
 			p.progress = 0.999
-			_log("blocked id=%d at stage=%d (footprint occupied)", [id, p.stage_idx])
+			Debug.log(self, "blocked id=%d at stage=%d (footprint occupied)", [id, p.stage_idx])
 			break
 
 	return advanced
@@ -242,7 +235,7 @@ func _update_fruit_for_instance(p: PlantInstance, dt: float) -> bool:
 			p.fruit_maturity[i] = after
 			if after == 1.0:
 				p.fruit_present[i] = 1
-				_log("열매가 완전히 성숙했습니다.")
+				Debug.log(self, "열매가 완전히 성숙했습니다.")
 			changed = true
 
 	return changed
@@ -507,6 +500,6 @@ func try_harvest_fruit_at_cell(cell: Vector2i) -> bool:
 	_update_view_for(id, p)
 
 	if debug_enabled:
-		_log("fruit_harvested id=%d part_idx=%d", [id, idx])
+		Debug.log(self, "fruit_harvested id=%d part_idx=%d", [id, idx])
 
 	return true

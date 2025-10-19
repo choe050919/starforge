@@ -1,7 +1,7 @@
 extends RefCounted
 class_name LiquidCore
 
-var debug_log: bool
+var debug_enabled: bool
 
 # ═══════════════════════════════════════════════════════════
 # 상수
@@ -23,7 +23,7 @@ var _active_cells: Array[int] = []
 # ═══════════════════════════════════════════════════════════
 
 func _init(is_debug := false) -> void:
-	debug_log = is_debug
+	debug_enabled = is_debug
 
 func rebuild_active_cells(ph: PackedByteArray, m: PackedInt64Array) -> void:
 	_active_cells.clear()

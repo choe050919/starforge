@@ -16,6 +16,10 @@ run/main_scene="uid://c5gv3n6byiin7"
 config/features=PackedStringArray("4.5", "Forward Plus")
 config/icon="uid://drcw3d5sjondu"
 
+[autoload]
+
+Debug="*res://autoload/debug.gd"
+
 [input]
 
 select={
