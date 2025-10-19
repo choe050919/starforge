@@ -141,9 +141,10 @@ profile = ExtResource("15_avd5l")
 unique_name_in_owner = true
 script = ExtResource("14_ifjjt")
 
-[node name="Temperature" type="Node" parent="Systems"]
+[node name="Temperature" type="Node" parent="Systems" node_paths=PackedStringArray("liquid")]
 unique_name_in_owner = true
 script = ExtResource("16_inp7a")
+liquid = NodePath("../Liquid")
 
 [node name="SimClock" type="Node" parent="Systems"]
 unique_name_in_owner = true

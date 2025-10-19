@@ -267,7 +267,7 @@ func _setup_simulation_systems(springs: PackedVector2Array) -> void:
 	
 	tchange.setup(data_layer)
 	
-	liquid.setup(data_layer, springs)
+	liquid.setup(data_layer)
 	liquid.set_liquid_sids()
 	
 	phase_change.setup(data_layer, rule_cache)
@@ -340,7 +340,7 @@ func _setup_hunger_system() -> void:
 # ══════════════════════════════════════════════════════════════════
 
 ## SimClock에서 올라오는 틱 이벤트를 처리한다.
-func _on_sim_clock_tick(tag: StringName, dt: float) -> void:
+func _on_sim_clock_tick(tag: StringName, dt: float, tick_count: int) -> void:
 	# 월드가 준비되지 않았으면 무시 (이중 안전장치)
 	if not _world_ready:
 		push_warning("[World] SimClock tick ignored: world not ready yet")
@@ -348,13 +348,16 @@ func _on_sim_clock_tick(tag: StringName, dt: float) -> void:
 	
 	_sim_time += dt
 	
-	match tag:
-		"sim":
-			_tick_simulation(dt)
-		"temp":
-			_tick_temperature(dt)
-		_:
-			push_error("[World] Invalid tick tag: %s" % tag)
+	# 매 틱 실행
+	_tick_simulation(dt)
+	
+	# 짝수 틱: Liquid
+	if tick_count % 2 == 0:
+		_tick_liquid(dt)
+	
+	# 홀수 틱: Temperature
+	if tick_count % 2 == 1:
+		_tick_temperature(dt)
 
 func _tick_simulation(dt: float) -> void:
 	phase_change._on_sim_tick(dt, _sim_time)
@@ -363,6 +366,9 @@ func _tick_simulation(dt: float) -> void:
 	spawner._on_sim_tick(dt, _sim_time)
 	light._on_sim_tick(dt)
 	plant.tick(dt)
+
+func _tick_liquid(dt: float) -> void:
+	liquid.tick_liquid(dt)
 
 func _tick_temperature(dt: float) -> void:
 	temp._on_sim_tick(dt)
