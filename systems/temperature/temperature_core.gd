@@ -9,6 +9,8 @@
 extends RefCounted
 class_name TemperatureCore
 
+var debug_log: bool
+
 # ═══════════════════════════════════════════════════════════
 # 상수
 # ═══════════════════════════════════════════════════════════
@@ -52,39 +54,38 @@ var k_by_sid: Dictionary[int, float]
 ## 물질별 비열 (cJ/mg·cK)
 var c_by_sid: Dictionary[int, float]
 
-# 미사용 (TODO: 제거 검토)
-var last_avg_delta_c := 0.0
-var last_max_abs_delta_c := 0.0
-
 # ═══════════════════════════════════════════════════════════
 # 초기화
 # ═══════════════════════════════════════════════════════════
+
+func _init(is_debug := false) -> void:
+	debug_log = is_debug
 
 ## 물질 캐시로부터 열적 속성 로드
 func setup_thermal_from_cache(cache: SubstanceRuleCache) -> void:
 	k_by_sid.clear()
 	c_by_sid.clear()
-
+	
 	var loaded_count := 0
 	for sid in cache.phase_of_sid.keys():
 		var k_si := float(cache.k_by_sid.get(sid, 0.0)) # [W/m·K]
 		var c_si := float(cache.c_by_sid.get(sid, 0.0)) # [J/kg·K]
-
+	
 		# 모든 sid를 등록 (0.0도 유효한 값 - 열전도 없음을 의미)
 		k_by_sid[sid] = k_si
 		c_by_sid[sid] = c_si * 1e-6 # 1mg을 1cK 변화시키는 데 필요한 열량(cJ)
 		
 		if k_si > 0.0 or c_si > 0.0:
 			loaded_count += 1
-
-	print("[TemperatureCore] Loaded thermal data for %d/%d substances (with properties)" 
-		% [loaded_count, k_by_sid.size()])
 	
 	if k_by_sid.is_empty():
 		push_warning("[TemperatureCore] No thermal data loaded! Check substance cache")
 	
 	# 샘플 출력
-	if false:
+	if debug_log:
+		print("[TemperatureCore] Loaded thermal data for %d/%d substances (with properties)" 
+			% [loaded_count, k_by_sid.size()])
+		# 샘플 출력
 		print("[TemperatureCore] Sample ICE: c=%.6f k=%.2f" 
 			% [c_by_sid.get(10001, -999.0), k_by_sid.get(10001, -999.0)])
 
@@ -94,6 +95,7 @@ func _ensure_capacity(n: int) -> void:
 		heat_buffer.resize(n)
 		for i in n:
 			heat_buffer[i] = 0.0
+		print("[TemperatureCore] heat buffer resized")
 
 # ═══════════════════════════════════════════════════════════
 # 메인 시뮬레이션 루프
@@ -129,7 +131,7 @@ func tick_fullscan(
 	_ensure_capacity(n)
 
 	var dQ := compute_deltaQ(w, h, n, T, S, M, k_by_sid, dt)
-	if false: # 디버그
+	if debug_log:
 		print("[TemperatureCore] mean|dQ|=", _mean_abs(dQ))
 
 	for i in n:

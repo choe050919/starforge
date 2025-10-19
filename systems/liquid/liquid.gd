@@ -30,20 +30,16 @@ func tick_liquid(dt: float) -> void:
 	if not enabled or data == null: return
 	var idx   := data.index
 	var phase := data.phase
-	var subs  := data.substance
 	var mass  := data.mass
 	var temp  := data.temperature
 
-	var R := {
-		"idx": idx,
-		"ph": phase.get_raw_read(),
-		"sid": subs.get_raw_read(),
-		"m": mass.get_raw_read(),
-		"T": temp.get_raw_read(),
-		"cap": water_capacity_mg_per_cell,
-	}
-
-	var diff := core.compute_diff(R, dt)
+	var diff := core.compute_diff(
+		phase.get_raw_read(),
+		mass.get_raw_read(),
+		temp.get_raw_read(),
+		water_capacity_mg_per_cell,
+		idx
+	)
 	if diff.get("moved_total", 0) <= 0: 
 		return
 

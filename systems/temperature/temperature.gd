@@ -36,7 +36,7 @@ func setup(
 		if value == null:
 			push_error("[Temperature.setup]%s is null" % _name)
 
-	_core = TemperatureCore.new()
+	_core = TemperatureCore.new(debug_log)
 	_core.setup_thermal_from_cache(_rules)
 
 # ── 틱 ─────────────────────────────────────────────────────────────

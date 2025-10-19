@@ -9,6 +9,8 @@
 extends RefCounted
 class_name PhaseChangeCore
 
+var debug_log: bool
+
 # ═══════════════════════════════════════════════════════════
 # 상수
 # ═══════════════════════════════════════════════════════════
@@ -27,11 +29,14 @@ var _rules: SubstanceRuleCache
 # 초기화
 # ═══════════════════════════════════════════════════════════
 
+func _init(is_debug := false) -> void:
+	debug_log = is_debug
+
 ## 상전이 규칙 캐시 바인딩
 func bind_rule_cache(cache: SubstanceRuleCache) -> void:
 	_rules = cache
 
-	if _rules != null:
+	if debug_log and _rules != null:
 		var keys := _rules.rules_by_sid.keys()
 		print("[PhaseChangeCore] Loaded rules for %d substances" % keys.size())
 		

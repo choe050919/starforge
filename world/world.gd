@@ -1,6 +1,8 @@
 extends Node2D
 class_name World
 
+@export var debug_log := false
+
 # ── VisualSync ───────────────────────────────────────────────────
 @onready var visual_sync: VisualSync = %VisualSync
 @onready var ground: Ground = %Ground
@@ -92,8 +94,9 @@ func _setup_hud() -> void:
 
 ## 개선된 리소스 로딩 (검증 포함)
 func _load_resources() -> bool:
-	print("[World] ═══════════════════════════════════════")
-	print("[World] Loading critical resources...")
+	if debug_log:
+		print("[World] ═══════════════════════════════════════")
+		print("[World] Loading critical resources...")
 	
 	# Substance loader
 	substance_loader.load_materials()
@@ -107,7 +110,8 @@ func _load_resources() -> bool:
 		push_error("[World] Please ensure the file exists at the correct location.")
 		return false
 	
-	print("[World] Loading substance rules from: ", json_path)
+	if debug_log:
+		print("[World] Loading substance rules from: ", json_path)
 	var load_success := rule_cache.load_from_file(json_path)
 	
 	if not load_success:
@@ -123,8 +127,9 @@ func _load_resources() -> bool:
 	if rule_cache.k_by_sid.is_empty() and rule_cache.c_by_sid.is_empty():
 		push_warning("[World] ⚠️ No thermal properties loaded (k, c are empty)")
 	
-	print("[World] Successfully loaded %d substances" % rule_cache.phase_of_sid.size())
-	print("[World] ═══════════════════════════════════════")
+	if debug_log:
+		print("[World] Successfully loaded %d substances" % rule_cache.phase_of_sid.size())
+		print("[World] ═══════════════════════════════════════")
 	return true
 
 ## 에러 표시 및 게임 종료
@@ -313,7 +318,8 @@ func _post_apply_worldgen(size: Vector2i, initial_mass: PackedInt64Array) -> voi
 	_world_ready = true
 	clock.set_process(true)
 	
-	print("[World] World setup complete, SimClock started")
+	if debug_log:
+		print("[World] World setup complete, SimClock started")
 
 var sim_time := 0.0
 
@@ -333,7 +339,8 @@ func _setup_hunger_system() -> void:
 	# 기아 대미지 처리 (나중에 체력 시스템과 연동)
 	hunger.starving_damage.connect(_on_starving_damage)
 	
-	print("[World] HungerSystem initialized")
+	if debug_log:
+		print("[World] HungerSystem initialized")
 
 # ══════════════════════════════════════════════════════════════════
 # Simulation Tick

@@ -1,6 +1,8 @@
 extends RefCounted
 class_name LiquidCore
 
+var debug_log: bool
+
 # ═══════════════════════════════════════════════════════════
 # 상수
 # ═══════════════════════════════════════════════════════════
@@ -20,6 +22,9 @@ var _active_cells: Array[int] = []
 # 초기화
 # ═══════════════════════════════════════════════════════════
 
+func _init(is_debug := false) -> void:
+	debug_log = is_debug
+
 func rebuild_active_cells(ph: PackedByteArray, m: PackedInt64Array) -> void:
 	_active_cells.clear()
 	
@@ -31,18 +36,18 @@ func rebuild_active_cells(ph: PackedByteArray, m: PackedInt64Array) -> void:
 # 메인 시뮬레이션 루프
 # ═══════════════════════════════════════════════════════════
 
-func compute_diff(R: Dictionary, _dt: float) -> Dictionary:
-	var idx: GridIndex             = R["idx"]
-	var ph_read: PackedByteArray   = R["ph"]
-	var m_read: PackedInt64Array   = R["m"]
-	var T_read: PackedInt32Array   = R["T"]
-	var cap: int                   = int(R["cap"])
-
-	var w: int = idx.size.x
-	var h: int = idx.size.y
+func compute_diff(
+	P: PackedByteArray,
+	M: PackedInt64Array,
+	T: PackedInt32Array,
+	cap: int,
+	index: GridIndex
+) -> Dictionary:
+	var w: int = index.size.x
+	var h: int = index.size.y
 	var n: int = w * h
 
-	rebuild_active_cells(ph_read, m_read)
+	rebuild_active_cells(P, M)
 
 	var mass_delta := PackedInt64Array()
 	mass_delta.resize(n)
@@ -55,10 +60,10 @@ func compute_diff(R: Dictionary, _dt: float) -> Dictionary:
 	var free := PackedInt64Array()
 	free.resize(n)
 	for i in n:
-		if ph_read[i] == PH_SOLID:
+		if P[i] == PH_SOLID:
 			free[i] = 0
 		else:
-			var liquid_mass := m_read[i] if ph_read[i] == PH_LIQUID else 0
+			var liquid_mass := M[i] if P[i] == PH_LIQUID else 0
 			free[i] = cap - liquid_mass
 
 	_active_cells.sort_custom(func(a: int, b: int) -> bool:
@@ -68,20 +73,20 @@ func compute_diff(R: Dictionary, _dt: float) -> Dictionary:
 	)
 
 	for i in _active_cells:
-		if ph_read[i] != PH_LIQUID or m_read[i] <= 0:
+		if P[i] != PH_LIQUID or M[i] <= 0:
 			continue
 
-		var cell := idx.cell(i)
+		var cell := index.cell(i)
 		var x := cell.x
 		var y := cell.y
-		var m_here: int = m_read[i]
+		var m_here: int = M[i]
 
 		# ── 1) 아래로 낙하 ──
 		var sent: int = 0
 		var down := Vector2i(x, y + 1)
-		if idx.in_bounds_cell(down):
-			var di := idx.idx(down)
-			if ph_read[di] != PH_SOLID:
+		if index.in_bounds_cell(down):
+			var di := index.idx(down)
+			if P[di] != PH_SOLID:
 				var can := int(min(m_here - sent, free[di]))
 				if can > 0:
 					mass_delta[di] += can
@@ -94,7 +99,7 @@ func compute_diff(R: Dictionary, _dt: float) -> Dictionary:
 						"from": i,
 						"to": di,
 						"amount": can,
-						"temp": T_read[i]
+						"temp": T[i]
 					})
 
 		# ── 2) 좌/우 평형 ──
@@ -102,10 +107,10 @@ func compute_diff(R: Dictionary, _dt: float) -> Dictionary:
 		if remain > 0 and remain >= RESIDUAL_SURFACE_MASS:
 			# ← 왼쪽
 			var left := Vector2i(x - 1, y)
-			if idx.in_bounds_cell(left):
-				var li := idx.idx(left)
-				if ph_read[li] != PH_SOLID:
-					var m_l := m_read[li] if ph_read[li] == PH_LIQUID else 0
+			if index.in_bounds_cell(left):
+				var li := index.idx(left)
+				if P[li] != PH_SOLID:
+					var m_l := M[li] if P[li] == PH_LIQUID else 0
 					var diff_l := (remain - m_l) / 2
 					if diff_l > 0:
 						var can_l := int(min(diff_l, remain, free[li]))
@@ -120,16 +125,16 @@ func compute_diff(R: Dictionary, _dt: float) -> Dictionary:
 								"from": i,
 								"to": li,
 								"amount": can_l,
-								"temp": T_read[i]
+								"temp": T[i]
 							})
 
 			# → 오른쪽
 			if remain > 0:
 				var right := Vector2i(x + 1, y)
-				if idx.in_bounds_cell(right):
-					var ri := idx.idx(right)
-					if ph_read[ri] != PH_SOLID:
-						var m_r := m_read[ri] if ph_read[ri] == PH_LIQUID else 0
+				if index.in_bounds_cell(right):
+					var ri := index.idx(right)
+					if P[ri] != PH_SOLID:
+						var m_r := M[ri] if P[ri] == PH_LIQUID else 0
 						var diff_r := (remain - m_r) / 2
 						if diff_r > 0:
 							var can_r := int(min(diff_r, remain, free[ri]))
@@ -144,20 +149,20 @@ func compute_diff(R: Dictionary, _dt: float) -> Dictionary:
 									"from": i,
 									"to": ri,
 									"amount": can_r,
-									"temp": T_read[i]
+									"temp": T[i]
 								})
 
 	# 새 질량 계산
 	var m_new := PackedInt64Array()
 	m_new.resize(n)
 	for i in n:
-		var v := m_read[i] + mass_delta[i]
+		var v := M[i] + mass_delta[i]
 		if v < 0: v = 0
 		elif v > cap: v = cap
 		m_new[i] = v
 
 	# 새 온도 계산
-	var T_new := _compute_temperatures(ph_read, m_read, T_read, m_new, flows)
+	var T_new := _compute_temperatures(P, M, T, m_new, flows)
 
 	return {
 		"mass_new": m_new,
