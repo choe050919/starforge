@@ -116,8 +116,7 @@ func tick_fullscan(
 	S: PackedInt32Array,
 	M: PackedInt64Array,
 	index: GridIndex,
-	dt: float,
-	flows: Array = []
+	dt: float
 ) -> PackedInt32Array:
 	var w := index.size.x
 	var h := index.size.y
@@ -129,14 +128,12 @@ func tick_fullscan(
 
 	_ensure_capacity(n)
 
-	var dQ_conduction := compute_deltaQ(w, h, n, T, S, M, k_by_sid, dt)
+	var dQ := compute_deltaQ(w, h, n, T, S, M, k_by_sid, dt)
 	if false: # 디버그
-		print("[TemperatureCore] mean|dQ|=", _mean_abs(dQ_conduction ))
-
-	var dQ_advection = _compute_advective_heat(flows, T, S, c_by_sid)
+		print("[TemperatureCore] mean|dQ|=", _mean_abs(dQ))
 
 	for i in n:
-		heat_buffer[i] += dQ_conduction[i] + dQ_advection[i]
+		heat_buffer[i] += dQ[i]
 
 	var result := _consume_heat_buffer(n, heat_buffer, T, S, M, c_by_sid)
 
@@ -268,59 +265,6 @@ static func _consume_heat_buffer(
 			heat_new[i] -= float(step_ck) * dE_per_cK
 
 	return HeatApplicationResult.new(T_new, heat_new)
-
-## 질량 이동에 따른 열 운반 계산
-##
-## 물리 원리:
-## 질량이 이동할 때 그 질량의 열도 함께 이동
-## ΔQ = Δm × c × T
-##
-## flows: Liquid가 계산한 질량 이동 정보
-## T: 현재 온도 [cK]
-## S: 물질 ID
-## C: 물질별 비열 [cJ/(mg·cK)]
-##
-## 반환: 각 셀의 열량 변화 [cJ]
-static func _compute_advective_heat(
-	flows: Array,
-	T: PackedInt32Array,
-	S: PackedInt32Array,
-	C: Dictionary[int, float]
-) -> PackedFloat64Array:
-	var n := T.size()
-	var dQ := PackedFloat64Array()
-	dQ.resize(n)
-	for i in n:
-		dQ[i] = 0.0
-	
-	# flows가 비어있으면 (액체 이동 없음)
-	if flows.is_empty():
-		return dQ
-	
-	# 각 flow에 대해 열 이동 계산
-	for flow in flows:
-		var from_i: int = flow.from
-		var to_i: int = flow.to
-		var amount: int = flow.amount  # mg
-		var temp: int = flow.temp      # cK (출발지 온도)
-		
-		var sid := S[from_i]
-		var c: float = C.get(sid, 0.0)  # cJ/(mg·cK)
-		
-		if c <= 0.0:
-			continue
-		
-		# 이동하는 질량이 운반하는 열량 [cJ]
-		# Q = m × c × T
-		var heat_carried := float(amount) * c * float(temp)
-		
-		# 출발지: 열 손실
-		dQ[from_i] -= heat_carried
-		
-		# 도착지: 열 획득
-		dQ[to_i] += heat_carried
-	
-	return dQ
 
 # ═══════════════════════════════════════════════════════════
 # 유틸리티

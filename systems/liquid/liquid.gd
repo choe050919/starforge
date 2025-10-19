@@ -15,9 +15,6 @@ var data: DataLayer
 var core: LiquidCore = LiquidCore.new()
 var springs: PackedVector2Array = PackedVector2Array()
 
-# ✅ 새로 추가: flows를 Temperature에 전달하기 위해 저장
-var _last_flows: Array = []
-
 func setup(layer: DataLayer, spring_cells: PackedVector2Array = PackedVector2Array()) -> void:
 	data = layer
 	if data == null:
@@ -30,70 +27,46 @@ func set_liquid_sids(water_sid: int = 20001, vacuum_sid: int = 0) -> void:
 
 # ── 틱 ─────────────────────────────────────────────────────────────
 func tick_liquid(dt: float) -> void:
-	if not enabled or data == null: 
-		return
-		
+	if not enabled or data == null: return
 	var idx   := data.index
-	var phase := data.phase
-	var mass  := data.mass
-	var temp  := data.temperature
-
-	# ✅ 새로운 방식: 압력 기반 계산
-	var flows: Array = core.compute_diff(
-		phase.get_raw_read(),
-		mass.get_raw_read(),
-		temp.get_raw_read(),  # 압력 계산용 (읽기만)
-		idx,
-		water_capacity_mg_per_cell,
-		dt
-	)
-	
-	if flows.is_empty():
-		_last_flows = []
-		return
-	
-	# flows 저장 (Temperature가 사용)
-	_last_flows = flows
-	
-	# 질량 변화 적용
-	commit_flows(flows)
-
-## ✅ 새로 추가: flows를 Temperature가 읽을 수 있도록 제공
-func get_last_flows() -> Array:
-	return _last_flows
-
-func commit_flows(flows: Array) -> void:
 	var phase := data.phase
 	var subs  := data.substance
 	var mass  := data.mass
+	var temp  := data.temperature
 
-	var n := mass.get_raw_read().size()
-	var mass_delta := PackedInt64Array()
-	mass_delta.resize(n)
-	for i in n:
-		mass_delta[i] = 0
-	
-	# flows를 mass_delta로 변환
-	for flow in flows:
-		mass_delta[flow.from] -= flow.amount
-		mass_delta[flow.to] += flow.amount
-	
-	# 새 질량 계산
-	var m_read := mass.get_raw_read()
-	var m_new := PackedInt64Array()
-	m_new.resize(n)
-	for i in n:
-		var v := m_read[i] + mass_delta[i]
-		m_new[i] = clampi(v, 0, water_capacity_mg_per_cell)
-	
+	var R := {
+		"idx": idx,
+		"ph": phase.get_raw_read(),
+		"sid": subs.get_raw_read(),
+		"m": mass.get_raw_read(),
+		"T": temp.get_raw_read(),
+		"cap": water_capacity_mg_per_cell,
+	}
+
+	var diff := core.compute_diff(R, dt)
+	if diff.get("moved_total", 0) <= 0: 
+		return
+
+	commit_liquid(diff)
+
+func commit_liquid(core_out: Dictionary) -> void:
+	var phase := data.phase
+	var subs  := data.substance
+	var mass  := data.mass
+	var temp  := data.temperature
+
+	var ph_r := phase.get_raw_read()
+	var m_new: PackedInt64Array = core_out["mass_new"]
+	var T_new: PackedInt32Array = core_out["temp_new"]
+	var n := m_new.size()
+
 	# 1) 질량 적용
 	mass.begin_write()
 	for i in n:
 		mass.set_by_index(i, m_new[i])
 	mass.commit()
-	
+
 	# 2) 상/물질 동기화
-	var ph_r := phase.get_raw_read()
 	phase.begin_write()
 	subs.begin_write()
 	for i in n:
@@ -107,9 +80,12 @@ func commit_flows(flows: Array) -> void:
 			subs.set_by_index(i, _sid_water)
 	phase.commit()
 	subs.commit()
-	
-	# ✅ 변경: 온도는 더 이상 여기서 처리 안 함
-	# Temperature 시스템이 flows를 받아서 대류 열 계산
+
+	# 3) 온도 적용
+	temp.begin_write()
+	for i in n:
+		temp.set_by_index(i, T_new[i])
+	temp.commit()
 
 # ── 유틸 ────────────────────────────────────────────────────────────
 func get_amounts() -> PackedInt64Array:
@@ -144,7 +120,7 @@ func apply_external_delta(d_liquid: PackedInt64Array) -> void:
 	if not any_nonzero:
 		return
 
-	# 단순 적용
+	# 단순 적용 (온도는 보존)
 	var m_new := PackedInt64Array()
 	m_new.resize(n)
 	var cap := water_capacity_mg_per_cell
@@ -154,24 +130,10 @@ func apply_external_delta(d_liquid: PackedInt64Array) -> void:
 		elif v > cap: v = cap
 		m_new[i] = v
 	
-	# 질량만 적용 (온도는 Temperature가 관리)
-	data.mass.begin_write()
-	for i in n:
-		data.mass.set_by_index(i, m_new[i])
-	data.mass.commit()
+	var temp_read := data.temperature.get_raw_read()
 	
-	# 상/물질 동기화
-	var ph_r := data.phase.get_raw_read()
-	data.phase.begin_write()
-	data.substance.begin_write()
-	for i in n:
-		if ph_r[i] == PhaseStore.Phase.SOLID:
-			continue
-		if m_new[i] == 0:
-			data.phase.set_by_index(i, PhaseStore.Phase.VACUUM)
-			data.substance.set_by_index(i, _sid_vacuum)
-		else:
-			data.phase.set_by_index(i, PhaseStore.Phase.LIQUID)
-			data.substance.set_by_index(i, _sid_water)
-	data.phase.commit()
-	data.substance.commit()
+	var core_out: Dictionary = {
+		"mass_new": m_new,
+		"temp_new": temp_read.duplicate(),
+	}
+	commit_liquid(core_out)

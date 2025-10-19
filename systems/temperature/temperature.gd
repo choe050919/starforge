@@ -16,7 +16,6 @@ var _temp_store: TemperatureStore
 var _mass_store: MassStore
 var _index: GridIndex
 var _rules: SubstanceRuleCache
-@export var liquid: Liquid
 
 # 코어
 var _core: TemperatureCore
@@ -44,15 +43,12 @@ func setup(
 func _on_sim_tick(dt: float) -> void:
 	if not enabled: return
 
-	var flows = liquid.get_last_flows()
-
 	var new_temperature := _core.tick_fullscan(
 		_temp_store.get_raw_read(),
 		_substance_store.get_raw_read(),
 		_mass_store.get_raw_read(),
 		_index,
-		dt,
-		flows
+		dt
 	)
 
 	_data.set_bulk_temp(new_temperature)

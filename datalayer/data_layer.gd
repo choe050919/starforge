@@ -487,7 +487,7 @@ func clear_cell(cell: Vector2i, reason: StringName = &"clear") -> void:
 	substance.set_by_index(i, VACUUM_SID)
 	phase.set_by_index(i, vacuum_spec.get("phase", PhaseStore.Phase.VACUUM))
 	mass.set_by_index(i, 0)
-	temperature.set_by_index(i, 27315) # TODO 임시 처리 # vacuum_spec.get("temp", 0))
+	temperature.set_by_index(i, vacuum_spec.get("temp", 0))
 	durability.clear_cell(cell)
 	
 	substance.commit()
