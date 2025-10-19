@@ -20,7 +20,7 @@ const LADDER_SID := 50001
 @export var placement_reach_cells: int = 3  # 플레이어 근처 3칸
 
 # ── 디버그 ─────────────────────────────────────────────────────────
-@export var debug_log: bool = true
+@export var debug_log: bool = false
 
 # ══════════════════════════════════════════════════════════════════
 # Lifecycle

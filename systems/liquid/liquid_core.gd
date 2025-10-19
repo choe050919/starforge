@@ -1,12 +1,24 @@
 extends RefCounted
 class_name LiquidCore
 
+# ═══════════════════════════════════════════════════════════
+# 상수
+# ═══════════════════════════════════════════════════════════
+
 const RESIDUAL_SURFACE_MASS := 1000
 const PH_VACUUM := 0
 const PH_SOLID  := 1
 const PH_LIQUID := 2
 
+# ═══════════════════════════════════════════════════════════
+# 상태
+# ═══════════════════════════════════════════════════════════
+
 var _active_cells: Array[int] = []
+
+# ═══════════════════════════════════════════════════════════
+# 초기화
+# ═══════════════════════════════════════════════════════════
 
 func rebuild_active_cells(ph: PackedByteArray, m: PackedInt64Array) -> void:
 	_active_cells.clear()
@@ -14,6 +26,10 @@ func rebuild_active_cells(ph: PackedByteArray, m: PackedInt64Array) -> void:
 	for i in ph.size():
 		if ph[i] == PH_LIQUID and m[i] > 0:
 			_active_cells.append(i)
+
+# ═══════════════════════════════════════════════════════════
+# 메인 시뮬레이션 루프
+# ═══════════════════════════════════════════════════════════
 
 func compute_diff(R: Dictionary, _dt: float) -> Dictionary:
 	var idx: GridIndex             = R["idx"]
@@ -149,7 +165,7 @@ func compute_diff(R: Dictionary, _dt: float) -> Dictionary:
 		"moved_total": moved_total,
 	}
 
-func _compute_temperatures(
+static func _compute_temperatures(
 	ph: PackedByteArray,
 	m_old: PackedInt64Array,
 	T_old: PackedInt32Array,
