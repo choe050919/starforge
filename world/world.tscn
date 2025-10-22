@@ -299,9 +299,6 @@ anchor_right = 0.5
 grow_horizontal = 2
 script = ExtResource("29_mip0j")
 
-[node name="UIFXLayer" type="CanvasLayer" parent="."]
-layer = 3
-
 [connection signal="request_add_temp" from="Systems/ToolManager" to="." method="_on_tool_manager_request_add_temp"]
 [connection signal="request_mine" from="Systems/ToolManager" to="Systems/Mining" method="_on_tool_manager_request_mine"]
 [connection signal="request_spawn_fish" from="Systems/ToolManager" to="Actors/Spawner" method="_on_tool_manager_request_spawn_fish"]
