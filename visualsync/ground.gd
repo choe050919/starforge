@@ -33,7 +33,7 @@ const TILE_BERRY: int = 10007
 
 func _ready() -> void:
 	if tile_set == null:
-		push_error("[Ground] Ground/TileSet missing."); return
+		Debug.error(self, "TileSet missing."); return
 
 # API
 
