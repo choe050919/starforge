@@ -16,7 +16,7 @@ const _LOG_SAMPLE := 8
 @export var debug_log := false
 
 # ── 의존성 ─────────────────────────────────────────────────────────
-var _data_layer: DataLayer
+var index: GridIndex
 var substance: SubstanceStore
 var phase: PhaseStore
 var mass: MassStore
@@ -41,12 +41,12 @@ var _tile_size: Vector2i
 var _is_initialized := false
 
 func setup(data_layer: DataLayer) -> void:
-	_data_layer = data_layer
-	substance = _data_layer.substance
-	phase = _data_layer.phase
-	mass = _data_layer.mass
-	temp = _data_layer.temperature
-	light = _data_layer.light
+	index = data_layer.index
+	substance = data_layer.substance
+	phase = data_layer.phase
+	mass = data_layer.mass
+	temp = data_layer.temperature
+	light = data_layer.light
 
 	if debug_log:
 		print("[VisualSync] DataLayer connected")
@@ -190,7 +190,7 @@ func _refresh_indices(idxs: PackedInt32Array, payload: Dictionary) -> void:
 	var ch_light : bool = payload.get("light_changed", false)
 
 	for i in idxs:
-		var cell := _data_layer.index.cell(i)
+		var cell := index.cell(i)
 
 		# ── Substance/Phase 변경 → Terrain 쪽 갱신
 		if ch_sid or ch_phase:
