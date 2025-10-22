@@ -13,7 +13,7 @@ const _LOG_SAMPLE := 8
 
 # ── 설정 ───────────────────────────────────────────────────────────
 @export var enabled := true
-@export var debug_log := false
+@export var debug_enabled := false
 
 # ── 의존성 ─────────────────────────────────────────────────────────
 var index: GridIndex
@@ -40,6 +40,12 @@ var _world_size: Vector2i
 var _tile_size: Vector2i
 var _is_initialized := false
 
+func _ready() -> void:
+	if ground.tile_set == null:
+		Debug.error(self, "Ground tileset is null")
+		return
+	_tile_size = ground.tile_set.tile_size
+
 func setup(data_layer: DataLayer) -> void:
 	index = data_layer.index
 	substance = data_layer.substance
@@ -48,17 +54,11 @@ func setup(data_layer: DataLayer) -> void:
 	temp = data_layer.temperature
 	light = data_layer.light
 
-	if debug_log:
-		print("[VisualSync] DataLayer connected")
+	Debug.log(self, "DataLayer connected")
 
 ## 레이아웃 초기화 (world generation 완료 후)
 func initialize_layout(world_size: Vector2i) -> void:
-	if ground.tile_set == null:
-		push_error("[VisualSync] Cannot initialize: Ground tileset is null")
-		return
-	
 	_world_size = world_size
-	_tile_size = ground.tile_set.tile_size
 	
 	# 게임 시각화 요소들 초기화
 	_setup_game_visuals()
@@ -68,28 +68,24 @@ func initialize_layout(world_size: Vector2i) -> void:
 	
 	_is_initialized = true
 	
-	if debug_log:
-		print("[VisualSync] Layout initialized: size=", _world_size, " tile_size=", _tile_size)
+	Debug.log(self, "Layout initialized: size=%v, tile_size=%v", [_world_size, _tile_size])
 
 ## 게임 시각화 요소 설정
 func _setup_game_visuals() -> void:
 	# LiquidOverlay
 	if liquid_overlay:
 		liquid_overlay.set_layout(_world_size, _tile_size)
-		if debug_log:
-			print("[VisualSync] LiquidOverlay layout set")
+		Debug.log(self, "LiquidOverlay layout set")
 	
 	# CrackOverlay
 	if crack_overlay:
 		crack_overlay.set_layout(_world_size)
-		if debug_log:
-			print("[VisualSync] CrackOverlay layout set")
+		Debug.log(self, "CrackOverlay layout set")
 	
 	# CornerHighlight
 	if corner_highlight:
 		corner_highlight.setup(ground)
-		if debug_log:
-			print("[VisualSync] CornerHighlight setup complete")
+		Debug.log(self, "CornerHighlight setup complete")
 
 ## 오버레이 설정
 func _setup_overlays() -> void:
@@ -102,20 +98,18 @@ func _setup_overlays() -> void:
 	if light_overlay:
 		light_overlay.set_layout(_world_size, _tile_size)
 	
-	if debug_log:
-		print("[VisualSync] overlays layout set")
+	Debug.log(self, "overlays layout set")
 
 ## 초기 상태 렌더링
 func render_initial_state(initial_mass: PackedInt64Array) -> void:
 	if not _is_initialized:
-		push_warning("[VisualSync] render_initial_state called before initialization")
+		Debug.warn(self, "render_initial_state called before initialization")
 		return
 	
 	# 액체 초기 렌더링
 	if liquid_overlay:
 		liquid_overlay.render(initial_mass)
-		if debug_log:
-			print("[VisualSync] Initial liquid state rendered")
+		Debug.log(self, "[VisualSync] Initial liquid state rendered")
 
 ## 외부 계약(퍼블릭): 신호는 여기에 연결
 func on_tiles_changed(idxs: PackedInt32Array, reason: StringName, payload: Dictionary) -> void:
@@ -124,19 +118,17 @@ func on_tiles_changed(idxs: PackedInt32Array, reason: StringName, payload: Dicti
 
 	# 2) full_refresh 우선 처리
 	if flags.full_refresh:
-		if debug_log:
-			print("[VisualSync] full_refresh: reason=", reason)
+		Debug.log(self, "full_refresh: reason=", [reason])
 		_refresh_all(flags)  # 내부 전체 재생성
 		return
 
 	# 3) 부분 업데이트인데 인덱스 없음 → no-op 또는 경고
 	if idxs.is_empty():
-		if debug_log:
-			push_warning("[VisualSync] partial update with empty indices; reason=%s" % [str(reason)])
+		Debug.log(self, "partial update with empty indices; reason=%s" % [str(reason)])
 		return
 
 	# 4) 라이트 로깅(샘플링)
-	if debug_log:
+	if debug_enabled:
 		var n := idxs.size()
 		var show: int = min(n, _LOG_SAMPLE)
 		print("[VisualSync] update n=", n, " reason=", reason, " sample=", idxs.slice(0, show))
