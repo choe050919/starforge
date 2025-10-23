@@ -96,6 +96,7 @@ var mass: MassStore = MassStore.new()
 var temperature: TemperatureStore = TemperatureStore.new()
 var light: LightStore = LightStore.new()
 var durability: DurabilityStore = DurabilityStore.new()
+var electricity: ElectricityStore = ElectricityStore.new()
 
 # ══════════════════════════════════════════════════════════════════
 # Dependencies & Constants

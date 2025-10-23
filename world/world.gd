@@ -279,10 +279,11 @@ func _setup_simulation_systems(springs: PackedVector2Array) -> void:
 	
 	light.setup(data_layer, rule_cache)
 	
-	plant.setup(data_layer.index)
-	plant.set_soil_checker(_is_soil)
-	plant.set_light_sampler(Callable(data_layer.light, "get_by_cell"))
-	
+	plant.setup(data_layer.index,
+	_is_soil,
+	Callable(data_layer.light, "get_by_cell")
+	)
+
 	grid_nav.setup(data_layer)
 	
 	mining.setup(data_layer)

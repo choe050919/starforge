@@ -57,22 +57,34 @@ var _is_soil_cb: Callable = Callable()
 ## 외부 의존: Light 샘플링(주입식). set_light_sampler 로 주입.
 var _light_sampler: Callable = Callable()
 
-func setup(index: GridIndex) -> void:
+func setup(
+	index: GridIndex,
+	soil_checker: Callable,
+	light_sampler: Callable
+) -> void:
+	_setup_grid(index)
+	_setup_callbacks(soil_checker, light_sampler)
+	_setup_occupancy()
+	_setup_instances()
+
+func _setup_grid(index: GridIndex) -> void:
 	_grid = index
 	_size = _grid.size
+
+## checker: Callable(cell: Vector2i) -> bool
+## sampler: Callable(cell: Vector2i) -> float (W/m²)
+func _setup_callbacks(soil_checker: Callable, light_sampler: Callable) -> void:
+	_is_soil_cb = soil_checker
+	_light_sampler = light_sampler
+
+func _setup_occupancy() -> void:
 	_occupancy = PackedInt32Array()
 	_occupancy.resize(_size.x * _size.y)
 	for i in _occupancy.size():
 		_occupancy[i] = OCCUPANCY_EMPTY
+
+func _setup_instances() -> void:
 	_instances = []
-
-## checker: Callable(cell: Vector2i) -> bool
-func set_soil_checker(checker: Callable) -> void:
-	_is_soil_cb = checker
-
-## sampler: Callable(cell: Vector2i) -> float (W/m²)
-func set_light_sampler(sampler: Callable) -> void:
-	_light_sampler = sampler
 
 ## 식물의 spec을 보고 root의 좌표에 place할 수 있는지 여부를 반환한다.
 ## 검사 단계:
