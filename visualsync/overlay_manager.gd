@@ -53,6 +53,7 @@ func toggle(mode: OverlayMode) -> void:
 
 ## [param mode] 오버레이를 켭니다.
 ## [br]주의: 외부에서는 [method toggle]을 사용하는 것을 권장합니다.
+## 임의로 호출할 경우 [member _active] 관련 로직이 꼬일 수 있습니다.
 func set_active(mode: OverlayMode) -> void:
 	if mode == _active:
 		return
