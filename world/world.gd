@@ -12,9 +12,9 @@ class_name World
 
 # ── Overlay Manager ──────────────────────────────────────────────
 @onready var overlay_manager: OverlayManager = %OverlayManager
-@onready var heatmap = overlay_manager.get_overlay(OverlayManager.OverlayMode.HEATMAP) as HeatmapOverlay
-@onready var heat_src = overlay_manager.get_overlay(OverlayManager.OverlayMode.HEAT_SOURCE) as HeatSourceOverlay
-@onready var light_overlay = overlay_manager.get_overlay(OverlayManager.OverlayMode.LIGHT) as LightOverlay
+@onready var heatmap = overlay_manager.get_overlay_node(OverlayManager.OverlayMode.HEATMAP) as HeatmapOverlay
+@onready var heat_src = overlay_manager.get_overlay_node(OverlayManager.OverlayMode.HEAT_SOURCE) as HeatSourceOverlay
+@onready var light_overlay = overlay_manager.get_overlay_node(OverlayManager.OverlayMode.LIGHT) as LightOverlay
 
 # ── Systems ──────────────────────────────────────────────────────
 @onready var worldgen:     WorldGen        = %WorldGen
@@ -387,7 +387,7 @@ func _zoom_camera(dir: float) -> void:
 		camera.apply_zoom(dir)
 
 func _on_overlay_toggle_requested(mode: OverlayManager.OverlayMode) -> void:
-	overlay_manager.toggle_overlay(mode)
+	overlay_manager.toggle(mode)
 
 func _on_hover_changed(cell: Vector2i) -> void:
 	corner_highlight.show_cell(cell)
