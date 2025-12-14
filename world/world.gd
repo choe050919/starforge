@@ -12,7 +12,6 @@ class_name World
 
 # ── Overlay Manager ──────────────────────────────────────────────
 @onready var overlay_manager: OverlayManager = %OverlayManager
-@onready var heatmap = overlay_manager.get_overlay_node(OverlayManager.OverlayMode.HEATMAP) as HeatmapOverlay
 
 # ── Systems ──────────────────────────────────────────────────────
 @onready var worldgen:     WorldGen        = %WorldGen
@@ -88,7 +87,12 @@ func _setup_hud() -> void:
 	hud.play_toggled.connect(_on_hud_play)
 	hud.speed_selected.connect(_set_speed_multiplier)
 	hud.overlay_toggled.connect(_on_hud_overlay)
-	hud.set_state(_is_running, _speed_mult, liquid_overlay.visible, heatmap.visible)
+	hud.set_state(
+		_is_running,
+		_speed_mult,
+		liquid_overlay.visible,
+		overlay_manager.is_active(OverlayManager.OverlayMode.HEATMAP)
+)
 
 ## 개선된 리소스 로딩 (검증 포함)
 func _load_resources() -> bool:

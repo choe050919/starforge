@@ -64,22 +64,7 @@ func set_active(mode: OverlayMode) -> void:
 	
 	print("[Overlay] %s" % OverlayMode.find_key(_active))
 
-# NOTE: 내부 노드를 외부에 노출하면 위험할 수 있음
-func get_overlay_node(mode: int) -> CanvasItem:
-	return _get_overlay(mode)
-
 # ── Internals ───────────────────────────────────────────────
-
-# NOTE: get_overlay_node를 제거한다면 필요 없어짐
-func _get_overlay(mode: int) -> CanvasItem:
-	if mode == OverlayMode.NONE:
-		return null
-	if not overlay_paths.has(mode):
-		return null
-	var path: NodePath = overlay_paths[mode]
-	if not has_node(path):
-		return null
-	return get_node(path) as CanvasItem
 
 func _apply() -> void:
 	# 1) 모든 오버레이 끄기
