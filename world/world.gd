@@ -13,8 +13,6 @@ class_name World
 # ── Overlay Manager ──────────────────────────────────────────────
 @onready var overlay_manager: OverlayManager = %OverlayManager
 @onready var heatmap = overlay_manager.get_overlay_node(OverlayManager.OverlayMode.HEATMAP) as HeatmapOverlay
-@onready var heat_src = overlay_manager.get_overlay_node(OverlayManager.OverlayMode.HEAT_SOURCE) as HeatSourceOverlay
-@onready var light_overlay = overlay_manager.get_overlay_node(OverlayManager.OverlayMode.LIGHT) as LightOverlay
 
 # ── Systems ──────────────────────────────────────────────────────
 @onready var worldgen:     WorldGen        = %WorldGen
