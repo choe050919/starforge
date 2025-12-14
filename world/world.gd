@@ -482,8 +482,15 @@ func _on_hud_overlay(overlay_name: StringName, enabled: bool) -> void:
 			if is_instance_valid(liquid_overlay):
 				liquid_overlay.visible = enabled
 		&"temp":
-			if is_instance_valid(heatmap):
-				heatmap.visible = enabled
+			# HACK: HUD의 bool 토글을 단일 활성 모드로 해석
+			const HEATMAP := OverlayManager.OverlayMode.HEATMAP
+			if enabled:
+				overlay_manager.set_active(HEATMAP)
+			else:
+				if overlay_manager.is_active(HEATMAP):
+					# HACK 다른 overlay까지 같이 꺼질 우려가 있음
+					# 현재는 HEATMAP만 이 함수에서 설정 중이라 영향 없음.
+					overlay_manager.clear()
 
 # ══════════════════════════════════════════════════════════════════
 # Event Handlers
