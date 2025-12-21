@@ -1,16 +1,18 @@
 extends Control
 class_name HUD
 
+# ── 시그널 ──────────────────────────────────────────────────────
 signal play_toggled(running: bool)
 signal speed_selected(mult: float)
 signal overlay_toggled(name: StringName, enabled: bool)
 
+# ── 게임 컨트롤 ─────────────────────────────────────────────────
 @onready var btn_play: Button        = %BtnPlayPause
 @onready var opt_speed: OptionButton = %OptSpeed
 @onready var cb_water: CheckBox      = %CbWater
 @onready var cb_temp: CheckBox       = %CbTemp
 
-# 툴 버튼들
+# ── 툴 버튼 ─────────────────────────────────────────────────────
 @onready var btn_tool_mine: Button = %BtnToolMine
 @onready var btn_tool_vacuum: Button = %BtnToolVacuum
 @onready var btn_tool_fish: Button = %BtnToolFish
@@ -20,20 +22,23 @@ signal overlay_toggled(name: StringName, enabled: bool)
 @onready var btn_tool_ladder: Button = %BtnToolLadder
 
 var _tool_btn_group := ButtonGroup.new()
+var _tool_buttons: Dictionary = {}
 
-# ToolManager 연결
+# ── 의존성 ──────────────────────────────────────────────────────
 @export var _tool_manager: ToolManager
 
+# ── 상태 ────────────────────────────────────────────────────────
 var _running := true
 
+# ── 초기화 ────────────────────────────────────────────────────────
 func _ready() -> void:
-	# ToolManager 참조 및 신호 연결
-	if _tool_manager == null:
-		push_warning("[HUD] ToolManager not set; tool buttons will be inert")
-	else:
-		_tool_manager.tool_changed.connect(_sync_tool_ui)
-		_sync_tool_ui(_tool_manager.current_tool)
+	_setup_speed_options()
+	_setup_overlay_toggles()
+	_setup_tooltips()
+	_setup_tool_buttons()
+	_connect_tool_manager()
 
+func _setup_speed_options() -> void:
 	# 배속 옵션 채우기
 	# item_text => 표시, metadata => 실제 배속값
 	_add_speed_item("0.5×", 0.5)
@@ -42,71 +47,57 @@ func _ready() -> void:
 	_add_speed_item("5×",   5.0)
 	opt_speed.select(1) # 기본 1×
 
-	# 오버레이 토글
+func _setup_overlay_toggles() -> void:
 	cb_water.toggled.connect(func(on): overlay_toggled.emit(&"water", on))
-	cb_temp.toggled.connect(func(on):  overlay_toggled.emit(&"temp", on))
+	cb_temp.toggled.connect(func(on): overlay_toggled.emit(&"temp", on))
 
-	# 툴팁
+func _setup_tooltips() -> void:
 	btn_play.tooltip_text = "Play/Pause (Space)"
 	cb_water.tooltip_text = "Toggle Water Overlay"
 	cb_temp.tooltip_text  = "Toggle Temperature Overlay"
 
-	# 툴 버튼 설정
-	_setup_tool_buttons()
-
 func _setup_tool_buttons() -> void:
-	var buttons := [
-		btn_tool_mine, btn_tool_vacuum, btn_tool_fish,
-		btn_tool_plant, btn_tool_add_temp, btn_tool_construct,
-		btn_tool_ladder
-	]
+	# Tool → Button 매핑 정의
+	_tool_buttons = {
+		ToolManager.Tool.MINE: btn_tool_mine,
+		ToolManager.Tool.VACUUM: btn_tool_vacuum,
+		ToolManager.Tool.SPAWN_FISH: btn_tool_fish,
+		ToolManager.Tool.SPAWN_PLANT: btn_tool_plant,
+		ToolManager.Tool.ADD_TEMP: btn_tool_add_temp,
+		ToolManager.Tool.CONSTRUCT: btn_tool_construct,
+		ToolManager.Tool.CONSTRUCT_LADDER: btn_tool_ladder,
+	}
 	
-	# 배타 선택 설정
-	for btn in buttons:
+	# Tool → 표시 텍스트
+	var labels := {
+		ToolManager.Tool.MINE: "Mine [1]",
+		ToolManager.Tool.VACUUM: "Vacuum [2]",
+		ToolManager.Tool.SPAWN_FISH: "Fish [3]",
+		ToolManager.Tool.SPAWN_PLANT: "Plant [4]",
+		ToolManager.Tool.ADD_TEMP: "AddTemp [5]",
+		ToolManager.Tool.CONSTRUCT: "Build [6]",
+		ToolManager.Tool.CONSTRUCT_LADDER: "Ladder [7]",
+	}
+	
+	# 버튼 설정 및 연결
+	for tool in _tool_buttons:
+		var btn: Button = _tool_buttons[tool]
 		btn.toggle_mode = true
 		btn.button_group = _tool_btn_group
+		btn.text = labels.get(tool, "???")
+		if _tool_manager:
+			btn.pressed.connect(_tool_manager.set_tool.bind(tool))
 
-	# 버튼 텍스트
-	btn_tool_mine.text = "Mine [1]"
-	btn_tool_vacuum.text = "Vacuum [2]"
-	btn_tool_fish.text = "Fish [3]"
-	btn_tool_plant.text = "Plant [4]"
-	btn_tool_add_temp.text = "AddTemp [5]"
-	btn_tool_construct.text = "Build [6]"
-	btn_tool_ladder.text = "Ladder [7]"
+func _connect_tool_manager() -> void:
+	if _tool_manager == null:
+		push_warning("[HUD] ToolManager not set; tool buttons will be inert")
+		return
+	_tool_manager.tool_changed.connect(_sync_tool_ui)
+	_sync_tool_ui(_tool_manager.current_tool)
 
-	# 버튼 → ToolManager 연결
-	if _tool_manager:
-		btn_tool_mine.pressed.connect(func():
-			_tool_manager.set_tool(ToolManager.Tool.MINE))
-		btn_tool_vacuum.pressed.connect(func():
-			_tool_manager.set_tool(ToolManager.Tool.VACUUM))
-		btn_tool_fish.pressed.connect(func():
-			_tool_manager.set_tool(ToolManager.Tool.SPAWN_FISH))
-		btn_tool_plant.pressed.connect(func():
-			_tool_manager.set_tool(ToolManager.Tool.SPAWN_PLANT))
-		btn_tool_add_temp.pressed.connect(func():
-			_tool_manager.set_tool(ToolManager.Tool.ADD_TEMP))
-		btn_tool_construct.pressed.connect(func():
-			_tool_manager.set_tool(ToolManager.Tool.CONSTRUCT))
-		btn_tool_ladder.pressed.connect(func():
-			_tool_manager.set_tool(ToolManager.Tool.CONSTRUCT_LADDER))
+# ── 외부 인터페이스 ─────────────────────────────────────────────
 
-func _add_speed_item(label: String, mult: float) -> void:
-	var idx := opt_speed.item_count
-	opt_speed.add_item(label)
-	opt_speed.set_item_metadata(idx, mult)
-
-func _on_play_pressed() -> void:
-	_running = not _running
-	btn_play.text = "⏸" if _running else "▶"
-	play_toggled.emit(_running)
-
-func _on_speed_selected(idx: int) -> void:
-	var mult: float = opt_speed.get_item_metadata(idx)
-	speed_selected.emit(mult)
-
-# 외부에서 HUD 초기 상태 동기화하고 싶으면 사용
+## 외부에서 HUD 초기 상태를 동기화한다.
 func set_state(running: bool, speed_mult: float, water_on: bool, temp_on: bool) -> void:
 	_running = running
 	btn_play.text = "⏸" if _running else "▶"
@@ -125,20 +116,23 @@ func set_state(running: bool, speed_mult: float, water_on: bool, temp_on: bool) 
 	cb_water.button_pressed = water_on
 	cb_temp.button_pressed  = temp_on
 
-# ToolManager → HUD 동기화 훅
-func _sync_tool_ui(new_tool: int) -> void:
-	match new_tool:
-		ToolManager.Tool.MINE:
-			btn_tool_mine.button_pressed = true
-		ToolManager.Tool.VACUUM:
-			btn_tool_vacuum.button_pressed = true
-		ToolManager.Tool.SPAWN_FISH:
-			btn_tool_fish.button_pressed = true
-		ToolManager.Tool.SPAWN_PLANT:
-			btn_tool_plant.button_pressed = true
-		ToolManager.Tool.ADD_TEMP:
-			btn_tool_add_temp.button_pressed = true
-		ToolManager.Tool.CONSTRUCT:
-			btn_tool_construct.button_pressed = true
-		ToolManager.Tool.CONSTRUCT_LADDER:
-			btn_tool_ladder.button_pressed = true
+# ── 내부 핸들러 ─────────────────────────────────────────────────
+
+func _add_speed_item(label: String, mult: float) -> void:
+	var idx := opt_speed.item_count
+	opt_speed.add_item(label)
+	opt_speed.set_item_metadata(idx, mult)
+
+func _on_play_pressed() -> void:
+	_running = not _running
+	btn_play.text = "⏸" if _running else "▶"
+	play_toggled.emit(_running)
+
+func _on_speed_selected(idx: int) -> void:
+	var mult: float = opt_speed.get_item_metadata(idx)
+	speed_selected.emit(mult)
+
+## ToolManager → HUD 동기화
+func _sync_tool_ui(new_tool: ToolManager.Tool) -> void:
+	if _tool_buttons.has(new_tool):
+		_tool_buttons[new_tool].button_pressed = true

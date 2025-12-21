@@ -48,7 +48,6 @@ layout_mode = 2
 [node name="BtnToolFish" type="Button" parent="PanelContainer/ToolButtons"]
 unique_name_in_owner = true
 layout_mode = 2
-toggle_mode = true
 
 [node name="BtnToolPlant" type="Button" parent="PanelContainer/ToolButtons"]
 unique_name_in_owner = true
