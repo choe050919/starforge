@@ -38,15 +38,10 @@ func begin_write() -> void:
 	_write.resize(0)
 	_write.append_array(_read)
 
-func commit() -> void:
-	if not _is_writing:
-		push_warning("[SubstanceStore.commit] not in writing state (ignored)")
-		return
-	# 버퍼 스왑
+func _do_commit() -> void:
 	var tmp := _read
 	_read = _write
 	_write = tmp
-	super.commit()
 
 # ── 유효성 ───────────────────────────────────────────────
 ## 룰 캐시가 있으면 등록 여부로 판정, 없으면 0 이상이면 통과(개발 초반 관용)

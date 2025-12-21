@@ -74,17 +74,10 @@ func begin_write() -> void:
 	_hp_write.resize(0)
 	_hp_write.append_array(_hp_read)
 
-func commit() -> void:
-	if not _is_writing:
-		push_warning("[DurabilityStore.commit] not in writing state (ignored)")
-		return
-	
-	# HP 버퍼 스왑
+func _do_commit() -> void:
 	var tmp := _hp_read
 	_hp_read = _hp_write
 	_hp_write = tmp
-	
-	super.commit()
 
 # ══════════════════════════════════════════════════════════════
 # Read API

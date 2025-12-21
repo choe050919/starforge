@@ -33,27 +33,19 @@ func begin_write() -> void:
 	_write.append_array(_read)
 
 # ===== 커밋 =====
-func commit() -> void: # read 버전을 write 버전으로 최신화(참조 스왑)
-	if not _is_writing:
-		push_warning("[MassStore.commit] not in writing state (ignored)")
-		return
-
-	# 1) 음수 보정
+func _do_commit() -> void:
+	# 음수 보정
 	_clamp_negatives_on_write()
-
-	# 2) 합계 보존 검증(정수 mg → Δ는 0이어야 정상)
+	# 합계 보존 검증(정수 mg → Δ는 0이어야 정상)
 	var sum_r := _safe_sum(_read)
 	var sum_w := _safe_sum(_write)
 	var delta := sum_w - sum_r
 	if delta != 0:
 		push_warning("[MassStore] conservation violated: Δ=%d mg (r=%d, w=%d)" % [delta, sum_r, sum_w])
-
-	# 3) 버퍼 스왑
+	# 버퍼 스왑
 	var tmp := _read
 	_read = _write
 	_write = tmp
-
-	super.commit()
 
 # ===== 쓰기 경로 =====
 func add(i: int, dm_mg: int) -> void:

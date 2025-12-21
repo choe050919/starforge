@@ -34,15 +34,10 @@ func begin_write() -> void:
 	_write.resize(0)
 	_write.append_array(_read)
 
-func commit() -> void:
-	if not _is_writing:
-		push_warning("[PhaseStore.commit] not in writing state (ignored)")
-		return
-	# 버퍼 스왑
+func _do_commit() -> void:
 	var tmp := _read
 	_read = _write
 	_write = tmp
-	super.commit()
 
 func is_valid_id(id: int) -> bool:
 	return id >= int(Phase.VACUUM) and id <= int(Phase.GAS)

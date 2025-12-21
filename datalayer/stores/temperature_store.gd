@@ -34,12 +34,10 @@ func begin_write() -> void:
 	_write.resize(0)
 	_write.append_array(_read)
 
-func commit() -> void:
-	# 버퍼 스왑
+func _do_commit() -> void:
 	var tmp := _read
 	_read = _write
 	_write = tmp
-	super.commit()
 
 func is_valid_value(t: int) -> bool:
 	return t >= MIN_CK and t <= MAX_CK
