@@ -111,21 +111,23 @@ func render_initial_state(initial_mass: PackedInt64Array) -> void:
 		liquid_overlay.render(initial_mass)
 		Debug.log(self, "[VisualSync] Initial liquid state rendered")
 
-## 외부 계약(퍼블릭): 신호는 여기에 연결
+## 외부 계약(퍼블릭): 신호는 여기에 연결.
+## [param payload]의 
 func on_tiles_changed(idxs: PackedInt32Array, reason: StringName, payload: Dictionary) -> void:
 	# 1) payload 정규화(허용 키만, bool 캐스트)
 	var flags := _normalize_payload(payload)
 
 	# 2) full_refresh 우선 처리
 	if flags.full_refresh:
-		Debug.log(self, "full_refresh: reason=", [reason])
+		Debug.log(self, "full_refresh: reason = %s", [reason])
 		_refresh_all(flags)  # 내부 전체 재생성
 		return
-
-	# 3) 부분 업데이트인데 인덱스 없음 → no-op 또는 경고
-	if idxs.is_empty():
-		Debug.log(self, "partial update with empty indices; reason=%s" % [str(reason)])
-		return
+	
+	# 3) 부분 업데이트인데 인덱스 없음 → 계약 위반
+	assert(not idxs.is_empty(), "partial update with empty indices; reason=%s" % [str(reason)])
+	#if idxs.is_empty():
+		#Debug.log(self, "partial update with empty indices; reason=%s" % [str(reason)])
+		#return
 
 	# 4) 라이트 로깅(샘플링)
 	if debug_enabled:

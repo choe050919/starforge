@@ -57,6 +57,7 @@ script = ExtResource("1_j7vgi")
 [node name="VisualSync" type="Node" parent="."]
 unique_name_in_owner = true
 script = ExtResource("24_inp7a")
+debug_enabled = true
 
 [node name="Ground" type="TileMapLayer" parent="VisualSync"]
 unique_name_in_owner = true
