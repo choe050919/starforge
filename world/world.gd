@@ -212,6 +212,8 @@ func _setup_mining_visual() -> void:
 # World Generation
 # ══════════════════════════════════════════════════════════════════
 
+## [signal WorldGen.generated] 신호 핸들러.
+## 생성된 데이터를 받아 월드 상태를 구성하고 시뮬레이션을 시작한다.
 func _on_world_generated(
 		size: Vector2i,
 		substances: PackedInt32Array,
@@ -224,7 +226,8 @@ func _on_world_generated(
 	_apply_worldgen_result(size, substances, phases, mass, temperatures, tiles, springs)
 	_post_apply_worldgen(size, mass)
 
-## 월드 생성 결과를 '상태'로 적용한다.
+## 월드 생성 결과를 상태로 적용한다.
+## 순서: visual → data → simulation
 func _apply_worldgen_result(
 	size: Vector2i,
 	substances: PackedInt32Array,
@@ -238,10 +241,12 @@ func _apply_worldgen_result(
 	_setup_data_layer(size, substances, phases, mass, temperatures)
 	_setup_simulation_systems(springs)
 
+## [Ground] 타일맵 적용 및 [VisualSync] 연결.
 func _setup_visual_layer(tiles: PackedInt32Array, size: Vector2i) -> void:
 	ground.apply_tiles(tiles, size)
 	visual_sync.setup(data_layer)
 
+## [DataLayer] 초기화 및 캐시 바인딩.
 func _setup_data_layer(
 	size: Vector2i,
 	substances: PackedInt32Array,
@@ -251,78 +256,62 @@ func _setup_data_layer(
 ) -> void:
 	data_layer.setup(size, substances, phases, mass, temperatures)
 	data_layer.bind_rule_cache(rule_cache)
+	
+	_place_debug_items()
 
-	# TEST
-	data_layer.set_cell_with_spec(Vector2i(10, 25), {
-		"sid": 10005,  # meat
-		"mass": 1000000  # 1kg
-	})
-	data_layer.set_cell_with_spec(Vector2i(12, 25), {
-		"sid": 10006,  # grain
-		"mass": 1000000  # 1kg
-	})
-	data_layer.set_cell_with_spec(Vector2i(14, 25), {
-		"sid": 10007,  # berry
-		"mass": 1000000  # 1kg
-	})
+## TEST 테스트용 아이템 배치. 나중에 제거.
+## meat: 1kg, grain: 1kg, berry: 1kg
+func _place_debug_items() -> void:
+	data_layer.set_cell_with_spec(Vector2i(10, 25), {"sid": 10005, "mass": 1000000})
+	data_layer.set_cell_with_spec(Vector2i(12, 25), {"sid": 10006, "mass": 1000000})
+	data_layer.set_cell_with_spec(Vector2i(14, 25), {"sid": 10007, "mass": 1000000})
 
+## 시뮬레이션 시스템들 초기화.
 func _setup_simulation_systems(springs: PackedVector2Array) -> void:
 	durability.setup(data_layer)
-	
 	temp.setup(data_layer, rule_cache)
-	
 	tchange.setup(data_layer)
-	
 	liquid.setup(data_layer, springs)
 	liquid.set_liquid_sids()
-	
 	phase_change.setup(data_layer, rule_cache)
-	
 	light.setup(data_layer, rule_cache)
-	
-	plant.setup(data_layer.index,
-	_is_soil,
-	Callable(data_layer.light, "get_by_cell")
-	)
-
+	plant.setup(data_layer.index, _is_soil,Callable(data_layer.light, "get_by_cell"))
 	grid_nav.setup(data_layer)
-	
 	mining.setup(data_layer)
 
-## 적용 이후 후처리 + SimClock 시작
+## 월드 구성 완료 후 후처리.
+## [VisualSync] 레이아웃, 카메라, UI 설정 후 [SimClock] 시작.
 func _post_apply_worldgen(size: Vector2i, initial_mass: PackedInt64Array) -> void:
-	# 1. VisualSync 레이아웃 초기화 (내부에서 모든 시각화 요소 설정)
+	# VisualSync 레이아웃 초기화 + 신호 연결
 	visual_sync.initialize_layout(size)
 	data_layer.tiles_changed.connect(visual_sync.on_tiles_changed)
-
-	# 2. 카메라 설정 (world.gd의 책임)
-	if ground.tile_set:
-		var ts: TileSet = ground.tile_set
-		var map_px := Vector2(size.x * ts.tile_size.x, size.y * ts.tile_size.y)
-		camera.position = map_px * 0.5
-		input.set_cell_size(ts.tile_size)
-	else:
+	
+	# 카메라 초기 위치
+	if not ground.tile_set:
 		push_error("[World] tileset is null")
 		return
-
-	# 3. 초기 상태 렌더링
+	var ts := ground.tile_set
+	var map_px := Vector2(size.x * ts.tile_size.x, size.y * ts.tile_size.y)
+	camera.position = map_px * 0.5
+	input.set_cell_size(ts.tile_size)
+	
+	# 초기 상태 렌더링
 	visual_sync.render_initial_state(initial_mass)
-
-	# 4. 기타 UI 설정
+	
+	# 기타 UI 설정
 	tile_info_hud.setup(data_layer, hover)
 	spawner.setup(data_layer, plant)
-
+	
+	# hunger 관련 (주석 보강 필요)
 	_setup_hunger_system()
-
-	# 5. 시뮬레이션 시작
+	
+	# SimClock 시작
 	if not clock.tick_sim.is_connected(_on_sim_clock_tick):
 		clock.tick_sim.connect(_on_sim_clock_tick)
-	
 	_world_ready = true
 	clock.set_process(true)
 	
-	if debug_log:
-		print("[World] World setup complete, SimClock started")
+	if debug_log: print("[World] World setup complete, SimClock started")
 
 var sim_time := 0.0
 
