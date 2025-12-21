@@ -143,7 +143,7 @@ func _route_click_to_tool_manager() -> void:
 	if cam == null: return
 	var world_pos := cam.get_global_mouse_position()
 	var cell := Vector2i(floor(world_pos.x / cell_size.x), floor(world_pos.y / cell_size.y))
-	_tool_manager.handle_click(cell, world_pos, 0)
+	_tool_manager.handle_click(cell, world_pos)
 
 func _select_tool_by_index(idx: int) -> void:
 	if _tool_manager == null:
