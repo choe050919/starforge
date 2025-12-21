@@ -251,7 +251,6 @@ func _setup_data_layer(
 ) -> void:
 	data_layer.setup(size, substances, phases, mass, temperatures)
 	data_layer.bind_rule_cache(rule_cache)
-	data_layer.tiles_changed.connect(visual_sync.on_tiles_changed)
 
 	# TEST
 	data_layer.set_cell_with_spec(Vector2i(10, 25), {
@@ -294,6 +293,7 @@ func _setup_simulation_systems(springs: PackedVector2Array) -> void:
 func _post_apply_worldgen(size: Vector2i, initial_mass: PackedInt64Array) -> void:
 	# 1. VisualSync 레이아웃 초기화 (내부에서 모든 시각화 요소 설정)
 	visual_sync.initialize_layout(size)
+	data_layer.tiles_changed.connect(visual_sync.on_tiles_changed)
 
 	# 2. 카메라 설정 (world.gd의 책임)
 	if ground.tile_set:
