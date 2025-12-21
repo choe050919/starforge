@@ -8,7 +8,7 @@ var _index: GridIndex
 var _is_writing := false
 var _cls: String
 
-func setup(index: GridIndex, initial: Variant = null) -> void:
+func setup(index: GridIndex, _initial: Variant = null) -> void:
 	_cls = get_class()
 	if index == null:
 		push_error("[%s.setup] GridIndex not set" % _cls); return

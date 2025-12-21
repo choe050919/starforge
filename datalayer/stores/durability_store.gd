@@ -41,8 +41,8 @@ const EPS := 1e-6
 # Lifecycle
 # ══════════════════════════════════════════════════════════════
 
-func setup(index: GridIndex, initial: Variant = null) -> void:
-	super.setup(index, initial)
+func setup(index: GridIndex, _initial: Variant = null) -> void:
+	super.setup(index)
 	
 	var n := index.size.x * index.size.y
 	
