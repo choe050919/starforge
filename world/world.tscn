@@ -130,6 +130,12 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 
+[node name="MiningVisual" type="Node2D" parent="VisualSync"]
+unique_name_in_owner = true
+script = ExtResource("43_b8tmp")
+player_path = NodePath("../../Actors/Player")
+ground_path = NodePath("../Ground")
+
 [node name="Systems" type="Node" parent="."]
 
 [node name="WorldGen" type="Node" parent="Systems"]
@@ -259,12 +265,6 @@ mouse_filter = 2
 [node name="TileInfoHUD" parent="UI/GameInfo" instance=ExtResource("28_bfrib")]
 unique_name_in_owner = true
 layout_mode = 0
-
-[node name="MiningVisual" type="Node2D" parent="UI/GameInfo"]
-unique_name_in_owner = true
-script = ExtResource("43_b8tmp")
-player_path = NodePath("../../../Actors/Player")
-ground_path = NodePath("../../../VisualSync/Ground")
 
 [node name="HungerUI" parent="UI/GameInfo" instance=ExtResource("45_gwdna")]
 unique_name_in_owner = true
