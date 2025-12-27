@@ -1,6 +1,6 @@
 [gd_scene load_steps=2 format=3 uid="uid://cv2gvghfjsn21"]
 
-[ext_resource type="Script" uid="uid://bva1p07mob20a" path="res://UI/hunger_ui.gd" id="1_7txgt"]
+[ext_resource type="Script" uid="uid://bva1p07mob20a" path="res://ui/hunger_ui.gd" id="1_7txgt"]
 
 [node name="HungerUI" type="VBoxContainer"]
 anchors_preset = -1
