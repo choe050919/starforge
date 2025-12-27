@@ -1,6 +1,7 @@
 class_name SubstanceLoader
 
 var substances : Dictionary = {}
+var _id_to_name: Dictionary[int, String] = {}
 
 ## JSON 파일에서 물질을 로드
 func load_materials():
@@ -20,6 +21,7 @@ func load_materials():
 			var substance_data = phase_data[name]
 			var s = Substance.new(substance_data["id"], name)
 			substances[name] = s
+			_id_to_name[s.id] = name
 			path_map["%s/%s" % [phase, name]] = s
 
 	# transition 해석 → to_sid로 컴파일
@@ -49,6 +51,9 @@ func load_materials():
 ## 특정 물질을 가져오는 함수
 func get_substance(name: String) -> Substance:
 	return substances.get(name, null)
+
+func get_name_by_id(sid: int) -> String:
+	return _id_to_name.get(sid, "???")
 
 # ── 얇은 검증 헬퍼들 ────────────────────────────────────────────
 

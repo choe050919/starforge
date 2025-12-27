@@ -1,4 +1,4 @@
-[gd_scene load_steps=48 format=3 uid="uid://c5gv3n6byiin7"]
+[gd_scene load_steps=49 format=3 uid="uid://c5gv3n6byiin7"]
 
 [ext_resource type="Script" uid="uid://dgppaejvd18y0" path="res://world/world.gd" id="1_j7vgi"]
 [ext_resource type="TileSet" uid="uid://dnn0uacxq48mh" path="res://tilesets/world.tres" id="3_bwxdu"]
@@ -46,6 +46,7 @@
 [ext_resource type="PackedScene" uid="uid://bblxu6lirpxxj" path="res://actors/player.tscn" id="40_k83x5"]
 [ext_resource type="Script" uid="uid://bni2ouqgyis0j" path="res://systems/mining/mining_visual.gd" id="43_b8tmp"]
 [ext_resource type="PackedScene" uid="uid://cv2gvghfjsn21" path="res://ui/hunger_ui.tscn" id="45_gwdna"]
+[ext_resource type="PackedScene" uid="uid://d2mmvk2husrvn" path="res://ui/inventory_ui.tscn" id="45_pfbnl"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_7iits"]
 shader = ExtResource("12_hnpqp")
@@ -273,6 +274,10 @@ offset_left = -200.0
 offset_right = 0.0
 offset_bottom = 108.0
 grow_horizontal = 0
+
+[node name="InventoryUI" parent="UI/GameInfo" instance=ExtResource("45_pfbnl")]
+unique_name_in_owner = true
+layout_mode = 1
 
 [node name="GameControls" type="Control" parent="UI"]
 layout_mode = 3

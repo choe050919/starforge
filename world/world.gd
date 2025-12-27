@@ -41,6 +41,7 @@ class_name World
 @onready var tile_info_hud: TileInfoHUD = %TileInfoHUD
 @onready var mining_visual: MiningVisual = %MiningVisual
 @onready var hunger_ui: HungerUI = %HungerUI
+@onready var inventory_ui: InventoryUI = %InventoryUI
 
 @onready var hud: HUD = %HUD
 
@@ -328,6 +329,9 @@ func _setup_hunger_system() -> void:
 	if hunger_ui:
 		hunger_ui.setup(hunger)
 	
+	if inventory_ui:
+		inventory_ui.setup(substance_loader)
+	
 	# 기아 대미지 처리 (나중에 체력 시스템과 연동)
 	hunger.starving_damage.connect(_on_starving_damage)
 	
@@ -408,9 +412,8 @@ func _on_player_inventory_changed(material_sid: int, mass_mg: int) -> void:
 		var mass_kg := float(mass_mg) / 1_000_000.0
 		print("[World] Inventory: SID=", material_sid, " Mass=", mass_kg, "kg (", mass_mg, "mg)")
 	
-	# TODO: 인벤토리 UI 업데이트
-	# if inventory_ui:
-	#     inventory_ui.update_display(material_sid, mass_mg)
+	if inventory_ui:
+		inventory_ui.on_inventory_changed(material_sid, mass_mg)
 
 func _on_construct_requested(cell: Vector2i) -> void:
 	if not is_instance_valid(construction):
