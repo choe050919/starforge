@@ -9,7 +9,7 @@ var _current: Vector2i = Vector2i(-1, -1)
 func setup(dl: DataLayer) -> void:
 	data_layer = dl
 	if dl == null:
-		push_warning("[HoverManager] DataLayer injected as null")
+		Debug.warn(self, "DataLayer injected as null")
 
 func update_hover(cell: Vector2i) -> void:
 	if not data_layer.index.in_bounds_cell(cell): # 범위 밖의 셀 무효값으로 처리
