@@ -215,6 +215,7 @@ unique_name_in_owner = true
 script = ExtResource("34_b8tmp")
 player_path = NodePath("../../Actors/Player")
 tile_change_path = NodePath("../TileChange")
+debug_enabled = true
 
 [node name="HungerSystem" type="Node" parent="Systems"]
 unique_name_in_owner = true

@@ -21,6 +21,7 @@ const LADDER_SID := 50001
 
 # ── 디버그 ─────────────────────────────────────────────────────────
 @export var debug_log: bool = false
+@export var debug_enabled := false
 
 # ══════════════════════════════════════════════════════════════════
 # Lifecycle
@@ -28,8 +29,7 @@ const LADDER_SID := 50001
 
 func setup(data: DataLayer) -> void:
 	_data = data
-	if debug_log:
-		print("[Construction] Setup complete")
+	Debug.log(self, "Setup complete")
 
 func _ready() -> void:
 	if player_path != NodePath():
@@ -41,9 +41,6 @@ func _ready() -> void:
 		_tile_change = get_node_or_null(tile_change_path)
 		if _tile_change == null:
 			push_error("[Construction] TileChange node not found at path: ", tile_change_path)
-	
-	if debug_log:
-		print("[Construction] References acquired - Player: ", _player != null, ", TileChange: ", _tile_change != null)
 
 # ══════════════════════════════════════════════════════════════════
 # Public API
@@ -56,8 +53,7 @@ func place_tile(cell: Vector2i, material_sid: int) -> bool:
 	
 	# 1. 배치 가능 검증
 	if not can_place(cell):
-		if debug_log:
-			print("[Construction] Cannot place at cell=", cell, " (not vacuum or out of range)")
+		Debug.log(self, "Cannot place at cell = %s", [str(cell)])
 		return false
 	
 	# 2. 플레이어 재료 확인
@@ -86,8 +82,7 @@ func place_ladder(cell: Vector2i) -> bool:
 	
 	# 1. 배치 가능 검증
 	if not can_place(cell):
-		if debug_log:
-			print("[Construction] Cannot place ladder at cell=", cell, " (not vacuum or out of range)")
+		Debug.log(self, "Cannot place ladder at cell = %s", [str(cell)])
 		return false
 	
 	# 2. 플레이어가 사다리 재료를 들고 있는지 확인
@@ -110,17 +105,17 @@ func place_ladder(cell: Vector2i) -> bool:
 	
 	return true
 
-## 배치 가능 여부 확인
+## [param cell]의 배치 가능 여부를 확인한다.
 func can_place(cell: Vector2i) -> bool:
-	if _data == null:
-		return false
-	
-	# 1. 범위 내인지 확인
+	# 범위 내인지 확인
 	if not _is_in_placement_range(cell):
+		Debug.log(self, "Out of range!")
 		return false
 	
-	# 2. 진공 셀인지 확인
+	# 진공 셀인지 확인
+	# NOTE: 현재 구현 기준 액체나 기체에 건설 불가.
 	if not _is_vacuum(cell):
+		Debug.log(self, "Only available at vaccum tile!")
 		return false
 	
 	return true
@@ -129,6 +124,7 @@ func can_place(cell: Vector2i) -> bool:
 # Internal Helpers
 # ══════════════════════════════════════════════════════════════════
 
+## [Player], [TileChange], [DataLayer]가 존재하는지 검증한다.
 func _validate_references() -> bool:
 	if _player == null:
 		push_warning("[Construction] Player reference is null")
