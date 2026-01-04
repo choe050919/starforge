@@ -39,7 +39,11 @@ var _repath_cooldown_left := 0.0
 
 var _mining_timer: float = 0.0
 var _mining_interval_sec: float = 0.2
-var _mining_queue: Array[Vector2i] = []
+var _mining_queue: Array[Vector2i] = []       # 원본 큐 (순서 유지)
+var _mining_reachable: Array[Vector2i] = []   # 도달 가능한 부분집합
+
+# ── 디버그 ──────────────────────────────────────────────────────────
+@export var debug_enabled: bool = false
 
 # ── 인벤토리 ────────────────────────────────────────────────────────
 var _inventory_material_sid: int = -1        # -1 = 비어있음
@@ -100,15 +104,23 @@ func _physics_process(delta: float) -> void:
 			_move_along_path(delta)
 		
 		Mode.MINING:
+			Debug.log(self, "MINING tick: target=%s, in_range=%s, valid=%s", [_mining_target_cell, _is_in_mining_range(_mining_target_cell), _is_cell_valid_for_mining(_mining_target_cell)])
+			
 			# 현재 타겟이 유효한지 확인
 			if _mining_target_cell.x < -9998 or not _is_cell_valid_for_mining(_mining_target_cell):
 				_advance_mining_queue()
 				return
 			
-			# 거리 밖이면 자동 이동 또는 스킵
+			# 거리 밖이면 자동 이동 또는 다음 타겟
 			if not _is_in_mining_range(_mining_target_cell):
 				if auto_move_to_mining_target:
-					move_to_cell(_mining_target_cell)
+					var move_to := _find_cell_to_reach_target(_mining_target_cell)
+					if move_to.x > -9998:
+						Debug.log(self, "Moving to %s to reach target %s", [move_to, _mining_target_cell])
+						move_to_cell(move_to)
+					else:
+						Debug.log(self, "No walkable cell to reach target %s, skipping", [_mining_target_cell])
+						_advance_mining_queue()
 				else:
 					_advance_mining_queue()
 				return
@@ -379,17 +391,24 @@ func add_mining_target(cell: Vector2i) -> void:
 	
 	_mining_queue.append(cell)
 	
-	# 현재 채굴 중이 아니면 즉시 시작
+	# reachable 갱신 후 채굴 시작
+	_rebuild_reachable_queue()
+	
+	Debug.log(self, "Added target: %s | queue=%s | reachable=%s", [cell, _mining_queue, _mining_reachable])
+	
+	# 현재 채굴 중이 아니면 시작
 	if _mode != Mode.MINING:
 		_start_next_mining_task()
 
 func start_mining(cell: Vector2i) -> void:
 	# 기존 큐를 비우고 새로 시작
 	_mining_queue.clear()
+	_mining_reachable.clear()
 	add_mining_target(cell)
 
 func stop_mining() -> void:
 	_mining_queue.clear()
+	_mining_reachable.clear()
 	_mining_target_cell = Vector2i(-9999, -9999)
 	_mining_timer = 0.0
 	if _mode == Mode.MINING:
@@ -397,6 +416,7 @@ func stop_mining() -> void:
 
 func clear_mining_queue() -> void:
 	_mining_queue.clear()
+	_mining_reachable.clear()
 	if _mode == Mode.MINING:
 		stop_mining()
 
@@ -481,6 +501,7 @@ func _finish_path() -> void:
 		
 		# 이동 완료 후 채굴 큐가 있으면 재개
 		if not _mining_queue.is_empty():
+			_rebuild_reachable_queue()
 			_start_next_mining_task()
 
 # ────────────────────────────────────────────────────────────────────
@@ -526,20 +547,78 @@ func _on_nav_bulk_changed(_rect: Rect2i) -> void:
 # 내부: 채굴
 
 func _start_next_mining_task() -> void:
-	if _mining_queue.is_empty():
+	# reachable이 비었으면 재검사
+	if _mining_reachable.is_empty():
+		_rebuild_reachable_queue()
+	
+	# 여전히 비었으면 대기
+	if _mining_reachable.is_empty():
+		Debug.log(self, "No reachable target | queue=%s", [_mining_queue])
 		if _mode == Mode.MINING:
 			_mode = Mode.IDLE
 		_mining_target_cell = Vector2i(-9999, -9999)
 		return
 	
-	_mining_target_cell = _mining_queue[0]
+	# reachable[0]을 타겟으로
+	_mining_target_cell = _mining_reachable[0]
 	_mode = Mode.MINING
 	_mining_timer = 0.0
+	var queue_idx := _mining_queue.find(_mining_target_cell)
+	Debug.log(self, "Started target: %s (queue[%d], reachable[0]/%d)", [_mining_target_cell, queue_idx, _mining_reachable.size()])
 
 func _advance_mining_queue() -> void:
-	if not _mining_queue.is_empty():
-		_mining_queue.pop_front()
+	Debug.log(self, "Advancing from: %s", [_mining_target_cell])
+	
+	# 현재 타겟을 양쪽 큐에서 제거
+	var idx := _mining_queue.find(_mining_target_cell)
+	if idx >= 0:
+		_mining_queue.remove_at(idx)
+	
+	var ridx := _mining_reachable.find(_mining_target_cell)
+	if ridx >= 0:
+		_mining_reachable.remove_at(ridx)
+	
+	Debug.log(self, "After advance | queue=%s | reachable=%s", [_mining_queue, _mining_reachable])
 	_start_next_mining_task()
+
+func _rebuild_reachable_queue() -> void:
+	_mining_reachable.clear()
+	for cell in _mining_queue:
+		var can_reach := _can_reach_for_mining(cell)
+		Debug.log(self, "Check reachable: %s -> %s", [cell, can_reach])
+		if can_reach:
+			_mining_reachable.append(cell)
+	Debug.log(self, "Rebuilt reachable=%s", [_mining_reachable])
+
+func _can_reach_for_mining(target: Vector2i) -> bool:
+	# 1. 이미 범위 안이면 OK
+	if _is_in_mining_range(target):
+		return true
+	
+	# 2. 이동해서 닿을 수 있는지 체크
+	return _find_cell_to_reach_target(target).x > -9998
+
+## 타겟 채굴을 위해 이동할 셀 반환. 못 찾으면 (-9999, -9999)
+func _find_cell_to_reach_target(target: Vector2i) -> Vector2i:
+	if _grid_nav == null:
+		return Vector2i(-9999, -9999)
+	
+	var player_cell := _world_to_cell(global_position)
+	
+	# 타겟 주변 mining_reach_cells 범위 내 walkable 셀 중
+	# 경로가 존재하는 곳 반환
+	for dy in range(-mining_reach_cells, mining_reach_cells + 1):
+		for dx in range(-mining_reach_cells, mining_reach_cells + 1):
+			if max(abs(dx), abs(dy)) > mining_reach_cells:
+				continue
+			var candidate := target + Vector2i(dx, dy)
+			if not _grid_nav.is_walkable_player(candidate):
+				continue
+			var path := _grid_nav.find_path_player(player_cell, candidate)
+			if not path.is_empty():
+				return candidate
+	
+	return Vector2i(-9999, -9999)
 
 func _apply_mining_damage() -> void:
 	# ★ 허기 시스템 적용: 채굴 가능 여부 확인 ★
