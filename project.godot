@@ -20,6 +20,10 @@ config/icon="uid://drcw3d5sjondu"
 
 Debug="*res://autoload/debug.gd"
 
+[editor]
+
+movie_writer/movie_file="C:/Users/CKIRUser/Documents/video.avi"
+
 [input]
 
 select={
