@@ -429,6 +429,9 @@ func get_mining_target() -> Vector2i:
 func get_mining_queue() -> Array[Vector2i]:
 	return _mining_queue.duplicate()
 
+func get_mining_reachable() -> Array[Vector2i]:
+	return _mining_reachable.duplicate()
+
 # ────────────────────────────────────────────────────────────────────
 # 내부: 시작 위치 스냅
 

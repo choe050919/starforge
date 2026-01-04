@@ -11,7 +11,8 @@ var _ground: TileMapLayer = null
 
 # ── 설정 ───────────────────────────────────────────────────
 @export var include_current_target: bool = true  ## 현재 채굴 중인 타겟도 표시할지
-@export var bracket_color: Color = Color(1.0, 0.5, 0.1, 0.9)  # 주황색
+@export var bracket_color: Color = Color(1.0, 0.5, 0.1, 0.9)  # 주황색 (reachable)
+@export var bracket_color_unreachable: Color = Color(0.5, 0.3, 0.1, 0.6)  # 어두운 주황 (unreachable)
 @export var bracket_bg_color: Color = Color.BLACK
 @export var bracket_width_fg: float = 2.0
 @export var bracket_width_bg: float = 4.0
@@ -50,6 +51,8 @@ func _draw() -> void:
 		return
 	
 	var queue: Array[Vector2i] = _player.get_mining_queue()
+	var reachable := _player.get_mining_reachable()
+	
 	if queue.is_empty():
 		return
 	
@@ -58,11 +61,12 @@ func _draw() -> void:
 	
 	for i in range(start_idx, queue.size()):
 		var cell := queue[i]
-		var display_number := i + 1  # 1부터 시작하는 번호
-		_draw_cell_highlight(cell, display_number)
+		var is_reachable := cell in reachable
+		_draw_cell_highlight(cell, i + 1, is_reachable)
 
 # ── 셀 하이라이트 ───────────────────────────────────────────
-func _draw_cell_highlight(cell: Vector2i, number: int) -> void:
+func _draw_cell_highlight(cell: Vector2i, number: int, is_reachable: bool) -> void:
+	var color := bracket_color if is_reachable else bracket_color_unreachable
 	var top_left := _cell_to_local(cell)
 	var w := _tile_px.x
 	var h := _tile_px.y
@@ -70,13 +74,13 @@ func _draw_cell_highlight(cell: Vector2i, number: int) -> void:
 	
 	# 코너 브라켓 그리기
 	# 좌상단 ┌
-	_draw_bracket(top_left + Vector2.ZERO, Vector2(length, 0), Vector2(0, length))
+	_draw_bracket(top_left + Vector2.ZERO, Vector2(length, 0), Vector2(0, length), color)
 	# 우상단 ┐
-	_draw_bracket(top_left + Vector2(w, 0), Vector2(-length, 0), Vector2(0, length))
+	_draw_bracket(top_left + Vector2(w, 0), Vector2(-length, 0), Vector2(0, length), color)
 	# 좌하단 └
-	_draw_bracket(top_left + Vector2(0, h), Vector2(length, 0), Vector2(0, -length))
+	_draw_bracket(top_left + Vector2(0, h), Vector2(length, 0), Vector2(0, -length), color)
 	# 우하단 ┘
-	_draw_bracket(top_left + Vector2(w, h), Vector2(-length, 0), Vector2(0, -length))
+	_draw_bracket(top_left + Vector2(w, h), Vector2(-length, 0), Vector2(0, -length), color)
 	
 	# 번호 표시
 	if show_numbers and _font:
@@ -94,13 +98,11 @@ func _draw_cell_highlight(cell: Vector2i, number: int) -> void:
 		# 본문
 		draw_string(_font, text_pos, text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, number_color)
 
-func _draw_bracket(corner: Vector2, dir1: Vector2, dir2: Vector2) -> void:
-	# 배경 (두꺼운 검정)
+func _draw_bracket(corner: Vector2, dir1: Vector2, dir2: Vector2, color: Color) -> void:
 	draw_line(corner, corner + dir1, bracket_bg_color, bracket_width_bg, true)
 	draw_line(corner, corner + dir2, bracket_bg_color, bracket_width_bg, true)
-	# 전경 (얇은 주황)
-	draw_line(corner, corner + dir1, bracket_color, bracket_width_fg, true)
-	draw_line(corner, corner + dir2, bracket_color, bracket_width_fg, true)
+	draw_line(corner, corner + dir1, color, bracket_width_fg, true)
+	draw_line(corner, corner + dir2, color, bracket_width_fg, true)
 
 # ── 유틸 ───────────────────────────────────────────────────
 func _cell_to_local(cell: Vector2i) -> Vector2:
