@@ -9,6 +9,10 @@ var _accum := 0.0
 var _label: Label
 
 func _ready() -> void:
+	if not OS.is_debug_build():
+		visible = false
+		queue_free()
+	
 	visible = start_visible
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	set_anchors_preset(Control.PRESET_TOP_RIGHT)
