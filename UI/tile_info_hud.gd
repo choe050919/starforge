@@ -4,11 +4,11 @@ class_name TileInfoHUD
 @onready var tile_info_tracker: TileInfoTracker = $TileInfoTracker
 
 @onready var _panel: PanelContainer = $TileInfoPanel
-@onready var _substance_label: Label = $TileInfoPanel/VBoxContainer/Substance/SubstanceLabel
-@onready var _phase_label: Label = $TileInfoPanel/VBoxContainer/Phase/PhaseLabel
-@onready var _mass_label: Label = $TileInfoPanel/VBoxContainer/Mass/MassLabel
-@onready var _temperature_label: Label = $TileInfoPanel/VBoxContainer/Temperature/TemperatureLabel
-@onready var _light_label: Label = $TileInfoPanel/VBoxContainer/Light/LightLabel
+@onready var _substance_label: Label = %SubstanceLabel
+@onready var _phase_label: Label = %PhaseLabel
+@onready var _mass_label: Label = %MassLabel
+@onready var _temperature_label: Label = %TemperatureLabel
+@onready var _light_label: Label = %LightLabel
 
 @export var offset := Vector2(14, 18)   # 커서와 겹치지 않도록
 @export var edge_margin := 8.0          # 화면 가장자리 여백
@@ -51,6 +51,7 @@ func setup(data: DataLayer, hs: HoverManager) -> void:
 func _on_info_updated(info: Dictionary) -> void:
 	_update_substance(info)
 	_update_phase(info)
+	
 	_update_mass(info)
 	_update_temperature(info)
 	_update_light(info)
@@ -147,14 +148,3 @@ func _process(_delta: float) -> void:
 		_panel.global_position = _panel.global_position.lerp(target, clamp(smoothing, 0.0, 1.0))
 	else:
 		_panel.global_position = target
-
-#func _anti_clip(p: Vector2) -> Vector2:
-	## 화면 밖 방지(우하 우선 배치, 안되면 좌/상쪽으로 밀어넣기)
-	#var view := get_viewport_rect().size
-	#var sz := size
-	#var pos := p
-	##if pos.x + sz.x + edge_margin > view.x:
-		##pos.x = max(edge_margin, view.x - sz.x - edge_margin)
-	##if pos.y + sz.y + edge_margin > view.y:
-		##pos.y = max(edge_margin, view.y - sz.y - edge_margin)
-	#return pos
