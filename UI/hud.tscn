@@ -1,6 +1,6 @@
 [gd_scene load_steps=2 format=3 uid="uid://cqinatbhx3krc"]
 
-[ext_resource type="Script" uid="uid://bwe4lcgh702ux" path="res://ui/hud.gd" id="1_37p78"]
+[ext_resource type="Script" uid="uid://bwe4lcgh702ux" path="res://UI/hud.gd" id="1_37p78"]
 
 [node name="HUD" type="Control"]
 layout_mode = 3
@@ -23,16 +23,6 @@ text = "⏯"
 [node name="OptSpeed" type="OptionButton" parent="PanelContainer/GameControls"]
 unique_name_in_owner = true
 layout_mode = 2
-
-[node name="CbWater" type="CheckBox" parent="PanelContainer/GameControls"]
-unique_name_in_owner = true
-layout_mode = 2
-text = "Water"
-
-[node name="CbTemp" type="CheckBox" parent="PanelContainer/GameControls"]
-unique_name_in_owner = true
-layout_mode = 2
-text = "Temp"
 
 [node name="ToolButtons" type="HBoxContainer" parent="PanelContainer"]
 layout_mode = 2
@@ -64,6 +54,14 @@ layout_mode = 2
 [node name="BtnToolLadder" type="Button" parent="PanelContainer/ToolButtons"]
 unique_name_in_owner = true
 layout_mode = 2
+
+[node name="Debug" type="HBoxContainer" parent="PanelContainer"]
+layout_mode = 2
+
+[node name="CbWater" type="CheckBox" parent="PanelContainer/Debug"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Water"
 
 [connection signal="pressed" from="PanelContainer/GameControls/BtnPlayPause" to="." method="_on_play_pressed"]
 [connection signal="item_selected" from="PanelContainer/GameControls/OptSpeed" to="." method="_on_speed_selected"]

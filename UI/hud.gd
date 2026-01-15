@@ -10,7 +10,6 @@ signal overlay_toggled(name: StringName, enabled: bool)
 @onready var btn_play: Button        = %BtnPlayPause
 @onready var opt_speed: OptionButton = %OptSpeed
 @onready var cb_water: CheckBox      = %CbWater
-@onready var cb_temp: CheckBox       = %CbTemp
 
 # ── 툴 버튼 ─────────────────────────────────────────────────────
 @onready var btn_tool_mine: Button = %BtnToolMine
@@ -49,12 +48,10 @@ func _setup_speed_options() -> void:
 
 func _setup_overlay_toggles() -> void:
 	cb_water.toggled.connect(func(on): overlay_toggled.emit(&"water", on))
-	cb_temp.toggled.connect(func(on): overlay_toggled.emit(&"temp", on))
 
 func _setup_tooltips() -> void:
 	btn_play.tooltip_text = "Play/Pause (Space)"
 	cb_water.tooltip_text = "Toggle Water Overlay"
-	cb_temp.tooltip_text  = "Toggle Temperature Overlay"
 
 func _setup_tool_buttons() -> void:
 	# Tool → Button 매핑 정의
@@ -114,7 +111,6 @@ func set_state(running: bool, speed_mult: float, water_on: bool, temp_on: bool) 
 		opt_speed.select(opt_speed.item_count - 1)
 
 	cb_water.button_pressed = water_on
-	cb_temp.button_pressed  = temp_on
 
 # ── 내부 핸들러 ─────────────────────────────────────────────────
 
