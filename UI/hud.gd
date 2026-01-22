@@ -4,12 +4,10 @@ class_name HUD
 # ── 시그널 ──────────────────────────────────────────────────────
 signal play_toggled(running: bool)
 signal speed_selected(mult: float)
-signal overlay_toggled(name: StringName, enabled: bool)
 
 # ── 게임 컨트롤 ─────────────────────────────────────────────────
 @onready var btn_play: Button        = %BtnPlayPause
 @onready var opt_speed: OptionButton = %OptSpeed
-@onready var cb_water: CheckBox      = %CbWater
 
 # ── 툴 버튼 ─────────────────────────────────────────────────────
 @onready var btn_tool_mine: Button = %BtnToolMine
@@ -24,7 +22,7 @@ var _tool_btn_group := ButtonGroup.new()
 var _tool_buttons: Dictionary = {}
 
 # ── 의존성 ──────────────────────────────────────────────────────
-@export var _tool_manager: ToolManager
+var _tool_manager: ToolManager
 
 # ── 상태 ────────────────────────────────────────────────────────
 var _running := true
@@ -32,7 +30,6 @@ var _running := true
 # ── 초기화 ────────────────────────────────────────────────────────
 func _ready() -> void:
 	_setup_speed_options()
-	_setup_overlay_toggles()
 	_setup_tooltips()
 	_setup_tool_buttons()
 	_connect_tool_manager()
@@ -46,12 +43,8 @@ func _setup_speed_options() -> void:
 	_add_speed_item("5×",   5.0)
 	opt_speed.select(1) # 기본 1×
 
-func _setup_overlay_toggles() -> void:
-	cb_water.toggled.connect(func(on): overlay_toggled.emit(&"water", on))
-
 func _setup_tooltips() -> void:
 	btn_play.tooltip_text = "Play/Pause (Space)"
-	cb_water.tooltip_text = "Toggle Water Overlay"
 
 func _setup_tool_buttons() -> void:
 	# Tool → Button 매핑 정의
@@ -94,8 +87,22 @@ func _connect_tool_manager() -> void:
 
 # ── 외부 인터페이스 ─────────────────────────────────────────────
 
+func set_tool_manager(tm: ToolManager) -> void:
+	_tool_manager = tm
+	_connect_tool_manager()
+	_rebind_tool_buttons()
+
+func _rebind_tool_buttons() -> void:
+	for tool in _tool_buttons:
+		var btn: Button = _tool_buttons[tool]
+		# 기존 연결 정리
+		for conn in btn.pressed.get_connections():
+			btn.pressed.disconnect(conn.callable)
+		# 새로 연결
+		btn.pressed.connect(_tool_manager.set_tool.bind(tool))
+
 ## 외부에서 HUD 초기 상태를 동기화한다.
-func set_state(running: bool, speed_mult: float, water_on: bool, temp_on: bool) -> void:
+func set_state(running: bool, speed_mult: float) -> void:
 	_running = running
 	btn_play.text = "⏸" if _running else "▶"
 
@@ -109,8 +116,6 @@ func set_state(running: bool, speed_mult: float, water_on: bool, temp_on: bool) 
 		# 예상치 못한 배속이 들어오면 임시 추가
 		_add_speed_item("%sx" % speed_mult, speed_mult)
 		opt_speed.select(opt_speed.item_count - 1)
-
-	cb_water.button_pressed = water_on
 
 # ── 내부 핸들러 ─────────────────────────────────────────────────
 

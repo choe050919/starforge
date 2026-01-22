@@ -9,6 +9,7 @@ class_name World
 @onready var liquid_overlay: LiquidOverlay = %LiquidOverlay
 @onready var crack_overlay: CrackOverlay = %CrackOverlay
 @onready var corner_highlight: CornerHighlight = %CornerHighlight
+@onready var mining_visual: MiningVisual = %MiningVisual
 
 # ── Overlay Manager ──────────────────────────────────────────────
 @onready var overlay_manager: OverlayManager = %OverlayManager
@@ -39,11 +40,7 @@ class_name World
 
 # ── UI ───────────────────────────────────────────────────────────
 @onready var tile_info_hud: TileInfoHUD = %TileInfoHUD
-@onready var mining_visual: MiningVisual = %MiningVisual
-@onready var hunger_ui: HungerUI = %HungerUI
-@onready var inventory_ui: InventoryUI = %InventoryUI
-
-@onready var hud: HUD = %HUD
+@onready var ui_root: UIRoot = %UIRoot
 
 # ── Camera ───────────────────────────────────────────────────────
 @onready var camera: Camera2D = $Camera2D
@@ -66,8 +63,6 @@ var rule_cache := SubstanceRuleCache.new()
 func _ready() -> void:
 	# SimClock 자동 시작 방지
 	clock.set_process(false)
-	
-	_setup_hud()
 
 	# 리소스 로딩 실패 시 게임 중단
 	if not _load_resources():
@@ -83,17 +78,6 @@ func _ready() -> void:
 	_setup_mining_visual()
 
 # ── Setup Helpers ────────────────────────────────────────────────
-
-func _setup_hud() -> void:
-	hud.play_toggled.connect(_on_hud_play)
-	hud.speed_selected.connect(_set_speed_multiplier)
-	hud.overlay_toggled.connect(_on_hud_overlay)
-	hud.set_state(
-		_is_running,
-		_speed_mult,
-		liquid_overlay.visible,
-		overlay_manager.is_active(OverlayManager.OverlayMode.HEATMAP)
-)
 
 ## 개선된 리소스 로딩 (검증 포함)
 func _load_resources() -> bool:
@@ -174,13 +158,9 @@ func _setup_durability() -> void:
 	durability.break_requested.connect(crack_overlay.on_break_requested)
 
 func _setup_player() -> void:
-	# 기존 경로들
 	player.grid_nav_path = NodePath("%GridNav")
 	player.overlay_path = NodePath("%OverlayManager/OverlayLayer/NavigationOverlay")
 	player.mining_path = NodePath("%Mining")
-	player.ground_item_registry_path = NodePath("%GroundItemRegistry")
-	
-	# 인벤토리용 경로 추가
 	player.ground_item_registry_path = NodePath("%GroundItemRegistry")
 	
 	# DataLayer 설정
@@ -299,9 +279,6 @@ func _post_apply_worldgen(size: Vector2i, initial_mass: PackedInt64Array) -> voi
 	# 초기 상태 렌더링
 	visual_sync.render_initial_state(initial_mass)
 	
-	# 기타 UI 설정
-	tile_info_hud.setup(data_layer, hover)
-	spawner.setup(data_layer, plant)
 	
 	# hunger 관련 (주석 보강 필요)
 	_setup_hunger_system()
@@ -312,9 +289,28 @@ func _post_apply_worldgen(size: Vector2i, initial_mass: PackedInt64Array) -> voi
 	_world_ready = true
 	clock.set_process(true)
 	
+	_setup_ui()
+	# 기타 UI 설정
+	tile_info_hud.setup(data_layer, hover)
+	spawner.setup(data_layer, plant)
+	
 	if debug_log: print("[World] World setup complete, SimClock started")
 
-var sim_time := 0.0
+func _setup_ui() -> void:
+	var ctx := UIContext.create(
+		data_layer,
+		substance_loader,
+		hover,
+		hunger,
+		input._tool_manager,
+		liquid_overlay,
+		overlay_manager,
+		_is_running,
+		_speed_mult
+	)
+	ui_root.setup(ctx)
+	ui_root.play_toggled.connect(_on_hud_play)
+	ui_root.speed_selected.connect(_set_speed_multiplier)
 
 func _setup_hunger_system() -> void:
 	if hunger == null:
@@ -324,13 +320,6 @@ func _setup_hunger_system() -> void:
 	# ★ SubstanceRuleCache를 전달 (nutrition_cache 제거) ★
 	hunger.setup(player, rule_cache)
 	hunger.set_process(true)
-	
-	# UI 연결
-	if hunger_ui:
-		hunger_ui.setup(hunger)
-	
-	if inventory_ui:
-		inventory_ui.setup(substance_loader)
 	
 	# 기아 대미지 처리 (나중에 체력 시스템과 연동)
 	hunger.starving_damage.connect(_on_starving_damage)
@@ -412,8 +401,7 @@ func _on_player_inventory_changed(material_sid: int, mass_mg: int) -> void:
 		var mass_kg := float(mass_mg) / 1_000_000.0
 		print("[World] Inventory: SID=", material_sid, " Mass=", mass_kg, "kg (", mass_mg, "mg)")
 	
-	if inventory_ui:
-		inventory_ui.on_inventory_changed(material_sid, mass_mg)
+	ui_root.on_inventory_changed(material_sid, mass_mg)
 
 func _on_construct_requested(cell: Vector2i) -> void:
 	if not is_instance_valid(construction):
@@ -471,22 +459,6 @@ func _on_hud_play(running: bool) -> void:
 func _set_speed_multiplier(mult: float) -> void:
 	_speed_mult = mult
 	Engine.time_scale = _speed_mult if _is_running else 0.0
-
-func _on_hud_overlay(overlay_name: StringName, enabled: bool) -> void:
-	match overlay_name:
-		&"water":
-			if is_instance_valid(liquid_overlay):
-				liquid_overlay.visible = enabled
-		&"temp":
-			# HACK: HUD의 bool 토글을 단일 활성 모드로 해석
-			const HEATMAP := OverlayManager.OverlayMode.HEATMAP
-			if enabled:
-				overlay_manager.set_active(HEATMAP)
-			else:
-				if overlay_manager.is_active(HEATMAP):
-					# HACK 다른 overlay까지 같이 꺼질 우려가 있음
-					# 현재는 HEATMAP만 이 함수에서 설정 중이라 영향 없음.
-					overlay_manager.clear()
 
 # ══════════════════════════════════════════════════════════════════
 # Event Handlers

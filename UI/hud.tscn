@@ -1,67 +1,68 @@
-[gd_scene load_steps=2 format=3 uid="uid://cqinatbhx3krc"]
+[gd_scene load_steps=3 format=3 uid="uid://cqinatbhx3krc"]
 
 [ext_resource type="Script" uid="uid://bwe4lcgh702ux" path="res://UI/hud.gd" id="1_37p78"]
+[ext_resource type="Theme" uid="uid://cliopsswg146d" path="res://oni_engineer_theme.tres" id="1_bytes"]
 
-[node name="HUD" type="Control"]
-layout_mode = 3
-anchors_preset = 0
+[node name="HUD" type="PanelContainer"]
+offset_right = 288.0
+offset_bottom = 83.0
+theme = ExtResource("1_bytes")
 script = ExtResource("1_37p78")
 
-[node name="PanelContainer" type="VBoxContainer" parent="."]
-layout_mode = 0
-offset_right = 221.0
-offset_bottom = 40.0
+[node name="MarginContainer" type="MarginContainer" parent="."]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 12
 
-[node name="GameControls" type="HBoxContainer" parent="PanelContainer"]
+[node name="VBoxContainer" type="VBoxContainer" parent="MarginContainer"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="GameControls" type="HBoxContainer" parent="MarginContainer/VBoxContainer"]
 layout_mode = 2
 
-[node name="BtnPlayPause" type="Button" parent="PanelContainer/GameControls"]
+[node name="BtnPlayPause" type="Button" parent="MarginContainer/VBoxContainer/GameControls"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "⏯"
 
-[node name="OptSpeed" type="OptionButton" parent="PanelContainer/GameControls"]
+[node name="OptSpeed" type="OptionButton" parent="MarginContainer/VBoxContainer/GameControls"]
 unique_name_in_owner = true
 layout_mode = 2
 
-[node name="ToolButtons" type="HBoxContainer" parent="PanelContainer"]
+[node name="ToolButtons" type="HBoxContainer" parent="MarginContainer/VBoxContainer"]
 layout_mode = 2
+theme_override_constants/separation = 4
 
-[node name="BtnToolMine" type="Button" parent="PanelContainer/ToolButtons"]
+[node name="BtnToolMine" type="Button" parent="MarginContainer/VBoxContainer/ToolButtons"]
 unique_name_in_owner = true
 layout_mode = 2
 
-[node name="BtnToolVacuum" type="Button" parent="PanelContainer/ToolButtons"]
+[node name="BtnToolVacuum" type="Button" parent="MarginContainer/VBoxContainer/ToolButtons"]
 unique_name_in_owner = true
 layout_mode = 2
 
-[node name="BtnToolFish" type="Button" parent="PanelContainer/ToolButtons"]
+[node name="BtnToolFish" type="Button" parent="MarginContainer/VBoxContainer/ToolButtons"]
 unique_name_in_owner = true
 layout_mode = 2
 
-[node name="BtnToolPlant" type="Button" parent="PanelContainer/ToolButtons"]
+[node name="BtnToolPlant" type="Button" parent="MarginContainer/VBoxContainer/ToolButtons"]
 unique_name_in_owner = true
 layout_mode = 2
 
-[node name="BtnToolAddTemp" type="Button" parent="PanelContainer/ToolButtons"]
+[node name="BtnToolAddTemp" type="Button" parent="MarginContainer/VBoxContainer/ToolButtons"]
 unique_name_in_owner = true
 layout_mode = 2
 
-[node name="BtnToolConstruct" type="Button" parent="PanelContainer/ToolButtons"]
+[node name="BtnToolConstruct" type="Button" parent="MarginContainer/VBoxContainer/ToolButtons"]
 unique_name_in_owner = true
 layout_mode = 2
 
-[node name="BtnToolLadder" type="Button" parent="PanelContainer/ToolButtons"]
+[node name="BtnToolLadder" type="Button" parent="MarginContainer/VBoxContainer/ToolButtons"]
 unique_name_in_owner = true
 layout_mode = 2
 
-[node name="Debug" type="HBoxContainer" parent="PanelContainer"]
-layout_mode = 2
-
-[node name="CbWater" type="CheckBox" parent="PanelContainer/Debug"]
-unique_name_in_owner = true
-layout_mode = 2
-text = "Water"
-
-[connection signal="pressed" from="PanelContainer/GameControls/BtnPlayPause" to="." method="_on_play_pressed"]
-[connection signal="item_selected" from="PanelContainer/GameControls/OptSpeed" to="." method="_on_speed_selected"]
+[connection signal="pressed" from="MarginContainer/VBoxContainer/GameControls/BtnPlayPause" to="." method="_on_play_pressed"]
+[connection signal="item_selected" from="MarginContainer/VBoxContainer/GameControls/OptSpeed" to="." method="_on_speed_selected"]
