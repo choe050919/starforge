@@ -279,9 +279,8 @@ mouse_filter = 2
 
 [node name="FpsMemMonitor" type="Control" parent="UI/GameControls"]
 layout_mode = 1
-anchors_preset = 5
-anchor_left = 0.5
-anchor_right = 0.5
+anchor_left = 0.8
+anchor_right = 0.8
 grow_horizontal = 2
 script = ExtResource("29_mip0j")
 
