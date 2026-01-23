@@ -49,34 +49,31 @@ func _ready() -> void:
 ## 전체 맵 초기화 용도로 사용.
 func apply_tiles(tile_types: PackedInt32Array, size: Vector2i) -> void:
 	clear()
-	
 	for y in size.y:
 		for x in size.x:
 			var idx := y * size.x + x
 			var tile_type := tile_types[idx]
-			var tile_data := _map_tile_to_atlas(tile_type)
-			
-			if tile_data.is_empty():
-				continue # VACCUM or not defined in tileset
-			
-			set_cell(Vector2i(x, y), sid, tile_data[0], tile_data[1])
+			if tile_type == Tile.VACUUM:
+				continue
+			_set_tile(Vector2i(x, y), tile_type)
 
 ## cell 좌표를 받아서 적용한다.
 func apply_cell_change(cell: Vector2i, tile_type: int) -> void:
 	if tile_type == Tile.VACUUM:
 		erase_cell(cell)
 		return
-	
-	var tile_data := _map_tile_to_atlas(tile_type)
-	
-	if tile_data.is_empty():
-		set_cell(cell, sid, atlas_placeholder, alt_placeholder)
-	else:
-		set_cell(cell, sid, tile_data[0], tile_data[1])
+	_set_tile(cell, tile_type)
 
 # ── Internal ─────────────────────────────────────────────────────────
 
 const _NO_TILE := []
+
+func _set_tile(cell: Vector2i, tile_type: int) -> void:
+	var tile_data := _map_tile_to_atlas(tile_type)
+	if tile_data.is_empty():
+		set_cell(cell, sid, atlas_placeholder, alt_placeholder)
+	else:
+		set_cell(cell, sid, tile_data[0], tile_data[1])
 
 ## 타일 타입을 atlas와 alt 값으로 매핑한다.
 ## 반환값: [atlas: Vector2i, alt: int] 또는 빈 배열 (VACCUM/미정의 타일)
