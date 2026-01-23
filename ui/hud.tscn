@@ -1,6 +1,6 @@
 [gd_scene load_steps=3 format=3 uid="uid://cqinatbhx3krc"]
 
-[ext_resource type="Script" uid="uid://bwe4lcgh702ux" path="res://UI/hud.gd" id="1_37p78"]
+[ext_resource type="Script" uid="uid://bwe4lcgh702ux" path="res://ui/hud.gd" id="1_37p78"]
 [ext_resource type="Theme" uid="uid://cliopsswg146d" path="res://oni_engineer_theme.tres" id="1_bytes"]
 
 [node name="HUD" type="PanelContainer"]

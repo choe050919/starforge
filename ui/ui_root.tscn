@@ -1,10 +1,10 @@
 [gd_scene load_steps=6 format=3 uid="uid://bcxoasjeydahb"]
 
-[ext_resource type="Script" uid="uid://kxnn4nscmw50" path="res://UI/ui_root.gd" id="1_script"]
+[ext_resource type="Script" uid="uid://kxnn4nscmw50" path="res://ui/ui_root.gd" id="1_script"]
 [ext_resource type="Theme" uid="uid://cliopsswg146d" path="res://oni_engineer_theme.tres" id="2_theme"]
-[ext_resource type="PackedScene" uid="uid://cqinatbhx3krc" path="res://UI/hud.tscn" id="3_hud"]
-[ext_resource type="PackedScene" uid="uid://cv2gvghfjsn21" path="res://UI/hunger_ui.tscn" id="5_hunger"]
-[ext_resource type="PackedScene" uid="uid://d2mmvk2husrvn" path="res://UI/inventory_ui.tscn" id="6_inventory"]
+[ext_resource type="PackedScene" uid="uid://cqinatbhx3krc" path="res://ui/hud.tscn" id="3_hud"]
+[ext_resource type="PackedScene" uid="uid://cv2gvghfjsn21" path="res://ui/hunger_ui.tscn" id="5_hunger"]
+[ext_resource type="PackedScene" uid="uid://d2mmvk2husrvn" path="res://ui/inventory_ui.tscn" id="6_inventory"]
 
 [node name="UIRoot" type="Control"]
 layout_mode = 3
