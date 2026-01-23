@@ -63,6 +63,10 @@ func apply_tiles(tile_types: PackedInt32Array, size: Vector2i) -> void:
 
 ## cell 좌표를 받아서 적용한다.
 func apply_cell_change(cell: Vector2i, tile_type: int) -> void:
+	if tile_type == Tile.VACUUM:
+		erase_cell(cell)
+		return
+	
 	var tile_data := _map_tile_to_atlas(tile_type)
 	
 	if tile_data.is_empty():
